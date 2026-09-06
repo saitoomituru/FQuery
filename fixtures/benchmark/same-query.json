@@ -2,11 +2,18 @@
   "schema_version": "fquery.benchmark/0.1.0-draft",
   "benchmark_id": "benchmark://fixture/same-query",
   "query": {
+    "schema_version": "fquery/0.1.0-draft",
     "query_id": "q://fixture/benchmark",
     "operator": "Q",
     "input": {"kind": "literal", "value": {"message": "hello"}},
     "operations": [{"kind": "invoke", "capability": "echo"}],
-    "goal": {"lambda_ref": "lambda://fixture/echo", "verifier_ref": "verifier://fixture/equality"}
+    "goal": {"lambda_ref": "lambda://fixture/echo", "verifier_ref": "verifier://fixture/equality"},
+    "policy": {
+      "side_effect": "deny",
+      "unknown": "retain",
+      "unresolved": "retain",
+      "limits": {"max_depth": 32, "max_nodes": 10000, "timeout_ms": 30000}
+    }
   },
   "compare_axes": [
     "resolution_status",

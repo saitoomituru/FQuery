@@ -1,11 +1,31 @@
 import { describe, expect, it } from "vitest";
-import { evaluateQ, parseQuery, Q } from "../src/index.js";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
+import { evaluateQ, parseQuery, Q, toWireQueryResult } from "../src/index.js";
 
 describe("Q", () => {
   it("JSON ASTとQ(JSON) wrapperを同じQueryへ解析する", () => {
     const query = Q({ kind: "literal", value: { answer: 42 } }, { queryId: "q://test/parse", operations: [] });
     expect(parseQuery(JSON.stringify(query))).toEqual(query);
     expect(parseQuery(`Q(${JSON.stringify(query)})`)).toEqual(query);
+  });
+
+  it("repositoryのsnake_case fixtureを公開wire contractとして解析する", () => {
+    const fixture = JSON.parse(readFileSync(join(process.cwd(), "../../fixtures/benchmark/same-query.json"), "utf8")) as { query: unknown };
+    const query = parseQuery(fixture.query);
+    expect(query.queryId).toBe("q://fixture/benchmark");
+    expect(query.goal?.lambdaRef).toBe("lambda://fixture/echo");
+    expect(query.policy.limits.maxNodes).toBe(10_000);
+  });
+
+  it("内部camelCase resultをsnake_case wire envelopeへ明示変換する", async () => {
+    const result = await evaluateQ(Q({ kind: "literal", value: 1 }, { queryId: "q://test/wire" }));
+    expect(toWireQueryResult(result)).toMatchObject({
+      schema_version: "fquery.result/0.1.0-draft",
+      query_ref: "q://test/wire",
+      resolution_status: "resolved",
+      control_status: "result",
+    });
   });
 
   it("selectとprojectを副作用なしで評価する", async () => {
