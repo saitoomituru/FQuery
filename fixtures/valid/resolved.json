@@ -1,0 +1,12 @@
+{
+  "schema_version": "fquery.result/0.1.0-draft",
+  "query_ref": "q://fixture/resolved",
+  "resolution_status": "resolved",
+  "connection_status": "connected",
+  "transport_status": "succeeded",
+  "plugin_status": "not-requested",
+  "semantic_status": "satisfied",
+  "lambda_status": "satisfied",
+  "control_status": "result",
+  "evidence_refs": ["evidence://fixture/resolved"]
+}

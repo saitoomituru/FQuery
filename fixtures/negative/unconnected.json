@@ -1,0 +1,12 @@
+{
+  "schema_version": "fquery.result/0.1.0-draft",
+  "query_ref": "q://fixture/unconnected",
+  "resolution_status": "resolved",
+  "connection_status": "unconnected",
+  "transport_status": "not-started",
+  "plugin_status": "not-requested",
+  "semantic_status": "not-evaluated",
+  "lambda_status": "unknown",
+  "control_status": "result",
+  "evidence_refs": []
+}

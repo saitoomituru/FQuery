@@ -1,0 +1,12 @@
+{
+  "schema_version": "fquery.result/0.1.0-draft",
+  "query_ref": "q://fixture/plugin-not-found",
+  "resolution_status": "unresolved",
+  "connection_status": "not-applicable",
+  "transport_status": "not-started",
+  "plugin_status": "plugin-not-found",
+  "semantic_status": "unknown",
+  "lambda_status": "unknown",
+  "control_status": "last-order",
+  "evidence_refs": []
+}

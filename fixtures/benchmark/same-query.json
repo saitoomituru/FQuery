@@ -1,0 +1,20 @@
+{
+  "schema_version": "fquery.benchmark/0.1.0-draft",
+  "benchmark_id": "benchmark://fixture/same-query",
+  "query": {
+    "query_id": "q://fixture/benchmark",
+    "operator": "Q",
+    "input": {"kind": "literal", "value": {"message": "hello"}},
+    "operations": [{"kind": "invoke", "capability": "echo"}],
+    "goal": {"lambda_ref": "lambda://fixture/echo", "verifier_ref": "verifier://fixture/equality"}
+  },
+  "compare_axes": [
+    "resolution_status",
+    "connection_status",
+    "transport_status",
+    "plugin_status",
+    "semantic_status",
+    "lambda_status",
+    "control_status"
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "schema_version": "fquery.result/0.1.0-draft",
+  "query_ref": "q://fixture/cycle-a",
+  "resolution_status": "bottom",
+  "connection_status": "not-applicable",
+  "transport_status": "not-started",
+  "plugin_status": "not-requested",
+  "semantic_status": "not-evaluated",
+  "lambda_status": "unknown",
+  "control_status": "bottom",
+  "reason": "cycle-detected",
+  "evidence_refs": ["evidence://fixture/cycle-a-to-b-to-a"]
+}
