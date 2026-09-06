@@ -94,6 +94,25 @@ describe("Presentation FAM Controller", () => {
     });
   });
 
+  it("同一capabilityの複数pluginを保持し未選択をghostへ残す", () => {
+    const registry = new PluginPresentationRegistry();
+    registry.register({ pluginId: "gemini", pluginVersion: "1.0.0", capability: "fam.decompose", presentation });
+    registry.register({ pluginId: "ollama", pluginVersion: "1.0.0", capability: "fam.decompose", presentation: { ...presentation, presentationId: "presentation://ollama" } });
+
+    expect(registry.registrations()).toHaveLength(2);
+    expect(registry.project({
+      targetRef: "fam://node/decompose",
+      capability: "fam.decompose",
+      renderer: { rendererId: "vue", supportedHints: ["sensor-gauge"] },
+    })).toMatchObject({ mode: "ghost", reason: "plugin-selection-unresolved" });
+    expect(registry.project({
+      targetRef: "fam://node/decompose",
+      capability: "fam.decompose",
+      pluginId: "ollama",
+      renderer: { rendererId: "vue", supportedHints: ["sensor-gauge"] },
+    })).toMatchObject({ mode: "native", presentation: { presentationId: "presentation://ollama" } });
+  });
+
   it("pixel layout実値をPresentation FAMへ混入させない", () => {
     const registry = new PluginPresentationRegistry();
     expect(() => registry.register({

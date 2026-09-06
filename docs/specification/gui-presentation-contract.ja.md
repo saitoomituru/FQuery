@@ -45,6 +45,8 @@ pixel座標、size、zoom、viewport、local widget stateは保持しない。�
 
 pluginのcapabilityとPresentation FAMを`PluginPresentationRegistry`へ登録する。Viewは登録情報からpalette、検索、inspector等を生成できる。
 
+registry座標は`pluginId + capability`であり、複数providerが同じcapabilityを提供できる。semantic nodeがpluginを選択しておらず候補が複数ある場合、GUIは独断で一つを選ばず`plugin-selection-unresolved`のghostを表示する。
+
 - rendererがhintを扱える: `native`
 - rendererがhintを扱えない: semantic refを保った`generic`
 - pluginが未ロード／消失: semantic nodeを消さない`ghost`

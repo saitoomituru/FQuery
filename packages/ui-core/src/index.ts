@@ -89,47 +89,51 @@ export interface PresentationProjection {
   readonly mode: "native" | "generic" | "ghost";
   readonly rendererId: string;
   readonly presentation?: PresentationFam;
-  readonly reason?: "renderer-unsupported" | "plugin-unavailable";
+  readonly reason?: "renderer-unsupported" | "plugin-unavailable" | "plugin-selection-unresolved";
 }
 
 export interface PresentationRequest {
   readonly targetRef: string;
   readonly capability: string;
+  readonly pluginId?: string;
   readonly renderer: RendererCapability;
 }
 
 export class PluginPresentationRegistry {
-  readonly #byCapability = new Map<string, PluginPresentationRegistration>();
+  readonly #byRegistration = new Map<string, PluginPresentationRegistration>();
 
   register(registration: PluginPresentationRegistration): void {
     validatePresentationRegistration(registration);
-    const current = this.#byCapability.get(registration.capability);
-    if (current) throw new Error(`presentation-capability-already-registered:${registration.capability}:${current.pluginId}`);
-    this.#byCapability.set(registration.capability, freezeRegistration(registration));
+    const key = registrationKey(registration.pluginId, registration.capability);
+    if (this.#byRegistration.has(key)) throw new Error(`presentation-already-registered:${registration.pluginId}:${registration.capability}`);
+    this.#byRegistration.set(key, freezeRegistration(registration));
   }
 
   unregisterPlugin(pluginId: string): readonly string[] {
     const removed: string[] = [];
-    for (const [capability, registration] of this.#byCapability) {
+    for (const [key, registration] of this.#byRegistration) {
       if (registration.pluginId !== pluginId) continue;
-      this.#byCapability.delete(capability);
-      removed.push(capability);
+      this.#byRegistration.delete(key);
+      removed.push(registration.capability);
     }
     return Object.freeze(removed);
   }
 
   registrations(): readonly PluginPresentationRegistration[] {
-    return Object.freeze([...this.#byCapability.values()]);
+    return Object.freeze([...this.#byRegistration.values()]);
   }
 
   project(request: PresentationRequest): PresentationProjection {
-    const registration = this.#byCapability.get(request.capability);
+    const candidates = [...this.#byRegistration.values()].filter((registration) =>
+      registration.capability === request.capability && (!request.pluginId || registration.pluginId === request.pluginId),
+    );
+    const registration = candidates.length === 1 ? candidates[0] : undefined;
     if (!registration) {
       return Object.freeze({
         targetRef: request.targetRef,
         mode: "ghost",
         rendererId: request.renderer.rendererId,
-        reason: "plugin-unavailable",
+        reason: candidates.length > 1 ? "plugin-selection-unresolved" : "plugin-unavailable",
       });
     }
     const hint = registration.presentation.rendererHint;
@@ -342,4 +346,8 @@ function freezeRegistration(registration: PluginPresentationRegistration): Plugi
       ...(registration.presentation.aliases ? { aliases: Object.freeze([...registration.presentation.aliases]) } : {}),
     }),
   });
+}
+
+function registrationKey(pluginId: string, capability: string): string {
+  return `${pluginId}\u0000${capability}`;
 }
