@@ -59,6 +59,8 @@ npm run build
 npm run dev # http://127.0.0.1:3000
 ```
 
+PlaygroundはHost gatewayからrouteを発見し、fixture、Gemini、ローカルOllamaを同じ`fam.decompose`契約で切り替えます。Gemini credentialはHost側だけで解決され、Browserへは表示用`name`しか返しません。
+
 現在の正本参照と実行境界は[`SPHERE-DOS.md`](SPHERE-DOS.md)、repository固有規約は[`AGENTS.md`](AGENTS.md)を参照してください。
 画面と実Hostの未検証項目は[`docs/testing/human-acceptance.ja.md`](docs/testing/human-acceptance.ja.md)へ分離しています。
 

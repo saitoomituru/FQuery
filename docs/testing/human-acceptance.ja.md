@@ -11,6 +11,9 @@
 - keyboardだけでinspect、preview、execute、cancelへ到達できる
 - 長いquery ID、Last Order、evidence参照でも崩れない
 - `npm run dev`で`http://127.0.0.1:3000`を開き、hero、route controls、Q nodeが意図した配置で見える
+- ProviderをFixture、Gemini、Ollamaへ切り替えると、それぞれ独立したmodel候補が表示される
+- 自然言語を分解し、candidate FAM、`unresolved`、provider/model/plugin revisionが読める
+- Gemini routeでBrowserのNetwork payload／画面／consoleへcredentialの`key / secret`が出ず、表示用`name`だけが見える
 
 ## Host
 
@@ -20,4 +23,4 @@
 
 ## 記録
 
-実施時はOS、runtime、Host version、commit、スクリーンショットまたは操作記録、合否、残課題をIssue #5へ記録する。
+実施時はOS、runtime、Host version、commit、スクリーンショットまたは操作記録、合否、残課題をIssue #5へ記録する。provider交換と自然言語FAM分解はIssue #19にも結果を反映する。
