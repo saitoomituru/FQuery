@@ -1,6 +1,6 @@
 # GUI Presentation contract
 
-Status: `IMPLEMENTED-CONTRACT / VIEW-ADAPTER-PARTIAL / HUMAN-TEST-WAIT`
+Status: `IMPLEMENTED-CONTRACT / BAKLAVA-POC / HUMAN-TEST-WAIT`
 
 Authority: FQuery Issue #23  
 Design source: ZeroRoomLab-manifest Issue #41 comment / Issue #44
@@ -65,7 +65,11 @@ GUIはeventのstateを再計算・再裁定しない。
 
 ## BaklavaJS境界
 
-BaklavaJSはVue node-editor surfaceの第一候補だが、依存追加と実surface PoCは別checkpointとする。`@baklavajs/engine`へFAM execution semanticsを移さず、Baklavaのgraph JSONをcanonical保存形式にしない。
+`@fquery/ui-vue`はBaklavaJS 2.8.1の`core`、`renderer-vue`、`themes`をnode-editor surfaceとして利用する。`@baklavajs/engine`は導入しない。Baklavaのgraph JSONをcanonical保存形式にせず、確定済み`NodeViewModel`とconnectionを一方向投影する。
+
+connection gestureは`connection.add.requested`としてengineへ返し、Baklava側だけでは確定しない。node移動も`node.move.requested`としてHostへ返し、layout storeから確定値が返るまでは元位置へ戻す。
+
+BaklavaJS 2.8.1のCommonJS entryとESM-only `uuid`にはNode test上の互換問題があるため、Vitestだけ公式ESM entryへ解決する。vendor型exportのNodeNext差分は`baklava-renderer-vue-compat.d.ts`へ隔離する。Browser buildのruntime contractは変更しない。
 
 ## 検証境界
 

@@ -15,6 +15,12 @@ export interface PortViewModel {
   readonly connectionStatus: QueryResult["connectionStatus"];
 }
 
+export interface ConnectionViewModel {
+  readonly connectionId: string;
+  readonly fromPortId: string;
+  readonly toPortId: string;
+}
+
 export interface LastOrderViewModel {
   readonly code: string;
   readonly reason: string;

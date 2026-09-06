@@ -20,7 +20,7 @@ FAMLog          observable execution dump / trace
 - plugin ABI / FAMLog: capability gate、trace、差分の参照実装あり
 - credential注入: `name / key / secret`の可搬なsource解決あり。保護強度はHost／上位IAM責務
 - Gemini FAM plugin: structured JSONをcandidate FAMとして受け取るadapterあり（実APIは環境ごとに検証）
-- Vue Node Viewer: mock-first componentとVS Code／Sphere Host bridgeあり（人間テスト待ち）
+- Vue Node Viewer: Presentation FAM／GUI Event ABI、BaklavaJS View-only PoC、VS Code／Sphere Host bridgeあり（人間テスト待ち）
 - Atlantis 1.x native C++ runtime: `CONTRACT-WAIT`
 
 API、tool、pluginの呼び出し成功は、目的 `λ` の達成証拠ではありません。pluginが存在することと、GUI上でportが次nodeへ接続されていることも別状態です。
@@ -37,7 +37,7 @@ API、tool、pluginの呼び出し成功は、目的 `λ` の達成証拠では�
 | `packages/famlog/` | append-only semantic traceと差分 |
 | `packages/benchmark/` | 同一Qの複数plugin／model route比較 |
 | `packages/ui-core/` | runtime非依存ViewModel／event contract |
-| `packages/ui-vue/` | Vue 3 Presentation component |
+| `packages/ui-vue/` | Vue 3／BaklavaJS Presentation component。semantic engineは持たない |
 | `packages/hosts/` | VS Code／Sphere等のHost bridge |
 | `packages/config/` | credential sourceの順序付き解決。表示は`name`のみ |
 | `plugins/gemini/` | Gemini APIからcandidate FAMを得るnetwork plugin |

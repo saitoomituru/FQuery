@@ -4,12 +4,24 @@
   "private": true,
   "type": "module",
   "exports": {
-    ".": {"types": "./dist/index.d.ts", "import": "./dist/fquery-ui.js"},
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/fquery-ui.js"
+    },
     "./style.css": "./dist/fquery-ui.css"
   },
-  "files": ["dist"],
-  "dependencies": {"@fquery/ui-core": "0.1.0-draft.0"},
-  "peerDependencies": {"vue": "^3.5.0"},
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@baklavajs/core": "^2.8.1",
+    "@baklavajs/renderer-vue": "^2.8.1",
+    "@baklavajs/themes": "^2.8.1",
+    "@fquery/ui-core": "0.1.0-draft.0"
+  },
+  "peerDependencies": {
+    "vue": "^3.5.0"
+  },
   "scripts": {
     "build": "vite build && vue-tsc -p tsconfig.json --emitDeclarationOnly",
     "test": "vitest run",

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { FQueryPanel, FQueryRecordsPanel } from "@fquery/ui-vue";
+import { FQueryBaklavaView, FQueryPanel, FQueryRecordsPanel } from "@fquery/ui-vue";
 import type { FQueryUiEvent, NodeViewModel } from "@fquery/ui-core";
 
 interface Route { readonly provider: "fixture" | "gemini" | "ollama"; readonly label: string; readonly available: boolean; readonly models: readonly string[]; readonly credentialName?: string; readonly reason?: string }
@@ -48,9 +48,22 @@ const nodes = computed<readonly NodeViewModel[]>(() => [{
     targetRef: "q://playground/fam-decompose",
     mode: "generic",
     rendererId: "vue",
+    presentation: {
+      schemaVersion: "fquery.presentation-fam/0.1.0-draft",
+      presentationId: "presentation://fquery/playground/decompose",
+      targetRef: "q://playground/fam-decompose",
+      surfaces: ["node-editor", "inspector"],
+      visualRole: "query-operator",
+      interfaceRoles: ["source", "projection"],
+      visibility: "visible",
+      rendererHint: "fquery-node",
+      category: "FQuery",
+      layoutSlotRef: "layout://playground/fam-decompose",
+    },
     reason: "renderer-unsupported",
   },
 }]);
+const layout = Object.freeze([{ nodeId: "q://playground/fam-decompose", x: 120, y: 90 }]);
 
 watch(provider, () => { model.value = selectedRoute.value?.models[0] ?? ""; response.value = undefined; routeError.value = ""; });
 
@@ -111,6 +124,7 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
       <p v-if="routeError" class="error" role="alert">{{ routeError }}</p>
     </section>
 
+    <FQueryBaklavaView :nodes="nodes" :layout="layout" @event="receive" />
     <FQueryPanel :nodes="nodes" @event="receive" />
     <output aria-live="polite">last event: {{ lastEvent }}</output>
     <FQueryRecordsPanel

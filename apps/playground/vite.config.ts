@@ -50,6 +50,16 @@ function sendError(response: ServerResponse, error: unknown): void {
 
 export default defineConfig({
   plugins: [vue(), fqueryGateway()],
+  resolve: {
+    alias: [{
+      find: /^@baklavajs\/core$/,
+      replacement: fileURLToPath(new URL("../../node_modules/@baklavajs/core/dist/esm/index.js", import.meta.url)),
+    }],
+  },
+  ssr: { noExternal: ["@fquery/ui-vue", "@baklavajs/core", "@baklavajs/renderer-vue", "@baklavajs/events", "uuid"] },
   server: { host: "127.0.0.1", port: 3000, strictPort: true },
-  test: { environment: "jsdom" },
+  test: {
+    environment: "jsdom",
+    server: { deps: { inline: ["@fquery/ui-vue", "@baklavajs/renderer-vue", "@baklavajs/core", "@baklavajs/events", "uuid"] } },
+  },
 });
