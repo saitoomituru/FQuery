@@ -144,7 +144,7 @@ async function invokeCapability(query: QueryNode, capability: string, value: unk
   emit(context, { eventType: "plugin-call-start", queryRef: query.queryId, status: "running", detail: { capability } });
   const result = await context.pluginResolver.invoke({ queryRef: query.queryId, capability, input: value, sideEffect: query.policy.sideEffect });
   if (!result) return pluginNotFound(query, context, capability);
-  emit(context, { eventType: "plugin-call-end", queryRef: query.queryId, status: result.transportStatus, detail: { capability, pluginId: result.pluginId } });
+  emit(context, { eventType: "plugin-call-end", queryRef: query.queryId, status: result.transportStatus, detail: { capability, pluginId: result.pluginId, ...(result.execution ? { execution: result.execution } : {}) } });
   if (result.transportStatus === "failed") {
     const rejected = result.pluginStatus === "rejected";
     return {

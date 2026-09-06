@@ -18,6 +18,8 @@ FAMLog          observable execution dump / trace
 - semantic contract: `fquery/0.1.0-draft`
 - Node.js / TypeScript: reference implementationと自動テストあり
 - plugin ABI / FAMLog: capability gate、trace、差分の参照実装あり
+- credential注入: `name / key / secret`の可搬なsource解決あり。保護強度はHost／上位IAM責務
+- Gemini FAM plugin: structured JSONをcandidate FAMとして受け取るadapterあり（実APIは環境ごとに検証）
 - Vue Node Viewer: mock-first componentとVS Code／Sphere Host bridgeあり（人間テスト待ち）
 - Atlantis 1.x native C++ runtime: `CONTRACT-WAIT`
 
@@ -37,6 +39,8 @@ API、tool、pluginの呼び出し成功は、目的 `λ` の達成証拠では�
 | `packages/ui-core/` | runtime非依存ViewModel／event contract |
 | `packages/ui-vue/` | Vue 3 Presentation component |
 | `packages/hosts/` | VS Code／Sphere等のHost bridge |
+| `packages/config/` | credential sourceの順序付き解決。表示は`name`のみ |
+| `plugins/gemini/` | Gemini APIからcandidate FAMを得るnetwork plugin |
 | `apps/playground/` | API key不要のlocalhost Vue検証面 |
 | `fixtures/` | 正例、負例、benchmark入力 |
 | `native/` | Atlantis 1.x向け予約地。現時点ではruntimeではない |

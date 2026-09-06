@@ -8,11 +8,13 @@ FAMLogはconversation transcriptではなく、Q/FAMの観測可能なappend-onl
 
 各entryは`event_id`、`sequence`、`event_type`、`query_ref`、`observed_at`、`status`、`provenance`を持つ。該当する場合だけplugin、capability、runtime、model、Registry、Fold、OAE、再現条件を追加する。
 
+LLM provider呼び出しでは、観測できた`provider`、`model`、credentialの表示用`name`、vendorの`request_id`だけを`execution`へ記録できる。credentialの`key`と`secret`は実行時注入に限り、FAMLogへ流さない。
+
 ## 秘密境界
 
 - credential、token、cookie、authorization header、private key、raw secretを保存しない
 - input/output payloadはredactor通過後だけ保存する
-- hashはbytes同一性の補助であり、真理・完全性・権利の証明ではない
+- credential hash／fingerprint設計はFQuery 0.1の責務外とし、EDOHAGE側の次期契約へ委ねる
 - vendor添付用repro bundleは最小fixture、version、status差分、再現手順だけを含める
 
 ## 高濃度repro bundle

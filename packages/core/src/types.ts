@@ -86,6 +86,12 @@ export interface CapabilityResult {
   readonly transportStatus: "succeeded" | "failed" | "unknown";
   readonly evidenceRefs?: readonly string[];
   readonly reason?: string;
+  readonly execution?: {
+    readonly provider: string;
+    readonly model: string;
+    readonly credentialName?: string;
+    readonly requestId?: string;
+  };
 }
 
 export interface PluginResolver {
