@@ -89,6 +89,7 @@ export interface CapabilityResult {
   readonly execution?: {
     readonly provider: string;
     readonly model: string;
+    readonly pluginVersion?: string;
     readonly credentialName?: string;
     readonly requestId?: string;
   };

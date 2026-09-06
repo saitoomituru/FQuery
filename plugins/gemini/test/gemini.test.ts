@@ -11,7 +11,7 @@ describe("GeminiFamPlugin", () => {
     const result = await evaluateQ(Q({ kind: "literal", value: { block: "source" } }, { queryId: "q://test/gemini", operations: [{ kind: "invoke", capability: "fam.decompose" }] }), { pluginResolver: plugin, emit: (event) => events.push(event) });
     expect(result.transportStatus).toBe("succeeded"); expect(result.lambdaStatus).toBe("not-evaluated"); expect(generate).toHaveBeenCalledOnce();
     const callEnd = events.find((event) => event.eventType === "plugin-call-end");
-    expect(callEnd?.detail).toMatchObject({ execution: { provider: "google", model: "gemini-2.5-flash", credentialName: "gemini-local", requestId: "request-fixture" } });
+    expect(callEnd?.detail).toMatchObject({ execution: { provider: "google", model: "gemini-2.5-flash", pluginVersion: "0.1.0-draft.0", credentialName: "gemini-local", requestId: "request-fixture" } });
     expect(JSON.stringify(events)).not.toContain("not-a-real-key");
   });
   it("credentialなしをnetwork callせずLast Orderへ接続する", async () => {

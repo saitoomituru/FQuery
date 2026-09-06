@@ -8,7 +8,7 @@ FAMLogはconversation transcriptではなく、Q/FAMの観測可能なappend-onl
 
 各entryは`event_id`、`sequence`、`event_type`、`query_ref`、`observed_at`、`status`、`provenance`を持つ。該当する場合だけplugin、capability、runtime、model、Registry、Fold、OAE、再現条件を追加する。
 
-LLM provider呼び出しでは、観測できた`provider`、`model`、credentialの表示用`name`、vendorの`request_id`だけを`execution`へ記録できる。credentialの`key`と`secret`は実行時注入に限り、FAMLogへ流さない。
+LLM provider呼び出しでは、観測できた`provider`、`model`、`plugin_version`、credentialの表示用`name`、vendorの`request_id`だけを`execution`へ記録できる。credentialの`key`と`secret`は実行時注入に限り、FAMLogへ流さない。
 
 ## 秘密境界
 

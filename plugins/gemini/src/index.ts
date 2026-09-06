@@ -35,9 +35,9 @@ export class GeminiFamPlugin implements PluginResolver {
     try {
       const response = await (this.#options.generate ?? googleGenerate)({ apiKey: resolved.credential.key, model: this.#options.model, prompt: buildPrompt(request), responseSchema: CANDIDATE_FAM_SCHEMA });
       const candidate = parseCandidate(response.text);
-      return { pluginId: geminiPluginManifest.pluginId, transportStatus: "succeeded", value: candidate, evidenceRefs: [], execution: { provider: "google", model: this.#options.model, credentialName: resolved.credential.name, ...(response.requestId ? { requestId: response.requestId } : {}) } };
+      return { pluginId: geminiPluginManifest.pluginId, transportStatus: "succeeded", value: candidate, evidenceRefs: [], execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name, ...(response.requestId ? { requestId: response.requestId } : {}) } };
     } catch (error) {
-      return { pluginId: geminiPluginManifest.pluginId, transportStatus: "failed", reason: error instanceof Error ? error.message : "gemini-call-failed", execution: { provider: "google", model: this.#options.model, credentialName: resolved.credential.name } };
+      return { pluginId: geminiPluginManifest.pluginId, transportStatus: "failed", reason: error instanceof Error ? error.message : "gemini-call-failed", execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name } };
     }
   }
 }
