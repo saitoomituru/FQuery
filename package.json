@@ -19,6 +19,7 @@
     "build": "npm run build:libs && npm run build -w @fquery/playground",
     "dev": "npm run build:libs && npm run dev -w @fquery/playground",
     "validate:fixtures": "node scripts/validate-fixtures.mjs",
+    "verify:origins": "node scripts/verify-origin-integrity.mjs",
     "pretest": "npm run build",
     "test": "npm run test --workspaces --if-present",
     "pretypecheck": "npm run build",

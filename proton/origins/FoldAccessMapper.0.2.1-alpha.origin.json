@@ -1,0 +1,32 @@
+{
+  "schema_version": "fquery.origin-receipt/0.1.0-draft",
+  "artifact": "FoldAccessMapper.0.2.1-alpha.original.proton.md",
+  "source": {
+    "repository": "https://github.com/HIPSTAR-IScompany/astro.quantaril.cloud",
+    "path": "demo/FoldAccessMapper.proton.md",
+    "document_url": "https://github.com/HIPSTAR-IScompany/astro.quantaril.cloud/blob/main/demo/FoldAccessMapper.proton.md",
+    "repository_observation_commit": "5158caec172b4893c837dbce036788343e0fd484",
+    "latest_file_commit": "b9a01584178e85a921cf4c1d39b6925c61ed677c",
+    "git_blob_sha1": "d282eb08363c4ab5f1d69c187a0d2365d7215a81",
+    "byte_count": 20899,
+    "sha256": "0481cc03cb21c9f3be3e71ab3c3d44c810c41465bcb86cc2ebad2b0f581ed54f",
+    "git_mode": "100644",
+    "license_expression": "Apache-2.0"
+  },
+  "acquisition": {
+    "observed_at": "2026-09-06T23:29:38+09:00",
+    "method": "local-git-checkout",
+    "local_repository_head": "5158caec172b4893c837dbce036788343e0fd484",
+    "remote_raw_refresh": "unknown-temporary-network-resolution-failure"
+  },
+  "preservation": {
+    "source_mutation": false,
+    "renamed_on_import": true,
+    "text_normalization": false,
+    "interpretation_embedded": false
+  },
+  "temporal_integrity": {
+    "historical_oae": "historical-oae-unavailable",
+    "last_order": "stop-retroactive-backfill"
+  }
+}
