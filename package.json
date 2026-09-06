@@ -5,6 +5,7 @@
   "description": "FQuery (Q) recursive FAM query driver workspace",
   "type": "module",
   "workspaces": [
+    "apps/*",
     "packages/*",
     "packages/hosts/*",
     "plugins/*"
@@ -14,7 +15,9 @@
     "npm": ">=10"
   },
   "scripts": {
-    "build": "npm run build -w @fquery/core && npm run build -w @fquery/famlog && npm run build -w @fquery/plugin-sdk && npm run build -w @fquery/ui-core && npm run build -w @fquery/ui-vue && npm run build -w @fquery/benchmark && npm run build -w @fquery/host-sphere && npm run build -w @fquery/host-vscode",
+    "build:libs": "npm run build -w @fquery/core && npm run build -w @fquery/famlog && npm run build -w @fquery/plugin-sdk && npm run build -w @fquery/ui-core && npm run build -w @fquery/ui-vue && npm run build -w @fquery/benchmark && npm run build -w @fquery/host-sphere && npm run build -w @fquery/host-vscode",
+    "build": "npm run build:libs && npm run build -w @fquery/playground",
+    "dev": "npm run build:libs && npm run dev -w @fquery/playground",
     "validate:fixtures": "node scripts/validate-fixtures.mjs",
     "pretest": "npm run build",
     "test": "npm run test --workspaces --if-present",

@@ -3,7 +3,10 @@
   "version": "0.1.0-draft.0",
   "private": true,
   "type": "module",
-  "exports": {".": {"types": "./dist/index.d.ts", "import": "./dist/fquery-ui.js"}},
+  "exports": {
+    ".": {"types": "./dist/index.d.ts", "import": "./dist/fquery-ui.js"},
+    "./style.css": "./dist/fquery-ui.css"
+  },
   "files": ["dist"],
   "dependencies": {"@fquery/ui-core": "0.1.0-draft.0"},
   "peerDependencies": {"vue": "^3.5.0"},

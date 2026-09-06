@@ -10,6 +10,7 @@
 - `unconnected`がerrorに見えず、`plugin-not-found`と混同しない
 - keyboardだけでinspect、preview、execute、cancelへ到達できる
 - 長いquery ID、Last Order、evidence参照でも崩れない
+- `npm run dev`で`http://127.0.0.1:3000`を開き、hero、route controls、Q nodeが意図した配置で見える
 
 ## Host
 

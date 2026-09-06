@@ -37,6 +37,7 @@ API、tool、pluginの呼び出し成功は、目的 `λ` の達成証拠では�
 | `packages/ui-core/` | runtime非依存ViewModel／event contract |
 | `packages/ui-vue/` | Vue 3 Presentation component |
 | `packages/hosts/` | VS Code／Sphere等のHost bridge |
+| `apps/playground/` | API key不要のlocalhost Vue検証面 |
 | `fixtures/` | 正例、負例、benchmark入力 |
 | `native/` | Atlantis 1.x向け予約地。現時点ではruntimeではない |
 
@@ -50,6 +51,7 @@ npm run validate:fixtures
 npm test
 npm run typecheck
 npm run build
+npm run dev # http://127.0.0.1:3000
 ```
 
 現在の正本参照と実行境界は[`SPHERE-DOS.md`](SPHERE-DOS.md)、repository固有規約は[`AGENTS.md`](AGENTS.md)を参照してください。

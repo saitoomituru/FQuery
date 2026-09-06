@@ -1,0 +1,17 @@
+{
+  "name": "@fquery/playground",
+  "version": "0.1.0-draft.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@fquery/ui-core": "0.1.0-draft.0",
+    "@fquery/ui-vue": "0.1.0-draft.0",
+    "vue": "^3.5.42"
+  },
+  "scripts": {
+    "dev": "vite --host 127.0.0.1 --port 3000 --strictPort",
+    "build": "vite build && vue-tsc -p tsconfig.json --noEmit",
+    "test": "vitest run",
+    "typecheck": "vue-tsc -p tsconfig.json --noEmit"
+  }
+}
