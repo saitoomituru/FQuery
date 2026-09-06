@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from "vue";
-import { FQueryPanel } from "@fquery/ui-vue";
+import { FQueryPanel, FQueryRecordsPanel } from "@fquery/ui-vue";
 import type { FQueryUiEvent, NodeViewModel } from "@fquery/ui-core";
 
 interface Route { readonly provider: "fixture" | "gemini" | "ollama"; readonly label: string; readonly available: boolean; readonly models: readonly string[]; readonly credentialName?: string; readonly reason?: string }
@@ -15,6 +15,18 @@ const running = ref(false);
 const routeError = ref("");
 
 const selectedRoute = computed(() => routes.value.find((route) => route.provider === provider.value));
+const resultRecord = computed<Record<string, unknown> | undefined>(() => {
+  if (!isRecord(response.value) || !isRecord(response.value.result)) return undefined;
+  return response.value.result;
+});
+const semanticProjection = computed(() => resultRecord.value?.value);
+const providerReceipt = computed(() => resultRecord.value ? {
+  transport_status: resultRecord.value.transport_status,
+  plugin_status: resultRecord.value.plugin_status,
+  execution: resultRecord.value.execution,
+  evidence_refs: resultRecord.value.evidence_refs,
+} : undefined);
+const debugEvents = computed(() => isRecord(response.value) && Array.isArray(response.value.events) ? response.value.events : undefined);
 const nodes = computed<readonly NodeViewModel[]>(() => [{
   nodeId: "q://playground/fam-decompose",
   label: "fam.decompose",
@@ -26,12 +38,18 @@ const nodes = computed<readonly NodeViewModel[]>(() => [{
   ],
   ports: [
     { portId: "source", label: "natural language", direction: "input", connectionStatus: "connected" },
-    { portId: "candidate", label: "candidate FAM", direction: "output", connectionStatus: response.value ? "connected" : "unconnected" },
+    { portId: "projection", label: "semantic-block projection", direction: "output", connectionStatus: response.value ? "connected" : "unconnected" },
   ],
   value: response.value ?? null,
   evidenceRefs: [],
   canExecute: !running.value && Boolean(selectedRoute.value?.available),
   canCancel: false,
+  presentation: {
+    targetRef: "q://playground/fam-decompose",
+    mode: "generic",
+    rendererId: "vue",
+    reason: "renderer-unsupported",
+  },
 }]);
 
 watch(provider, () => { model.value = selectedRoute.value?.models[0] ?? ""; response.value = undefined; routeError.value = ""; });
@@ -89,12 +107,16 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
       </label>
       <p class="route-note">route: {{ provider }} / {{ model }}<template v-if="selectedRoute?.credentialName"> / credential: {{ selectedRoute.credentialName }}</template></p>
       <label class="source">Natural language source<textarea v-model="source" rows="6" /></label>
-      <button type="button" :disabled="running || !selectedRoute?.available || !model || !source.trim()" @click="execute">{{ running ? "推論中…" : "自然言語をFAMへ分解" }}</button>
+      <button type="button" :disabled="running || !selectedRoute?.available || !model || !source.trim()" @click="execute">{{ running ? "推論中…" : "自然言語をsemantic blocksへ分解" }}</button>
       <p v-if="routeError" class="error" role="alert">{{ routeError }}</p>
     </section>
 
     <FQueryPanel :nodes="nodes" @event="receive" />
     <output aria-live="polite">last event: {{ lastEvent }}</output>
-    <pre v-if="response" class="result" aria-label="candidate FAM">{{ JSON.stringify(response, null, 2) }}</pre>
+    <FQueryRecordsPanel
+      :semantic-projection="semanticProjection"
+      :provider-receipt="providerReceipt"
+      :debug-events="debugEvents"
+    />
   </div>
 </template>

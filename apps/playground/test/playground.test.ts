@@ -23,6 +23,8 @@ describe("FQuery Playground", () => {
     await wrapper.get("button").trigger("click");
     await flushPromises();
     expect(fetcher).toHaveBeenLastCalledWith("/api/decompose", expect.objectContaining({ method: "POST" }));
-    expect(wrapper.get('[aria-label="candidate FAM"]').text()).toContain("fquery.candidate-fam/0.1.0-draft");
+    expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("NOT IMPLEMENTED");
+    expect(wrapper.get('[data-record-kind="semantic-projection"]').text()).toContain("fquery.candidate-fam/0.1.0-draft");
+    expect(wrapper.get('[data-record-kind="debug-event"]').text()).toContain("result");
   });
 });

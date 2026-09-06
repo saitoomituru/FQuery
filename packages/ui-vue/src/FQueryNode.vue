@@ -16,6 +16,15 @@ function request(type: "inspect" | "preview" | "execute-request" | "cancel-reque
       <button type="button" @click="request('inspect')">inspect</button>
     </header>
 
+    <p
+      v-if="model.presentation"
+      class="fquery-presentation-state"
+      :data-presentation-mode="model.presentation.mode"
+    >
+      presentation: {{ model.presentation.mode }} / {{ model.presentation.rendererId }}
+      <span v-if="model.presentation.reason">— {{ model.presentation.reason }}</span>
+    </p>
+
     <div class="fquery-badges" aria-label="Q status axes">
       <span v-for="badge in model.badges" :key="badge.axis" class="fquery-badge" :data-axis="badge.axis" :data-tone="badge.tone">
         <small>{{ badge.axis }}</small>{{ badge.value }}
@@ -47,6 +56,9 @@ function request(type: "inspect" | "preview" | "execute-request" | "cancel-reque
 .fquery-node { border: 1px solid #59647a; border-radius: 0.75rem; color: #eef2ff; background: #161b27; padding: 1rem; display: grid; gap: 0.75rem; }
 .fquery-node header, .fquery-node footer, .fquery-ports { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
 .fquery-node h3 { margin: 0 auto 0 0; font-size: 1rem; }
+.fquery-presentation-state { margin: 0; color: #aeb8cc; font: 0.75rem/1.3 ui-monospace, monospace; }
+.fquery-presentation-state[data-presentation-mode="ghost"] { color: #d2a8ff; border-left: 0.35rem dotted currentColor; padding-left: 0.5rem; }
+.fquery-presentation-state[data-presentation-mode="generic"] { color: #e3b341; }
 .fquery-badges { display: flex; gap: 0.35rem; flex-wrap: wrap; }
 .fquery-badge { border: 1px solid currentColor; border-radius: 999px; padding: 0.2rem 0.45rem; font: 0.75rem/1.2 ui-monospace, monospace; }
 .fquery-badge small { opacity: 0.68; margin-right: 0.35rem; }
