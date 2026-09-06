@@ -23,13 +23,20 @@ export const geminiPluginManifest: PluginManifest = Object.freeze({
 export interface GeminiGenerateRequest { readonly apiKey: string; readonly model: string; readonly prompt: string; readonly responseSchema: Readonly<Record<string, unknown>> }
 export interface GeminiGenerateResponse { readonly text: string; readonly requestId?: string }
 export type GeminiGenerator = (request: GeminiGenerateRequest) => Promise<GeminiGenerateResponse>;
+export interface GeminiModel { readonly name: string; readonly displayName?: string }
+export type GeminiModelLister = (apiKey: string) => Promise<readonly GeminiModel[]>;
 export interface GeminiPluginOptions { readonly model: string; readonly credentialName: string; readonly credentialSources: readonly CredentialSource[]; readonly generate?: GeminiGenerator }
+
+export async function discoverGeminiModels(apiKey: string, listModels: GeminiModelLister = googleListModels): Promise<readonly GeminiModel[]> {
+  return Object.freeze(await listModels(apiKey));
+}
 
 export class GeminiFamPlugin implements PluginResolver {
   readonly #options: GeminiPluginOptions;
   constructor(options: GeminiPluginOptions) { this.#options = Object.freeze({ ...options, credentialSources: Object.freeze([...options.credentialSources]) }); }
   async invoke(request: CapabilityInvocation): Promise<CapabilityResult | undefined> {
     if (!CAPABILITIES.includes(request.capability as GeminiFamCapability)) return undefined;
+    if (request.sideEffect !== "network") return { pluginId: geminiPluginManifest.pluginId, pluginStatus: "rejected", transportStatus: "failed", reason: "network-side-effect-not-authorized" };
     const resolved = await resolveCredential({ name: this.#options.credentialName, keyVariable: "GEMINI_API_KEY" }, this.#options.credentialSources);
     if (!resolved?.credential.key) return { pluginId: "plugin://fquery/gemini", transportStatus: "failed", reason: `credential-not-found:${this.#options.credentialName}` };
     try {
@@ -47,6 +54,16 @@ async function googleGenerate(request: GeminiGenerateRequest): Promise<GeminiGen
   const response = await client.models.generateContent({ model: request.model, contents: request.prompt, config: { responseMimeType: "application/json", responseJsonSchema: request.responseSchema } });
   if (!response.text) throw new Error("gemini-empty-response");
   return { text: response.text, ...(response.responseId ? { requestId: response.responseId } : {}) };
+}
+
+async function googleListModels(apiKey: string): Promise<readonly GeminiModel[]> {
+  const client = new GoogleGenAI({ apiKey });
+  const pager = await client.models.list({ config: { pageSize: 100, queryBase: true, abortSignal: AbortSignal.timeout(15_000) } });
+  return pager.page.flatMap((model): GeminiModel[] => {
+    const name = model.name?.replace(/^models\//, "");
+    if (!name?.startsWith("gemini-") || !model.supportedActions?.includes("generateContent")) return [];
+    return [Object.freeze({ name, ...(model.displayName ? { displayName: model.displayName } : {}) })];
+  });
 }
 
 function buildPrompt(request: CapabilityInvocation): string {

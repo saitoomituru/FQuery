@@ -70,7 +70,8 @@ async function ollamaGenerate(request: OllamaGenerateRequest): Promise<OllamaGen
   const response = await fetch(`${request.baseUrl}/api/generate`, {
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json" },
-    body: JSON.stringify({ model: request.model, prompt: request.prompt, stream: false, format: request.responseSchema, options: { temperature: 0 } }),
+    body: JSON.stringify({ model: request.model, prompt: request.prompt, stream: false, think: false, format: request.responseSchema, options: { temperature: 0, num_predict: 1024 } }),
+    signal: AbortSignal.timeout(115_000),
   });
   if (!response.ok) throw new Error(`ollama-generate-http-${response.status}`);
   const payload: unknown = await response.json();
