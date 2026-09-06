@@ -42,6 +42,34 @@ export type FQueryUiEvent =
   | { readonly type: "execute-request"; readonly nodeId: string }
   | { readonly type: "cancel-request"; readonly nodeId: string };
 
+export type FQueryHostKind = "vscode" | "sphere" | "browser" | "electron";
+
+export interface FQueryHostOutboundMessage {
+  readonly protocol: "fquery-host/0.1.0-draft";
+  readonly source: FQueryHostKind;
+  readonly type: "ui-event";
+  readonly event: FQueryUiEvent;
+}
+
+export interface FQueryHostInboundMessage {
+  readonly protocol: "fquery-host/0.1.0-draft";
+  readonly type: "state";
+  readonly nodes: readonly NodeViewModel[];
+}
+
+export type FQueryHostStateListener = (nodes: readonly NodeViewModel[]) => void;
+
+export function createHostOutboundMessage(source: FQueryHostKind, event: FQueryUiEvent): FQueryHostOutboundMessage {
+  return Object.freeze({ protocol: "fquery-host/0.1.0-draft", source, type: "ui-event", event });
+}
+
+export function parseHostInboundMessage(message: unknown): FQueryHostInboundMessage | undefined {
+  if (!isRecord(message)) return undefined;
+  if (message.protocol !== "fquery-host/0.1.0-draft" || message.type !== "state" || !Array.isArray(message.nodes)) return undefined;
+  if (!message.nodes.every(isNodeViewModel)) return undefined;
+  return message as unknown as FQueryHostInboundMessage;
+}
+
 export function createNodeViewModel(result: QueryResult, label = result.queryRef): NodeViewModel {
   const badges = [
     badge("resolution", result.resolutionStatus),
@@ -84,4 +112,21 @@ function badge(axis: string, value: string): StatusBadgeViewModel {
 
 function canExecute(status: ControlStatus): boolean {
   return status === "result" || status === "last-order" || status === "bottom" || status === "cancelled";
+}
+
+function isNodeViewModel(value: unknown): value is NodeViewModel {
+  if (!isRecord(value)) return false;
+  return (
+    typeof value.nodeId === "string" &&
+    typeof value.label === "string" &&
+    Array.isArray(value.badges) &&
+    Array.isArray(value.ports) &&
+    Array.isArray(value.evidenceRefs) &&
+    typeof value.canExecute === "boolean" &&
+    typeof value.canCancel === "boolean"
+  );
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null;
 }
