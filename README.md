@@ -41,6 +41,7 @@ API、tool、pluginの呼び出し成功は、目的 `λ` の達成証拠では�
 | `packages/hosts/` | VS Code／Sphere等のHost bridge |
 | `packages/config/` | credential sourceの順序付き解決。表示は`name`のみ |
 | `plugins/gemini/` | Gemini APIからcandidate FAMを得るnetwork plugin |
+| `plugins/ollama/` | ローカルOllamaのmodel発見とcandidate FAM変換plugin |
 | `apps/playground/` | API key不要のlocalhost Vue検証面 |
 | `fixtures/` | 正例、負例、benchmark入力 |
 | `native/` | Atlantis 1.x向け予約地。現時点ではruntimeではない |
