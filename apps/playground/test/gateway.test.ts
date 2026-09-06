@@ -4,7 +4,7 @@ import { decomposeText } from "../server/gateway.js";
 describe("Playground gateway", () => {
   it("fixture routeを共通Q envelopeで返す", async () => {
     const response = await decomposeText({ provider: "fixture", model: "mock-fam-transformer", source: "自然言語テスト" }, { repoRoot: process.cwd() });
-    expect(response.result).toMatchObject({ transport_status: "succeeded", plugin_status: "resolved", value: { schema_version: "fquery.candidate-fam/0.1.0-draft" } });
+    expect(response.result).toMatchObject({ transport_status: "succeeded", plugin_status: "resolved", value: { schema_version: "fam.json/0.1.0-draft", ψ: { source_text: "自然言語テスト" }, Q: { unknown_is_absence: false } } });
     expect(JSON.stringify(response)).toContain('"provider":"fixture"');
   });
 

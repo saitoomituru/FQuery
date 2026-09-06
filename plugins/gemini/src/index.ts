@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { resolveCredential, type CredentialSource } from "@fquery/config";
 import type { CapabilityInvocation, CapabilityResult, PluginResolver } from "@fquery/core";
 import type { PluginManifest } from "@fquery/plugin-sdk";
+import { FAM_JSON_RESPONSE_SCHEMA, validateFamDecomposition } from "@fquery/fam-core";
 
 export type GeminiFamCapability = "fam.decompose" | "fam.integrate" | "fam.compare" | "fam.project";
 const CAPABILITIES: readonly GeminiFamCapability[] = ["fam.decompose", "fam.integrate", "fam.compare", "fam.project"];
@@ -40,9 +41,9 @@ export class GeminiFamPlugin implements PluginResolver {
     const resolved = await resolveCredential({ name: this.#options.credentialName, keyVariable: "GEMINI_API_KEY" }, this.#options.credentialSources);
     if (!resolved?.credential.key) return { pluginId: "plugin://fquery/gemini", transportStatus: "failed", reason: `credential-not-found:${this.#options.credentialName}` };
     try {
-      const response = await (this.#options.generate ?? googleGenerate)({ apiKey: resolved.credential.key, model: this.#options.model, prompt: buildPrompt(request), responseSchema: CANDIDATE_FAM_SCHEMA });
-      const candidate = parseCandidate(response.text);
-      return { pluginId: geminiPluginManifest.pluginId, transportStatus: "succeeded", value: candidate, evidenceRefs: [], execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name, ...(response.requestId ? { requestId: response.requestId } : {}) } };
+      const response = await (this.#options.generate ?? googleGenerate)({ apiKey: resolved.credential.key, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_JSON_RESPONSE_SCHEMA });
+      const fam = parseFam(response.text);
+      return { pluginId: geminiPluginManifest.pluginId, transportStatus: "succeeded", value: fam, evidenceRefs: [], execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name, ...(response.requestId ? { requestId: response.requestId } : {}) } };
     } catch (error) {
       return { pluginId: geminiPluginManifest.pluginId, transportStatus: "failed", reason: error instanceof Error ? error.message : "gemini-call-failed", execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name } };
     }
@@ -67,14 +68,12 @@ async function googleListModels(apiKey: string): Promise<readonly GeminiModel[]>
 }
 
 function buildPrompt(request: CapabilityInvocation): string {
-  return JSON.stringify({ proton_profile: "proton://fquery/core", capability: request.capability, source: request.input, instruction: "Return candidate FAM only. Preserve source references, contradictions, and UNKNOWN. Do not claim validation or adoption." });
+  return JSON.stringify({ proton_profile: "proton://fquery/fam-json-core@0.1.0-draft", capability: request.capability, source: request.input, instruction: "Return one fam.json/0.1.0-draft record. Preserve the exact source in ψ.source_text. Use ∇φ for the decomposition/meaning gradient, λ.output_units for nested ψ/∇φ/λ/Q wisdom units, and Q for Observer/Registry/fact scope/unknowns. Keep unknown_is_absence=false. Separate observed text from inference in provenance. Do not return blocks[], RPC/MCP envelopes, FAMLog, or transport events." });
 }
 
-function parseCandidate(text: string): unknown {
+function parseFam(text: string): unknown {
   const value: unknown = JSON.parse(text);
-  if (!isRecord(value) || value.schema_version !== "fquery.candidate-fam/0.1.0-draft" || !Array.isArray(value.blocks) || !Array.isArray(value.unresolved)) throw new TypeError("invalid-candidate-fam");
+  const validation = validateFamDecomposition(value);
+  if (!validation.valid) throw new TypeError(`invalid-fam-json:${validation.issues.map((issue) => `${issue.path}:${issue.code}`).join(",")}`);
   return value;
 }
-
-const CANDIDATE_FAM_SCHEMA = Object.freeze({ type: "object", required: ["schema_version", "transformation", "blocks", "unresolved"], properties: { schema_version: { type: "string", enum: ["fquery.candidate-fam/0.1.0-draft"] }, transformation: { type: "string", enum: CAPABILITIES }, blocks: { type: "array", items: { type: "object", required: ["block_id", "content", "source_refs"], properties: { block_id: { type: "string" }, content: {}, source_refs: { type: "array", items: { type: "string" } } } } }, unresolved: { type: "array", items: { type: "string" } } } });
-function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null; }

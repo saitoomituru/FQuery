@@ -1,5 +1,6 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { createLiteralDecompositionFam } from "@fquery/fam-core";
 import App from "../src/App.vue";
 
 afterEach(() => vi.unstubAllGlobals());
@@ -12,7 +13,7 @@ describe("FQuery Playground", () => {
         { provider: "gemini", label: "Gemini", available: true, models: ["gemini-2.5-flash-lite"], credentialName: "gemini-local" },
         { provider: "ollama", label: "Ollama Local", available: true, models: ["qwen3:8b", "mistral:7b"] },
       ]), { status: 200 }))
-      .mockResolvedValueOnce(new Response(JSON.stringify({ result: { value: { schema_version: "fquery.candidate-fam/0.1.0-draft" } }, events: [{ eventType: "result", status: "result" }] }), { status: 200 }));
+      .mockResolvedValueOnce(new Response(JSON.stringify({ result: { value: createLiteralDecompositionFam("自然言語テスト", "q://test/playground") }, events: [{ eventType: "result", status: "result" }] }), { status: 200 }));
     vi.stubGlobal("fetch", fetcher);
     const wrapper = mount(App);
     await flushPromises();
@@ -23,8 +24,9 @@ describe("FQuery Playground", () => {
     await wrapper.get("button").trigger("click");
     await flushPromises();
     expect(fetcher).toHaveBeenLastCalledWith("/api/decompose", expect.objectContaining({ method: "POST" }));
-    expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("NOT IMPLEMENTED");
-    expect(wrapper.get('[data-record-kind="semantic-projection"]').text()).toContain("fquery.candidate-fam/0.1.0-draft");
+    expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("fam.json/0.1.0-draft");
+    expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("ψ");
+    expect(wrapper.get('[data-record-kind="semantic-projection"]').text()).toContain("未生成");
     expect(wrapper.get('[data-record-kind="debug-event"]').text()).toContain("result");
     const records = wrapper.get('[aria-label="FQuery records"]').element;
     const editor = wrapper.get('[aria-label="FQuery Baklava presentation"]').element;

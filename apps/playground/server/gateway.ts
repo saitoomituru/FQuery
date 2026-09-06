@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import { resolveCredential, standaloneCredentialSources } from "@fquery/config";
 import { evaluateQ, Q, toWireQueryResult, type CoreEvent, type PluginResolver } from "@fquery/core";
+import { createLiteralDecompositionFam } from "@fquery/fam-core";
 import { discoverGeminiModels, GeminiFamPlugin } from "@fquery/plugin-gemini";
 import { discoverOllamaModels, OllamaFamPlugin } from "@fquery/plugin-ollama";
 
@@ -71,7 +72,7 @@ function createResolver(request: DecomposeRequest, options: GatewayOptions): Plu
   if (request.provider === "ollama") return new OllamaFamPlugin({ model: request.model, ...(options.ollamaBaseUrl ? { baseUrl: options.ollamaBaseUrl } : {}) });
   return { async invoke(invocation) {
     if (invocation.capability !== "fam.decompose") return undefined;
-    return { pluginId: "plugin://fquery/fixture", transportStatus: "succeeded", value: { schema_version: "fquery.candidate-fam/0.1.0-draft", transformation: "fam.decompose", blocks: [{ block_id: "fixture-1", content: String(invocation.input), source_refs: ["input://source"] }], unresolved: [] }, evidenceRefs: ["fixture://playground/fam-decompose"], execution: { provider: "fixture", model: FIXTURE_MODEL, pluginVersion: "0.1.0-draft.0" } };
+    return { pluginId: "plugin://fquery/fixture", transportStatus: "succeeded", value: createLiteralDecompositionFam(String(invocation.input), invocation.queryRef), evidenceRefs: ["fixture://playground/fam-decompose"], execution: { provider: "fixture", model: FIXTURE_MODEL, pluginVersion: "0.1.0-draft.0" } };
   } };
 }
 

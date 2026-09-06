@@ -1,5 +1,6 @@
 import type { CapabilityInvocation, CapabilityResult, PluginResolver } from "@fquery/core";
 import type { PluginManifest } from "@fquery/plugin-sdk";
+import { FAM_JSON_RESPONSE_SCHEMA, validateFamDecomposition } from "@fquery/fam-core";
 
 export type OllamaFamCapability = "fam.decompose" | "fam.integrate" | "fam.compare" | "fam.project";
 const CAPABILITIES: readonly OllamaFamCapability[] = ["fam.decompose", "fam.integrate", "fam.compare", "fam.project"];
@@ -35,11 +36,11 @@ export class OllamaFamPlugin implements PluginResolver {
     if (!CAPABILITIES.includes(request.capability as OllamaFamCapability)) return undefined;
     if (request.sideEffect !== "network") return { pluginId: ollamaPluginManifest.pluginId, pluginStatus: "rejected", transportStatus: "failed", reason: "network-side-effect-not-authorized" };
     try {
-      const response = await (this.#options.generate ?? ollamaGenerate)({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildPrompt(request), responseSchema: CANDIDATE_FAM_SCHEMA });
+      const response = await (this.#options.generate ?? ollamaGenerate)({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_JSON_RESPONSE_SCHEMA });
       return {
         pluginId: ollamaPluginManifest.pluginId,
         transportStatus: "succeeded",
-        value: parseCandidate(response.text),
+        value: parseFam(response.text),
         evidenceRefs: [],
         execution: { provider: "ollama", model: this.#options.model, pluginVersion: ollamaPluginManifest.pluginVersion },
       };
@@ -80,25 +81,15 @@ async function ollamaGenerate(request: OllamaGenerateRequest): Promise<OllamaGen
 }
 
 function buildPrompt(request: CapabilityInvocation): string {
-  return JSON.stringify({ proton_profile: "proton://fquery/core", capability: request.capability, source: request.input, instruction: "Return candidate FAM JSON only. Split the source into independent semantic blocks. Preserve contradictions and UNKNOWN. Do not claim validation or adoption." });
+  return JSON.stringify({ proton_profile: "proton://fquery/fam-json-core@0.1.0-draft", capability: request.capability, source: request.input, instruction: "Return one fam.json/0.1.0-draft record. Preserve the exact source in ψ.source_text. Use ∇φ for the decomposition/meaning gradient, λ.output_units for nested ψ/∇φ/λ/Q wisdom units, and Q for Observer/Registry/fact scope/unknowns. Keep unknown_is_absence=false. Separate observed text from inference in provenance. Do not return blocks[], RPC/MCP envelopes, FAMLog, or transport events." });
 }
 
-function parseCandidate(text: string): unknown {
+function parseFam(text: string): unknown {
   const value: unknown = JSON.parse(text);
-  if (!isRecord(value) || value.schema_version !== "fquery.candidate-fam/0.1.0-draft" || !Array.isArray(value.blocks) || !Array.isArray(value.unresolved)) throw new TypeError("invalid-candidate-fam");
+  const validation = validateFamDecomposition(value);
+  if (!validation.valid) throw new TypeError(`invalid-fam-json:${validation.issues.map((issue) => `${issue.path}:${issue.code}`).join(",")}`);
   return value;
 }
-
-const CANDIDATE_FAM_SCHEMA = Object.freeze({
-  type: "object",
-  required: ["schema_version", "transformation", "blocks", "unresolved"],
-  properties: {
-    schema_version: { type: "string", enum: ["fquery.candidate-fam/0.1.0-draft"] },
-    transformation: { type: "string", enum: CAPABILITIES },
-    blocks: { type: "array", items: { type: "object", required: ["block_id", "content", "source_refs"], properties: { block_id: { type: "string" }, content: { type: "string" }, source_refs: { type: "array", items: { type: "string" } } } } },
-    unresolved: { type: "array", items: { type: "string" } },
-  },
-});
 
 function normalizeBaseUrl(value: string): string { return value.replace(/\/+$/, ""); }
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null; }

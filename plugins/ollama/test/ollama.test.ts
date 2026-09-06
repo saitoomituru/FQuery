@@ -1,16 +1,24 @@
 import { describe, expect, it, vi } from "vitest";
 import { evaluateQ, Q, type CoreEvent } from "@fquery/core";
+import { createLiteralDecompositionFam } from "@fquery/fam-core";
 import { discoverOllamaModels, OllamaFamPlugin } from "../src/index.js";
 
 describe("OllamaFamPlugin", () => {
-  it("fake transportで自然言語をcandidate FAMへ分解する", async () => {
-    const generate = vi.fn(async () => ({ text: JSON.stringify({ schema_version: "fquery.candidate-fam/0.1.0-draft", transformation: "fam.decompose", blocks: [{ block_id: "b1", content: "雨が降っている", source_refs: ["input://source"] }], unresolved: [] }) }));
+  it("fake transportで自然言語を再帰FAMへ分解する", async () => {
+    const generate = vi.fn(async () => ({ text: JSON.stringify(createLiteralDecompositionFam("雨が降っているので傘を持つ", "q://test/ollama")) }));
     const plugin = new OllamaFamPlugin({ model: "qwen3:8b", generate });
     const events: CoreEvent[] = [];
     const result = await evaluateQ(Q({ kind: "literal", value: "雨が降っているので傘を持つ" }, { queryId: "q://test/ollama", operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: "network" } }), { pluginResolver: plugin, emit: (event) => events.push(event) });
     expect(result.transportStatus).toBe("succeeded");
-    expect(result.value).toMatchObject({ schema_version: "fquery.candidate-fam/0.1.0-draft" });
+    expect(result.value).toMatchObject({ schema_version: "fam.json/0.1.0-draft", Q: { unknown_is_absence: false } });
     expect(events.find((event) => event.eventType === "plugin-call-end")?.detail).toMatchObject({ execution: { provider: "ollama", model: "qwen3:8b", pluginVersion: "0.1.0-draft.0" } });
+  });
+
+  it("旧blocks形式をFAMとして受理しない", async () => {
+    const generate = vi.fn(async () => ({ text: JSON.stringify({ schema_version: "fquery.candidate-fam/0.1.0-draft", blocks: [] }) }));
+    const plugin = new OllamaFamPlugin({ model: "qwen3:8b", generate });
+    const result = await evaluateQ(Q({ kind: "literal", value: "source" }, { queryId: "q://test/invalid", operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: "network" } }), { pluginResolver: plugin });
+    expect(result.transportStatus).toBe("failed");
   });
 
   it("network許可なしではtransportを呼ばない", async () => {
