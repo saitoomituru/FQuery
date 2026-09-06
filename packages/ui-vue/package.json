@@ -1,0 +1,15 @@
+{
+  "name": "@fquery/ui-vue",
+  "version": "0.1.0-draft.0",
+  "private": true,
+  "type": "module",
+  "exports": {".": {"types": "./dist/index.d.ts", "import": "./dist/fquery-ui.js"}},
+  "files": ["dist"],
+  "dependencies": {"@fquery/ui-core": "0.1.0-draft.0"},
+  "peerDependencies": {"vue": "^3.5.0"},
+  "scripts": {
+    "build": "vite build && vue-tsc -p tsconfig.json --emitDeclarationOnly",
+    "test": "vitest run",
+    "typecheck": "vue-tsc -p tsconfig.json --noEmit"
+  }
+}
