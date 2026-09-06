@@ -1,7 +1,14 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-const roots = ["fixtures/valid", "fixtures/negative", "fixtures/benchmark", "fixtures/ui"];
+const roots = ["fixtures/valid", "fixtures/negative", "fixtures/benchmark", "fixtures/famlog", "fixtures/ui"];
+const knownSchemas = new Set([
+  "fquery.result/0.1.0-draft",
+  "fquery.benchmark/0.1.0-draft",
+  "fquery.famlog/0.1.0-draft",
+  "fquery.famlog-diff/0.1.0-draft",
+  "fquery.ui/0.1.0-draft",
+]);
 const statusAxes = {
   resolution_status: ["unresolved", "resolved", "bottom", "unknown"],
   connection_status: ["unconnected", "connected", "not-applicable"],
@@ -19,8 +26,11 @@ for (const root of roots) {
     const path = join(root, name);
     const value = JSON.parse(await readFile(path, "utf8"));
     if (!value.schema_version) throw new Error(`${path}: schema_versionがありません`);
+    if (!knownSchemas.has(value.schema_version)) throw new Error(`${path}: 未対応schema_version ${value.schema_version}です`);
     if (value.schema_version === "fquery.result/0.1.0-draft") validateResult(path, value);
     if (value.schema_version === "fquery.benchmark/0.1.0-draft") validateBenchmark(path, value);
+    if (value.schema_version === "fquery.famlog/0.1.0-draft") validateFamLog(path, value);
+    if (value.schema_version === "fquery.famlog-diff/0.1.0-draft") validateFamLogDiff(path, value);
     if (value.schema_version === "fquery.ui/0.1.0-draft") validateUi(path, value);
     count += 1;
   }
@@ -45,5 +55,20 @@ function validateUi(path, value) {
   if (!Array.isArray(value.nodes) || value.nodes.length === 0) throw new Error(`${path}: nodesがありません`);
   for (const node of value.nodes) {
     if (typeof node.nodeId !== "string" || !Array.isArray(node.badges) || !Array.isArray(node.ports)) throw new Error(`${path}: NodeViewModelが不正です`);
+  }
+}
+
+function validateFamLog(path, value) {
+  if (!Array.isArray(value.entries) || value.entries.length === 0) throw new Error(`${path}: entriesがありません`);
+  value.entries.forEach((entry, index) => {
+    if (entry.sequence !== index + 1 || typeof entry.event_type !== "string" || typeof entry.query_ref !== "string") {
+      throw new Error(`${path}: entry ${index + 1}が不正です`);
+    }
+  });
+}
+
+function validateFamLogDiff(path, value) {
+  if (typeof value.left_ref !== "string" || typeof value.right_ref !== "string" || !Array.isArray(value.differences)) {
+    throw new Error(`${path}: diff envelopeが不正です`);
   }
 }

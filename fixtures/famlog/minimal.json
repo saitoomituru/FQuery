@@ -1,0 +1,22 @@
+{
+  "schema_version": "fquery.famlog/0.1.0-draft",
+  "runtime_ref": "runtime://fixture/node-reference",
+  "entries": [
+    {
+      "event_id": "famlog://fixture/minimal/1",
+      "sequence": 1,
+      "observed_at": "2026-09-06T00:00:00.000Z",
+      "event_type": "query-received",
+      "query_ref": "q://fixture/resolved",
+      "status": "received"
+    },
+    {
+      "event_id": "famlog://fixture/minimal/2",
+      "sequence": 2,
+      "observed_at": "2026-09-06T00:00:00.001Z",
+      "event_type": "result",
+      "query_ref": "q://fixture/resolved",
+      "status": "result"
+    }
+  ]
+}

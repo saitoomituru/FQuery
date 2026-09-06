@@ -1,0 +1,13 @@
+{
+  "schema_version": "fquery.famlog-diff/0.1.0-draft",
+  "left_ref": "famlog://fixture/runtime-a",
+  "right_ref": "famlog://fixture/runtime-b",
+  "differences": [
+    {
+      "sequence": 2,
+      "left": {"event_type": "result", "status": "result"},
+      "right": {"event_type": "last-order", "status": "plugin-not-found:echo"},
+      "classes": ["plugin-resolution-failure", "cross-runtime-divergence"]
+    }
+  ]
+}
