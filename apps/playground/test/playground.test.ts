@@ -26,5 +26,8 @@ describe("FQuery Playground", () => {
     expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("NOT IMPLEMENTED");
     expect(wrapper.get('[data-record-kind="semantic-projection"]').text()).toContain("fquery.candidate-fam/0.1.0-draft");
     expect(wrapper.get('[data-record-kind="debug-event"]').text()).toContain("result");
+    const records = wrapper.get('[aria-label="FQuery records"]').element;
+    const editor = wrapper.get('[aria-label="FQuery Baklava presentation"]').element;
+    expect(records.compareDocumentPosition(editor) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 });

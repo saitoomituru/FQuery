@@ -124,13 +124,14 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
       <p v-if="routeError" class="error" role="alert">{{ routeError }}</p>
     </section>
 
-    <FQueryBaklavaView :nodes="nodes" :layout="layout" @event="receive" />
-    <FQueryPanel :nodes="nodes" @event="receive" />
     <output aria-live="polite">last event: {{ lastEvent }}</output>
     <FQueryRecordsPanel
       :semantic-projection="semanticProjection"
       :provider-receipt="providerReceipt"
       :debug-events="debugEvents"
     />
+    <h2 class="surface-heading">Node editor projection</h2>
+    <FQueryBaklavaView :nodes="nodes" :layout="layout" @event="receive" />
+    <FQueryPanel :nodes="nodes" @event="receive" />
   </div>
 </template>

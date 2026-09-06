@@ -15,4 +15,5 @@ button:disabled { opacity: .5; cursor: wait; }
 .route-note { grid-column: 1 / -1; margin: 0; color: #8b98b4; font-family: ui-monospace, monospace; }
 .error { color: #ff9b9b; }
 output { display: block; margin: 1rem; padding: .75rem; color: #79c0ff; font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+.surface-heading { margin: 1rem; color: #c9d5ed; font-size: 1rem; }
 @media (max-width: 650px) { .controls { grid-template-columns: 1fr; } .source { grid-column: auto; } .hero { min-height: 190px; } }

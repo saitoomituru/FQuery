@@ -4,6 +4,7 @@ import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { NodeViewModel, PluginPresentationRegistration } from "@fquery/ui-core";
 import FQueryNode from "../src/FQueryNode.vue";
+import FQueryBaklavaView from "../src/FQueryBaklavaView.vue";
 import FQueryPalette from "../src/FQueryPalette.vue";
 import FQueryPanel from "../src/FQueryPanel.vue";
 import FQueryRecordsPanel from "../src/FQueryRecordsPanel.vue";
@@ -110,5 +111,15 @@ describe("FQueryRecordsPanel", () => {
     expect(wrapper.get('[data-record-kind="semantic-projection"]').text()).toContain("semantic-block-projection");
     expect(wrapper.get('[data-record-kind="provider-receipt"]').text()).toContain("fixture");
     expect(wrapper.get('[data-record-kind="debug-event"]').text()).toContain("result");
+  });
+});
+
+describe("FQueryBaklavaView", () => {
+  it("明示height内にnodeを描画する", () => {
+    const wrapper = mount(FQueryBaklavaView, {
+      props: { nodes: [model], layout: [{ nodeId: model.nodeId, x: 40, y: 30 }] },
+    });
+    expect(wrapper.get(".fquery-baklava")).toBeTruthy();
+    expect(wrapper.get(".baklava-node").text()).toContain("Q test");
   });
 });

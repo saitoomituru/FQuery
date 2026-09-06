@@ -28,5 +28,5 @@ watch(
 </template>
 
 <style scoped>
-.fquery-baklava { min-height: 30rem; overflow: hidden; border: 1px solid #34405a; border-radius: 0.75rem; background: #080b13; }
+.fquery-baklava { height: min(30rem, 58vh); min-height: 18rem; overflow: hidden; border: 1px solid #34405a; border-radius: 0.75rem; background: #080b13; }
 </style>
