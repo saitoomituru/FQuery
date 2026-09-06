@@ -16,9 +16,9 @@ FAMLog          observable execution dump / trace
 ## 現在地
 
 - semantic contract: `fquery/0.1.0-draft`
-- Node.js / TypeScript: reference implementation準備中
-- plugin ABI / FAMLog: contract準備中
-- Vue Node Viewer: mock-first実装予定
+- Node.js / TypeScript: reference implementationと自動テストあり
+- plugin ABI / FAMLog: capability gate、trace、差分の参照実装あり
+- Vue Node Viewer: mock-first componentとVS Code／Sphere Host bridgeあり（人間テスト待ち）
 - Atlantis 1.x native C++ runtime: `CONTRACT-WAIT`
 
 API、tool、pluginの呼び出し成功は、目的 `λ` の達成証拠ではありません。pluginが存在することと、GUI上でportが次nodeへ接続されていることも別状態です。
@@ -45,12 +45,14 @@ Node.js `22`または`24`とnpm `10`以上を対象にします。
 
 ```console
 npm install
+npm run validate:fixtures
 npm test
 npm run typecheck
 npm run build
 ```
 
 現在の正本参照と実行境界は[`SPHERE-DOS.md`](SPHERE-DOS.md)、repository固有規約は[`AGENTS.md`](AGENTS.md)を参照してください。
+画面と実Hostの未検証項目は[`docs/testing/human-acceptance.ja.md`](docs/testing/human-acceptance.ja.md)へ分離しています。
 
 ## License
 

@@ -1,0 +1,22 @@
+{
+  "schema_version": "fquery.ui/0.1.0-draft",
+  "nodes": [
+    {
+      "nodeId": "q://fixture/ui/unconnected",
+      "label": "unconnected sample",
+      "badges": [
+        {"axis": "resolution", "value": "resolved", "tone": "success"},
+        {"axis": "connection", "value": "unconnected", "tone": "notice"},
+        {"axis": "semantic", "value": "unknown", "tone": "unknown"}
+      ],
+      "ports": [
+        {"portId": "input", "label": "input", "direction": "input", "connectionStatus": "connected"},
+        {"portId": "output", "label": "output", "direction": "output", "connectionStatus": "unconnected"}
+      ],
+      "value": null,
+      "evidenceRefs": [],
+      "canExecute": true,
+      "canCancel": false
+    }
+  ]
+}

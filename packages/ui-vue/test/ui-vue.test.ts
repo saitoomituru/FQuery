@@ -1,7 +1,10 @@
 import { mount } from "@vue/test-utils";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import type { NodeViewModel } from "@fquery/ui-core";
 import FQueryNode from "../src/FQueryNode.vue";
+import FQueryPanel from "../src/FQueryPanel.vue";
 
 const model: NodeViewModel = {
   nodeId: "q://test/vue",
@@ -39,5 +42,13 @@ describe("FQueryNode", () => {
     const buttons = wrapper.findAll("footer button");
     expect(buttons[1]?.attributes("disabled")).toBeUndefined();
     expect(buttons[2]?.attributes("disabled")).toBeDefined();
+  });
+});
+
+describe("FQueryPanel", () => {
+  it("repositoryのmock fixtureだけでnodeを描画する", () => {
+    const fixture = JSON.parse(readFileSync(join(process.cwd(), "../../fixtures/ui/node-view-model.json"), "utf8")) as { nodes: NodeViewModel[] };
+    const wrapper = mount(FQueryPanel, { props: { nodes: fixture.nodes } });
+    expect(wrapper.get('[data-node-id="q://fixture/ui/unconnected"]')).toBeTruthy();
   });
 });
