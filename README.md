@@ -33,6 +33,7 @@ API、tool、pluginの呼び出し成功は、目的 `λ` の達成証拠では�
 | `packages/core/` | backend非依存のNode参照Core |
 | `packages/plugin-sdk/` | capability、bind、invoke、result envelope |
 | `packages/famlog/` | append-only semantic traceと差分 |
+| `packages/benchmark/` | 同一Qの複数plugin／model route比較 |
 | `packages/ui-core/` | runtime非依存ViewModel／event contract |
 | `packages/ui-vue/` | Vue 3 Presentation component |
 | `packages/hosts/` | VS Code／Sphere等のHost bridge |
