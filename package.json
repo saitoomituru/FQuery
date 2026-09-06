@@ -1,0 +1,21 @@
+{
+  "name": "fquery-workspace",
+  "version": "0.0.0",
+  "private": true,
+  "description": "FQuery (Q) recursive FAM query driver workspace",
+  "type": "module",
+  "workspaces": [
+    "packages/*",
+    "packages/hosts/*",
+    "plugins/*"
+  ],
+  "engines": {
+    "node": ">=22 <25",
+    "npm": ">=10"
+  },
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}

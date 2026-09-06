@@ -1,0 +1,3 @@
+# Benchmark fixtures
+
+同一Queryを複数runtime／pluginへ渡してFAMLog差分を比較する入力を置く。性能値と意味適合を同一scoreへ潰さない。
