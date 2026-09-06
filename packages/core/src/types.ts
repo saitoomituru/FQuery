@@ -81,6 +81,7 @@ export interface CapabilityInvocation {
 
 export interface CapabilityResult {
   readonly pluginId: string;
+  readonly pluginStatus?: "resolved" | "rejected";
   readonly value?: unknown;
   readonly transportStatus: "succeeded" | "failed" | "unknown";
   readonly evidenceRefs?: readonly string[];

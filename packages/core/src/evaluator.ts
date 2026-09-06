@@ -67,7 +67,7 @@ async function evaluateNode(
         const invoked = await invokeCapability(query, operation.capability, value, context);
         if (isQueryResult(invoked)) return invoked;
         value = invoked.value;
-        axes = { ...axes, transportStatus: invoked.transportStatus, pluginStatus: "resolved" };
+        axes = { ...axes, transportStatus: invoked.transportStatus, pluginStatus: invoked.pluginStatus ?? "resolved" };
         evidenceRefs = [...evidenceRefs, ...(invoked.evidenceRefs ?? [])];
       } else if (operation.kind === "validate") {
         verification = await runVerifier(query, operation.verifierRef, value, context);
@@ -146,10 +146,11 @@ async function invokeCapability(query: QueryNode, capability: string, value: unk
   if (!result) return pluginNotFound(query, context, capability);
   emit(context, { eventType: "plugin-call-end", queryRef: query.queryId, status: result.transportStatus, detail: { capability, pluginId: result.pluginId } });
   if (result.transportStatus === "failed") {
+    const rejected = result.pluginStatus === "rejected";
     return {
       ...initialAxes(context.outputConnected),
       resolutionStatus: "resolved" as const,
-      pluginStatus: "resolved" as const,
+      pluginStatus: rejected ? "rejected" as const : "resolved" as const,
       transportStatus: "failed" as const,
       semanticStatus: "unknown" as const,
       lambdaStatus: "unknown" as const,
@@ -158,7 +159,7 @@ async function invokeCapability(query: QueryNode, capability: string, value: unk
       reason: result.reason ?? "plugin-call-failed",
       evidenceRefs: result.evidenceRefs ?? [],
       lastOrder: {
-        code: "FQUERY-PLUGIN-CALL-FAILED",
+        code: rejected ? "FQUERY-PLUGIN-REJECTED" : "FQUERY-PLUGIN-CALL-FAILED",
         reason: result.reason ?? "plugin-call-failed",
         requestedNext: "inspect-plugin-or-select-another-route",
         resumeWhen: "plugin-route-available",
