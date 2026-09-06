@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   readFamJson,
+  createLiteralDecompositionFam,
   serializeFamJson,
   validateFamJson,
+  validateFamDecomposition,
   writeUnmodifiedFamJson,
   type FamJsonRecord,
 } from "../src/index.js";
@@ -70,5 +72,23 @@ describe("FAM JSON Core", () => {
 
   it("canonical serializationも再検証できる", () => {
     expect(readFamJson(serializeFamJson(nested)).value.fam_id).toBe("fam://test/rain");
+  });
+
+  it("literal fixtureを縦型・nested FAMとして生成する", () => {
+    const value = createLiteralDecompositionFam("雨が降っている。傘を持つ。降水量は未確認。", "q://test/rain");
+    const result = validateFamDecomposition(value);
+    expect(result.valid).toBe(true);
+    expect(result.nodePaths).toHaveLength(4);
+    expect((value.λ as { output_units: FamJsonRecord[] }).output_units[0]).toHaveProperty("ψ");
+    expect(value.Q.unknown_is_absence).toBe(false);
+  });
+
+  it("blocksだけの旧candidate形式をFAMとして受理しない", () => {
+    expect(validateFamDecomposition({
+      schema_version: "fquery.candidate-fam/0.1.0-draft",
+      transformation: "fam.decompose",
+      blocks: [],
+      unresolved: [],
+    }).valid).toBe(false);
   });
 });
