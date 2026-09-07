@@ -1,5 +1,8 @@
 import type { CoreEvent, QueryResult } from "@fquery/core";
 
+export { deliverOaeRecord, FoldLog, FOLD_LOG_SCHEMA_VERSION, OAE_RECORD_PROFILE_VERSION } from "./fold-log.js";
+export type * from "./fold-log.js";
+
 export interface FamLogEntry extends CoreEvent {
   readonly eventId: string;
   readonly sequence: number;

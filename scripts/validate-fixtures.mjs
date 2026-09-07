@@ -11,6 +11,7 @@ const knownSchemas = new Set([
   "fquery.ui/0.1.0-draft",
   "fquery.ui.core-nodes/0.1.0-draft",
   "fam.json/0.1.0-draft",
+  "fold.log/0.1.0-alpha",
 ]);
 const statusAxes = {
   resolution_status: ["unresolved", "resolved", "bottom", "unknown"],
@@ -35,6 +36,7 @@ for (const root of roots) {
     if (value.schema_version === "fquery.ui/0.1.0-draft") validateUi(path, value);
     if (value.schema_version === "fquery.ui.core-nodes/0.1.0-draft") validateCoreNodes(path, value);
     if (value.schema_version === "fam.json/0.1.0-draft") validateFam(path, value);
+    if (value.schema_version === "fold.log/0.1.0-alpha") validateFoldLog(path, value);
     count += 1;
   }
 }
@@ -96,6 +98,16 @@ function validateFam(path, value) {
   validateFamNode(path, "$", value);
   if (value.kind === "decomposition") validateDecompositionFam(path, value);
   if (value.kind === "access-map") validateAccessMapFam(path, value);
+}
+
+function validateFoldLog(path, value) {
+  if (value.record_profile !== "oae.record/0.1.0-alpha" || typeof value.trace_id !== "string" || !Array.isArray(value.entries) || value.entries.length === 0) throw new Error(`${path}: FoldLog alpha envelopeが不正です`);
+  value.entries.forEach((entry, index) => {
+    if (entry.sequence !== index + 1 || typeof entry.event_id !== "string" || typeof entry.operation !== "string") throw new Error(`${path}: FoldLog entry ${index + 1}が不正です`);
+    if (!isRecord(entry.roles) || typeof entry.roles.observer_ref !== "string" || typeof entry.roles.recorder_ref !== "string") throw new Error(`${path}: FoldLog entry ${index + 1}のOAE roleが不正です`);
+    if (entry.persistence_status !== "volatile") throw new Error(`${path}: test fixtureは未永続のvolatile状態でなければなりません`);
+    if (entry.source_mutation !== false) throw new Error(`${path}: source_mutationはfalseでなければなりません`);
+  });
 }
 
 function validateDecompositionFam(path, value) {
