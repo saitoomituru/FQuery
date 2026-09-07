@@ -44,4 +44,6 @@ html, body, #app { margin: 0; height: 100%; background: #080b13; color: #eef2ff;
 .lambda-node-output { margin: 0; max-height: 7rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; color: #eef2ff; }
 .fold-unit-editor { display: grid; gap: .35rem; margin-top: .6rem; color: #aeb8cc; font-size: .75rem; }
 .fold-unit-editor textarea { min-width: 0; resize: vertical; }
+.fold-unit-evidence { font-size: 0.72rem; overflow-wrap: anywhere; }
+.fold-unit-evidence ul { margin: 0.35rem 0; padding-inline-start: 1rem; }
 .fold-unit-node[data-projection-freshness="stale"] { outline: 2px solid #d99824; }

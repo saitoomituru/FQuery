@@ -1,8 +1,10 @@
 import type { NodeRendererProps } from "@fquery/ui-react";
 import { isRecord } from "../host/decomposer.js";
+import { useLocalization } from "../i18n.js";
 
 /** λ.NL Output renderer。投影されたmanifestationを表示するだけで、λ satisfactionをGUIで判定しない。 */
 export function LambdaNlNode({ model }: NodeRendererProps) {
+  const { t } = useLocalization();
   const output = isRecord(model.value) ? model.value : undefined;
   const lines = Array.isArray(output?.manifestations) ? output.manifestations.filter((line): line is string => typeof line === "string") : [];
   const lambda = model.badges.find((badge) => badge.axis === "lambda");
@@ -15,7 +17,7 @@ export function LambdaNlNode({ model }: NodeRendererProps) {
           <pre className="lambda-node-output nowheel">{lines.join("\n")}</pre>
         </>
       ) : (
-        <p className="lambda-node-muted">{model.projectionFreshness === "stale" ? "再構成待ち — stale λ投影は出力しない" : "NOT PROVIDED — 上流FAMから出力がまだ投影されていない"}</p>
+        <p className="lambda-node-muted">{model.projectionFreshness === "stale" ? t("lambda.stale") : t("lambda.empty")}</p>
       )}
       {lambda && <span className="fquery-badge" data-axis="lambda" data-tone={lambda.tone}><small>λ</small>{lambda.value}</span>}
     </div>

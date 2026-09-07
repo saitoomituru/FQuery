@@ -79,7 +79,7 @@ describe("FQuery Playground", () => {
     expect(nodes.every((node) => node.querySelector(".fquery-canvas-node")?.getAttribute("data-presentation-mode") === "native")).toBe(true);
     expect(nodes[0]!.querySelector('[aria-label="route controls"]')).not.toBeNull();
     expect(nodes[1]!.textContent).toContain("canonical FAM未生成");
-    expect(nodes[2]!.textContent).toContain("NOT PROVIDED");
+    expect(nodes[2]!.textContent).toContain("未提供");
     // λ.NLのmanifestationだけがunconnected。unconnected != failure
     const unconnected = [...container.querySelectorAll(".fquery-flow-port[data-connection-status='unconnected']")].map((port) => port.getAttribute("data-port-id"));
     expect(unconnected).toHaveLength(1);
@@ -98,9 +98,12 @@ describe("FQuery Playground", () => {
     expect(projected).toHaveLength(2);
     expect(projected[0]!.textContent).toContain("雨が降る。");
     expect(projected[0]!.textContent).toContain("dimension://fquery/test/unmapped");
+    expect(projected[0]!.textContent).toContain("fam://fquery/test/basic-commons-access-mapper@rev://fquery/test/basic-commons-access-mapper/1");
     const lambdaNode = container.querySelector<HTMLElement>('[data-node-id="q://playground/node/3"]')!;
     await waitFor(() => expect(lambdaNode.textContent).toContain("雨が降る。"));
     expect(lambdaNode.querySelector('[data-axis="lambda"]')?.textContent).toContain("unknown");
+    setText(container.querySelector('[aria-label="locale"]')!, "en-US");
+    await waitFor(() => expect(projected[0]!.textContent).toContain("Replace selected unit"));
 
     fireEvent.click(container.querySelector('[aria-label="Plugin node palette"] [data-capability="core.gradient.famvim"]')!);
     await waitFor(() => expect(canvasNodes(container)).toHaveLength(5));

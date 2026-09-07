@@ -10,6 +10,7 @@ import { PANE_COMPONENTS, createPlaygroundPaneRegistry } from "./host/pane-regis
 import { PlaygroundPaneContext, type PlaygroundEditReceiptView, type PlaygroundPaneContextValue } from "./context.js";
 import { CoreNodeRenderer } from "./nodes/CoreNodeRenderer.js";
 import { reprojectWithAccessMap } from "./host/causal-projection.js";
+import { LocalizationContext, createLocalization, type PlaygroundLocale } from "./i18n.js";
 
 /** rendererHint -> canvas renderer。Core 3 nodeは最初のrenderer。pluginは同じ経路で登録する。 */
 const NODE_RENDERERS: NodeRendererMap = { [CORE_RENDERER_HINT]: CoreNodeRenderer };
@@ -43,6 +44,8 @@ export function App() {
   const [rightOpen, setRightOpen] = useState(false);
   const [rightTab, setRightTab] = useState<string | undefined>();
   const [inspectorJump, setInspectorJump] = useState<string | null>(null);
+  const [locale, setLocale] = useState<PlaygroundLocale>("ja-JP");
+  const localization = useMemo(() => createLocalization(locale), [locale]);
 
   useEffect(() => {
     let cancelled = false;
@@ -250,6 +253,7 @@ export function App() {
   }
 
   return (
+    <LocalizationContext.Provider value={localization}>
     <DecomposerContext.Provider value={decomposer}>
       <PlaygroundPaneContext.Provider value={paneHost}>
         <div className="shell" tabIndex={-1} onKeyDown={onKeyDown}>
@@ -257,12 +261,13 @@ export function App() {
             <button type="button" className="hamburger" aria-pressed={leftOpen} aria-label="toggle tool pane (T)" title="Tool pane (T)" onClick={() => setLeftOpen((open) => !open)}>☰</button>
             <div>
               <p className="eyebrow">FQUERY NODE EDITOR · REACT FLOW</p>
-              <h1>FQuery Playground — Ψ.NL → ∇φ.FAMVIM → λ.NL</h1>
+              <h1>{localization.t("app.title")}</h1>
             </div>
-            <output aria-live="polite">last event: {lastEvent}</output>
+            <output aria-live="polite">{localization.t("app.lastEvent")}: {lastEvent}</output>
             <span className="spacer" />
+            <label>locale <select aria-label="locale" value={locale} onChange={(event) => setLocale(event.target.value as PlaygroundLocale)}><option value="ja-JP">日本語</option><option value="en-US">English</option></select></label>
             {error && <p className="error" role="alert">{error}</p>}
-            <button type="button" title="Frame all (Home)" onClick={() => canvas.current?.zoomToFit()}>Frame all</button>
+            <button type="button" title="Frame all (Home)" onClick={() => canvas.current?.zoomToFit()}>{localization.t("app.frameAll")}</button>
             <button type="button" className="hamburger" aria-pressed={rightOpen} aria-label="toggle inspector pane (N)" title="Inspector pane (N)" onClick={() => setRightOpen((open) => !open)}>☰</button>
           </header>
           <main className="stage" aria-label="node editor">
@@ -288,6 +293,7 @@ export function App() {
         </div>
       </PlaygroundPaneContext.Provider>
     </DecomposerContext.Provider>
+    </LocalizationContext.Provider>
   );
 }
 
