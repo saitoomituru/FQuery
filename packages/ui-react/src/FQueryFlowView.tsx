@@ -2,6 +2,7 @@ import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRe
 import {
   Background,
   ReactFlow,
+  applyNodeChanges,
   ReactFlowProvider,
   useReactFlow,
   type Connection,
@@ -56,32 +57,47 @@ function FlowSurface({ nodes, connections, layout, decisions, presentations, nod
   const flow = useReactFlow();
   const rootRef = useRef<HTMLElement>(null);
   const factory = useMemo(() => new GuiRequestFactory(requestPrefix ?? "ui"), [requestPrefix]);
-  const [draft, setDraft] = useState<DraftLayoutState>(EMPTY_DRAFT_LAYOUT);
   const acceptedLayout = layout ?? EMPTY_LAYOUT;
   const decisionHistory = decisions ?? EMPTY_DECISIONS;
   const currentSelection = selection ?? EMPTY_SELECTION;
+  const draftRef = useRef<DraftLayoutState>(EMPTY_DRAFT_LAYOUT);
 
-  // decisionが届いたら暫定座標を捨てる。rejected時の位置復帰はaccepted layoutの再投影だけで起きる
-  useEffect(() => {
-    setDraft((state) => reconcileDraft(state, decisionHistory, acceptedLayout));
-  }, [decisionHistory, acceptedLayout]);
-
+  // sessionから導いた投影。drag中はReact Flowのchangeを差分適用するだけで、全nodeを作り直さない
   const projection = useMemo(() => projectFlow({
     nodes,
     connections: connections ?? [],
     layout: acceptedLayout,
     selection: currentSelection,
-    draft: draft.positions,
-  }), [nodes, connections, acceptedLayout, currentSelection, draft]);
+  }), [nodes, connections, acceptedLayout, currentSelection]);
 
-  const flowNodes = useMemo<Node[]>(() => projection.nodes.map((node) => ({
-    id: node.id,
-    type: node.type,
-    position: { x: node.position.x, y: node.position.y },
-    selected: node.selected,
-    data: { ...node.data },
-    ...(node.unplaced ? { className: "fquery-flow-node-unplaced" } : {}),
-  })), [projection]);
+  const [flowNodes, setFlowNodes] = useState<Node[]>([]);
+  useEffect(() => {
+    // decisionが届いた暫定座標は捨てる。rejected時の位置復帰はaccepted layoutの再投影だけで起きる
+    draftRef.current = reconcileDraft(draftRef.current, decisionHistory, acceptedLayout);
+    const pending = draftRef.current;
+    setFlowNodes((previous) => {
+      const previousById = new Map(previous.map((node) => [node.id, node]));
+      return projection.nodes.map((node): Node => {
+        const before = previousById.get(node.id);
+        // drag中またはdecision待ちのnodeは、sessionの再投影で座標を巻き戻さない
+        const keepPosition = before && (before.dragging || pending.pendingRequests.has(node.id));
+        const position = keepPosition ? before.position : { x: node.position.x, y: node.position.y };
+        if (before && before.position.x === position.x && before.position.y === position.y && before.selected === node.selected && before.className === (node.unplaced ? "fquery-flow-node-unplaced" : undefined)) {
+          return before;
+        }
+        return {
+          id: node.id,
+          type: node.type,
+          position,
+          selected: node.selected,
+          data: before?.data ?? { ...node.data },
+          ...(before?.dragging ? { dragging: true } : {}),
+          ...(node.unplaced ? { className: "fquery-flow-node-unplaced" } : {}),
+        };
+      });
+    });
+  }, [projection, decisionHistory, acceptedLayout]);
+
   const flowEdges = useMemo<Edge[]>(() => projection.edges.map((edge) => ({ ...edge })), [projection]);
 
   const contextValue = useMemo<CanvasContextValue>(() => ({
@@ -91,28 +107,29 @@ function FlowSurface({ nodes, connections, layout, decisions, presentations, nod
     emit: onEvent,
   }), [nodes, presentations, nodeRenderers, onEvent]);
 
-  // React Flowからのposition changeは暫定座標としてだけ受け、selection changeは別経路（onSelectionChange）へ流す
+  // React Flowのchangeは描画cacheへ差分適用する（動いたnodeだけが差し替わる）。canonicalはsession側
   const onNodesChange = useCallback((changes: NodeChange[]) => {
-    setDraft((state) => {
-      let next = state;
-      for (const change of changes) {
-        if (change.type === "position" && change.position) next = setDraftPosition(next, change.id, change.position);
-      }
-      return next;
-    });
+    const applicable = changes.filter((change) => change.type !== "remove");
+    if (applicable.length === 0) return;
+    setFlowNodes((previous) => applyNodeChanges(applicable, previous));
+    for (const change of applicable) {
+      if (change.type === "position" && change.position) draftRef.current = setDraftPosition(draftRef.current, change.id, change.position);
+    }
   }, []);
 
   const onNodeDragStop = useCallback((_event: unknown, node: Node) => {
     const model = nodes.find((candidate) => candidate.nodeId === node.id);
     const request = model ? factory.move(model, Math.round(node.position.x), Math.round(node.position.y), presentations?.[node.id]) : undefined;
     if (!request) {
-      // layoutSlotRefが無いnodeはwrite-backできないので、暫定座標を捨ててaccepted位置へ戻す
-      setDraft((state) => clearDraft(state, node.id));
+      // layoutSlotRefが無いnodeはwrite-backできないので、accepted位置へ戻す
+      draftRef.current = clearDraft(draftRef.current, node.id);
+      const accepted = acceptedLayout.find((value) => value.nodeId === node.id);
+      if (accepted) setFlowNodes((previous) => previous.map((entry) => entry.id === node.id ? { ...entry, position: { x: accepted.x, y: accepted.y }, dragging: false } : entry));
       return;
     }
-    setDraft((state) => markDraftRequested(state, node.id, request.requestId));
+    draftRef.current = markDraftRequested(draftRef.current, node.id, request.requestId);
     onEvent(request);
-  }, [nodes, presentations, factory, onEvent]);
+  }, [nodes, presentations, acceptedLayout, factory, onEvent]);
 
   const onConnect = useCallback((connection: Connection) => {
     if (!connection.sourceHandle || !connection.targetHandle) return;

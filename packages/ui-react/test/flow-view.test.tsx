@@ -53,7 +53,9 @@ describe("FQueryFlowView", () => {
     const events: FQueryUiEvent[] = [];
     const { container } = render(<FQueryFlowView nodes={[left]} layout={[{ nodeId: left.nodeId, x: 0, y: 0 }]} onEvent={(event) => events.push(event)} />);
     act(() => { (container.querySelector('[data-node-id="q://left"] button') as HTMLButtonElement).click(); });
-    expect(events).toEqual([{ type: "inspect", nodeId: "q://left" }]);
+    // node内clickはReact Flowの選択も起こすので、node.select.requestedが並んでよい。inspectはそのまま届く
+    expect(events.filter((event) => event.type === "inspect")).toEqual([{ type: "inspect", nodeId: "q://left" }]);
+    expect(events.every((event) => event.type === "inspect" || event.type === "node.select.requested")).toBe(true);
   });
 
   it("canvas handleはfocusNodeで存在しないnodeにfalseを返す", () => {
