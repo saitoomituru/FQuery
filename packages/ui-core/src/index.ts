@@ -398,3 +398,15 @@ export {
   type QSchema,
   type QSchemaProperty,
 } from "./editor-contract.js";
+export {
+  PaneRegistry,
+  createPaneContext,
+  type PaneContext,
+  type PaneContribution,
+  type PaneSectionSpec,
+  type PaneSide,
+  type PaneTabSpec,
+  type PluginPaneContribution,
+  type ResolvedPaneSection,
+  type ResolvedPaneTab,
+} from "./pane-contract.js";

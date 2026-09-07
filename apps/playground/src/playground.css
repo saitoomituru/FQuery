@@ -5,7 +5,8 @@ body { margin: 0; min-width: 320px; overflow: hidden; }
 button, input, select, textarea { font: inherit; }
 
 /* 全画面canvas。paletteとinspectorはcanvas上のoverlay、recordsは下端drawer。 */
-.shell { position: relative; height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+.shell { position: relative; height: 100%; display: grid; grid-template-rows: auto minmax(0, 1fr); outline: none; }
+.hamburger { font-size: 1.1rem; line-height: 1; }
 .topbar { display: flex; gap: 1rem; align-items: center; padding: 0.4rem 0.9rem; border-bottom: 1px solid #34405a; background: #0d1117; }
 .topbar h1 { margin: 0; font-size: 0.95rem; }
 .topbar .eyebrow { margin: 0; color: #79c0ff; letter-spacing: .16em; font: .65rem ui-monospace, monospace; }
@@ -17,13 +18,8 @@ button, input, select, textarea { font: inherit; }
 
 .stage { position: relative; min-height: 0; }
 .stage > .fquery-baklava { position: absolute; inset: 0; }
-.overlay-palette { position: absolute; top: .75rem; left: .75rem; width: 16rem; max-height: calc(100% - 1.5rem); overflow: auto; z-index: 5; opacity: .96; }
-.overlay-inspector { position: absolute; top: .75rem; right: .75rem; bottom: .75rem; width: min(34rem, 45%); overflow: auto; z-index: 5; }
-.overlay-inspector[hidden] { display: none; }
-
-.drawer { border-top: 1px solid #34405a; background: #0d1117; max-height: 42vh; overflow: auto; }
-.drawer summary { cursor: pointer; padding: .4rem .9rem; color: #c9d5ed; font-size: .85rem; }
-.drawer-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1rem; padding: 0 .9rem .9rem; }
+.overlay-left { position: absolute; top: .75rem; left: .75rem; bottom: .75rem; width: min(22rem, 40%); z-index: 5; }
+.overlay-right { position: absolute; top: .75rem; right: .75rem; bottom: .75rem; width: min(34rem, 45%); z-index: 5; }
 .session-receipt ul { margin: 0; padding-left: 1.2rem; color: #aeb8cc; font: .75rem/1.5 ui-monospace, monospace; }
 .session-receipt h2 { margin: .5rem 0 .25rem; color: #c9d5ed; font-size: .85rem; }
 .session-receipt li[data-decision-status="rejected"], .session-receipt li[data-edit-status="rejected"] { color: #ff9b9b; }
@@ -38,7 +34,6 @@ button, input, select, textarea { font: inherit; }
 .fquery-badge[data-tone="unknown"] { color: #d2a8ff; }
 
 @media (max-width: 900px) {
-  .overlay-inspector { width: 100%; left: 0; right: 0; top: auto; height: 60%; }
-  .overlay-palette { width: 12rem; }
-  .drawer-grid { grid-template-columns: 1fr; }
+  .overlay-left, .overlay-right { width: 100%; left: 0; right: 0; }
+  .overlay-right { top: auto; height: 60%; }
 }

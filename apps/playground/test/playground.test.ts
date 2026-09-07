@@ -6,6 +6,7 @@ import App from "../src/App.vue";
 afterEach(() => vi.unstubAllGlobals());
 
 const canvasNode = (wrapper: ReturnType<typeof mount>, index: number) => wrapper.findAll(".baklava-node:not(.--palette)")[index]!;
+const openLeftTab = async (wrapper: ReturnType<typeof mount>, tab: string) => { await wrapper.get(`[aria-label="left pane"] [data-pane-tab="${tab}"]`).trigger("click"); };
 
 describe("FQuery Playground", () => {
   it("複数provider/modelを発見し、Ψ.NL node内のdecomposerで分解する", async () => {
@@ -27,14 +28,13 @@ describe("FQuery Playground", () => {
     await psi.get("button").trigger("click");
     await flushPromises();
     expect(fetcher).toHaveBeenLastCalledWith("/api/decompose", expect.objectContaining({ method: "POST" }));
+    await openLeftTab(wrapper, "records");
     expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("fam.json/0.1.0-draft");
     expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("ψ");
     expect(wrapper.get('[data-record-kind="semantic-projection"]').text()).toContain("未生成");
     expect(wrapper.get('[data-record-kind="debug-event"]').text()).toContain("result");
-    // canvasが主表示、recordsは下端drawer
-    const stage = wrapper.get('[aria-label="node editor"]').element;
-    const records = wrapper.get('[data-record-kind="fam"]').element;
-    expect(stage.compareDocumentPosition(records) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    // recordsは左Tool paneのtabであり、canvasの主表示を奪わない
+    expect(wrapper.get('[aria-label="left pane"]').findAll('[role="tab"]').map((tab) => tab.attributes("data-pane-tab"))).toEqual(["add", "records", "decisions"]);
   });
 
   it("pluginなしでCore 3 nodeがcanvas内に中身付きで並び、分解結果が∇φ.FAMVIMとλ.NLへ投影される", async () => {
@@ -51,7 +51,9 @@ describe("FQuery Playground", () => {
     expect(nodes[0]!.find('[aria-label="route controls"]').exists()).toBe(true);
     expect(nodes[1]!.text()).toContain("canonical FAM未生成");
     expect(nodes[2]!.text()).toContain("NOT PROVIDED");
+    await openLeftTab(wrapper, "decisions");
     expect(wrapper.findAll('[data-decision-status="accepted"]')).toHaveLength(8);
+    await openLeftTab(wrapper, "add");
     expect(wrapper.get('[aria-label="Plugin node palette"]').findAll("li")).toHaveLength(3);
 
     await canvasNode(wrapper, 0).get('[aria-label="route controls"] button').trigger("click");
@@ -77,13 +79,14 @@ describe("FQuery Playground FAMVIM", () => {
     vi.stubGlobal("fetch", fetcher);
     const wrapper = mount(App);
     await flushPromises();
-    expect(wrapper.get(".overlay-inspector").attributes("hidden")).toBeDefined();
+    expect(wrapper.get('[aria-label="right pane"]').attributes("hidden")).toBeDefined();
     await canvasNode(wrapper, 0).get('[aria-label="route controls"] button').trigger("click");
     await flushPromises();
 
     await canvasNode(wrapper, 1).get("button").trigger("click");
     await flushPromises();
-    expect(wrapper.get(".overlay-inspector").attributes("hidden")).toBeUndefined();
+    expect(wrapper.get('[aria-label="right pane"]').attributes("hidden")).toBeUndefined();
+    expect(wrapper.get('[aria-label="right pane"]').find('[data-pane-section="decomposer"]').exists()).toBe(false);
     const panel = wrapper.get('[aria-label="FQuery node panel"]');
     expect(panel.attributes("data-node-id")).toContain("q://playground/node/2");
     expect(panel.get('[data-tab="raw"]').attributes("aria-selected")).toBe("true");
@@ -93,8 +96,10 @@ describe("FQuery Playground FAMVIM", () => {
     await textarea.setValue(textarea.element.value.replace("\"source-decomposition\"", "\"edited-purpose\""));
     await famvim.get("footer button").trigger("click");
     await flushPromises();
+    await openLeftTab(wrapper, "records");
     expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("edited-purpose");
     expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("x-plugin-extension");
+    await openLeftTab(wrapper, "decisions");
     expect(wrapper.get('[aria-label="fam edit receipts"]').text()).toContain("applied");
 
     const famvimAfter = wrapper.get('[aria-label="FAMVIM RAW FAM editor"]');
@@ -102,12 +107,21 @@ describe("FQuery Playground FAMVIM", () => {
     await famvimAfter.get("footer button").trigger("click");
     await flushPromises();
     expect(wrapper.get('[aria-label="session decisions"]').text()).toContain("fam-text-unparsed");
+    await openLeftTab(wrapper, "records");
     expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("edited-purpose");
 
-    // Ψ.NLのinspectorボタンで対象が切り替わり、設定tabへ戻る
+    // Ψ.NLのinspectorボタンで対象が切り替わり、設定tabへ戻る。Ψ.NLではHostのdecomposer sectionがstackされる
     await canvasNode(wrapper, 0).findAll("button")[1]!.trigger("click");
     await flushPromises();
     expect(wrapper.get('[aria-label="FQuery node panel"]').attributes("data-node-id")).toContain("q://playground/node/1");
     expect(wrapper.get('[aria-label="FQuery node panel"]').text()).toContain("fquery.core@");
+    const rightSections = wrapper.get('[aria-label="right pane"]').findAll("[data-pane-section]").map((section) => section.attributes("data-pane-section"));
+    expect(rightSections).toEqual(["decomposer", "node-panel"]);
+
+    // T / N で左右paneを開閉。入力中は無効
+    await wrapper.get(".shell").trigger("keydown", { key: "n" });
+    expect(wrapper.get('[aria-label="right pane"]').attributes("hidden")).toBeDefined();
+    await wrapper.get(".shell").trigger("keydown", { key: "t" });
+    expect(wrapper.get('[aria-label="left pane"]').attributes("hidden")).toBeDefined();
   });
 });

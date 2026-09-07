@@ -178,6 +178,35 @@ PresentationProjection.mode
 - adapterは`useBaklava()`が返すreactive editorへgraphを変更する。生のEditorへ追加するとmount後の変更が描画へ伝播しない
 - Playgroundの構成: 全画面canvas、左上floating palette、右inspector drawer（Node Panel）、下端records drawer
 
+## Selectionとslot式pane（Issue #33）
+
+### active cursor node
+
+Baklavaのclick／box select、outliner、inspectボタンはすべて`node.select.requested`へ変換され、sessionが`selection`（`activeNodeId` + `nodeIds`）として受理する。選択はGUI局所状態でありcanonical FAMではないため、engine判定を経由せず、存在しないnodeだけを落とす。`node.remove`で選択から外れ、activeは残りへ移る。`FQueryBaklavaView`はsession selectionをBaklavaへ反映する（正本はsession側）。
+
+### PaneContribution
+
+```text
+PaneContribution {
+  side:          "left" | "right"
+  tab:           { id, title, icon?, order }
+  section:       { id, title, order, collapsible? }
+  componentRef:  Host／Viewが解決するkey（rendererHintと同じ経路）
+  source:        "core" | "plugin:<id>" | "host"
+  applies?:      (PaneContext) => boolean
+}
+PaneContext = { activeNode?, selection, registration?, projection?, famRole?, capability? }
+```
+
+- 同じ`tab.id`へ複数sourceがsectionをstackできる（Blenderの`bl_category`相乗り）。tab specは最小`order`の宣言を採用する
+- plugin registrationは`editor.panes`（`PluginPaneContribution`、`appliesTo: own-node | any-node | always`）で宣言し、`PaneRegistry.registerPlugin`が取り込む
+- `FQueryPane`はtab strip→section stack（折り畳み可）を描画し、`componentRef`が未解決ならsection宣言を保持したままfallbackを表示する
+- 開閉・最終tab・折り畳みはper-viewerの便宜としてlocalStorageへ残す。graphの永続化ではない
+- 左=Tool pane（Add Node / Records / Decisions、`T`）、右=Inspector pane（active nodeの詳細、`N`）。keyは入力中は無効
+- sectionはModelを書かない。`FQueryUiEvent`をemitするだけ
+
+参考: Blender HIG Sidebar Tabs、ComfyUI `registerSidebarTab`、Unreal `IDetailCustomization`、Node-RED `RED.sidebar.addTab`、n8n Parameters/Settings（`CREDITS.md`）
+
 ## Engine event / VEU
 
 `fam.node.changed`、`source.diverged`、`q.changed`、`abi.mismatch`、`implementation.unavailable`等をnode/ref単位で投影する。変更対象外nodeのobject identityを保持し、全graph再構築を要求しない。

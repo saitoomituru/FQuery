@@ -1,5 +1,6 @@
 import type { FamRole } from "./core-nodes.js";
 import type { PluginPresentationRegistration, PluginPresentationRegistry } from "./index.js";
+import type { PluginPaneContribution } from "./pane-contract.js";
 
 /**
  * Node Panel pluginが編集できるQ fieldの宣言。JSON Schemaの最小subset。
@@ -28,6 +29,8 @@ export interface PluginEditorContract {
   /** Q以外でpluginが編集責務を持つcanonical pathのprefix（JSON Pointer） */
   readonly knownPointers?: readonly string[];
   readonly capabilities?: readonly string[];
+  /** 左Tool pane／右Inspector paneへのtab／section宣言（Issue #33）。componentRefはHostが解決する */
+  readonly panes?: readonly PluginPaneContribution[];
 }
 
 export const Q_SCHEMA_VERSION = "fquery.q-schema/0.1.0-draft" as const;

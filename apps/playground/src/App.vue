@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import { computed, onMounted, provide, ref, shallowRef, watch } from "vue";
-import { FQueryBaklavaView, FQueryNodePanel, FQueryPalette, FQueryRecordsPanel } from "@fquery/ui-vue";
+import { FQueryBaklavaView, FQueryPane } from "@fquery/ui-vue";
 import {
+  PaneRegistry,
   PluginPresentationRegistry,
   PresentationSession,
   CORE_RENDERER_HINT,
+  createPaneContext,
   corePortId,
   createCoreNodeViewModel,
   createFixtureDecisionPort,
@@ -19,8 +21,13 @@ import {
 } from "@fquery/ui-core";
 import { isFamJsonRecord, validateFamJson } from "@fquery/fam-core";
 import { applyFamPatch, openFamText, replaceFamText, serializeFamValue, type FamPatch, type FamPatchResult, type JsonValue } from "@fquery/fam-edit";
-import { decomposerContextKey, type PlaygroundRoute } from "./context.js";
+import { decomposerContextKey, playgroundPaneContextKey, type PaneComponentMap, type PlaygroundRoute } from "./context.js";
 import CoreNodeRenderer from "./nodes/CoreNodeRenderer.vue";
+import AddNodeSection from "./panes/AddNodeSection.vue";
+import RecordsSection from "./panes/RecordsSection.vue";
+import DecisionsSection from "./panes/DecisionsSection.vue";
+import NodePanelSection from "./panes/NodePanelSection.vue";
+import DecomposerSection from "./panes/DecomposerSection.vue";
 
 type Route = PlaygroundRoute;
 
@@ -32,7 +39,8 @@ const lastEvent = ref("未実行");
 const response = ref<unknown>();
 const running = ref(false);
 const routeError = ref("");
-const inspectorOpen = ref(false);
+const leftOpen = ref(true);
+const rightOpen = ref(false);
 const inspectorTab = ref<"settings" | "connections" | "q" | "unsupported" | "raw" | undefined>();
 
 // GUIは判定を行わない。Playgroundではengine不在のためfixture portが構造判定だけを返す。
@@ -74,6 +82,26 @@ const nodeRenderers = { [CORE_RENDERER_HINT]: CoreNodeRenderer };
 
 provide(decomposerContextKey, { routes, provider, model, source, running, execute });
 
+/**
+ * pane contribution（Issue #33）。左=Tool（Add Node / Records / Decisions）、右=Inspector。
+ * Coreのnode panelとHostのdecomposer sectionを同じregistryへ宣言し、pluginは
+ * registration.editor.panesで同じ経路へ参加する。
+ */
+const paneRegistry = new PaneRegistry();
+paneRegistry.register({ side: "left", tab: { id: "add", title: "Add Node", icon: "＋", order: 0 }, section: { id: "palette", title: "検索して追加", order: 0 }, componentRef: "host:add-node", source: "host" });
+paneRegistry.register({ side: "left", tab: { id: "records", title: "Records", icon: "▤", order: 20 }, section: { id: "records", title: "FAM / projection / FAMLog / receipt / debug", order: 0 }, componentRef: "host:records", source: "host" });
+paneRegistry.register({ side: "left", tab: { id: "decisions", title: "Decisions", icon: "≡", order: 30 }, section: { id: "decisions", title: "Session decisions / FAM edit receipts", order: 0 }, componentRef: "host:decisions", source: "host" });
+paneRegistry.register({ side: "right", tab: { id: "node", title: "Node", icon: "◈", order: 0 }, section: { id: "node-panel", title: "Node panel", order: 10 }, componentRef: "core:node-panel", source: "core", applies: (context) => context.activeNode !== undefined });
+paneRegistry.register({ side: "right", tab: { id: "node", title: "Node", icon: "◈", order: 0 }, section: { id: "decomposer", title: "Ψ.NL decomposer route", order: 0 }, componentRef: "host:decomposer", source: "host", applies: (context) => context.famRole === "ψ" });
+for (const registration of registry.registrations()) paneRegistry.registerPlugin(registration);
+const paneComponents: PaneComponentMap = {
+  "host:add-node": AddNodeSection,
+  "host:records": RecordsSection,
+  "host:decisions": DecisionsSection,
+  "core:node-panel": NodePanelSection,
+  "host:decomposer": DecomposerSection,
+};
+
 const selectedRoute = computed(() => routes.value.find((route) => route.provider === provider.value));
 const resultRecord = computed<Record<string, unknown> | undefined>(() => {
   if (!isRecord(response.value) || !isRecord(response.value.result)) return undefined;
@@ -88,6 +116,14 @@ const psiNode = computed(() => sessionState.value.nodes.find((node) => node.node
 const selectedNode = computed(() => sessionState.value.nodes.find((node) => node.nodeId === sessionState.value.selection.activeNodeId) ?? psiNode.value);
 const selectedProjection = computed(() => selectedNode.value ? sessionState.value.presentations[selectedNode.value.nodeId] : undefined);
 const selectedRegistration = computed(() => findRegistrationByPresentation(session.registry, selectedProjection.value?.presentation?.presentationId));
+const paneContext = computed(() => createPaneContext({
+  selection: selectedNode.value ? { nodeIds: sessionState.value.selection.nodeIds.length ? sessionState.value.selection.nodeIds : [selectedNode.value.nodeId], activeNodeId: selectedNode.value.nodeId } : sessionState.value.selection,
+  nodes: sessionState.value.nodes,
+  presentations: sessionState.value.presentations,
+  registrations: registrations.value,
+}));
+const leftTabs = computed(() => paneRegistry.resolve("left", paneContext.value));
+const rightTabs = computed(() => paneRegistry.resolve("right", paneContext.value));
 const semanticProjection = computed(() => {
   const value = resultRecord.value?.value;
   return isRecord(value) && typeof value.schema_version === "string" && value.schema_version.startsWith("fquery.semantic-block-projection/") ? value : undefined;
@@ -99,6 +135,17 @@ const providerReceipt = computed(() => resultRecord.value ? {
   evidence_refs: resultRecord.value.evidence_refs,
 } : undefined);
 const debugEvents = computed(() => isRecord(response.value) && Array.isArray(response.value.events) ? response.value.events : undefined);
+
+provide(playgroundPaneContextKey, { sessionState, registrations, fam, semanticProjection, providerReceipt, debugEvents, editReceipts, selectedRegistration, selectedProjection, inspectorTab, validate: validateFamJson, receive });
+
+/** Blender流: T=左Tool pane、N=右Inspector pane。入力中は無効。 */
+function onKeydown(event: KeyboardEvent) {
+  const target = event.target as HTMLElement | null;
+  if (event.metaKey || event.ctrlKey || event.altKey) return;
+  if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable)) return;
+  if (event.key === "t" || event.key === "T") { leftOpen.value = !leftOpen.value; event.preventDefault(); }
+  if (event.key === "n" || event.key === "N") { rightOpen.value = !rightOpen.value; event.preventDefault(); }
+}
 
 watch(provider, () => { model.value = selectedRoute.value?.models[0] ?? ""; response.value = undefined; routeError.value = ""; });
 // Host責務: ∇φ.FAMVIMのcanonical FAMが変わったら、接続先λ.NLへmanifestationをfixture projectionとして投影する（λ判定はしない）
@@ -142,7 +189,7 @@ function receive(event: FQueryUiEvent) {
     selectSequence += 1;
     void session.dispatch({ type: "node.select.requested", requestId: `playground:select:${selectSequence}`, nodeIds: [event.nodeId], activeNodeId: event.nodeId });
     inspectorTab.value = event.nodeId === coreNodeIds.value.famvim ? "raw" : "settings";
-    inspectorOpen.value = true;
+    rightOpen.value = true;
     return;
   }
   if (isGuiRequest(event)) void session.dispatch(event).catch((error: unknown) => { routeError.value = error instanceof Error ? error.message : "session-dispatch-failed"; });
@@ -218,8 +265,9 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
 </script>
 
 <template>
-  <div class="shell">
+  <div class="shell" tabindex="-1" @keydown="onKeydown">
     <header class="topbar">
+      <button type="button" class="hamburger" :aria-pressed="leftOpen ? 'true' : 'false'" aria-label="toggle tool pane (T)" title="Tool pane (T)" @click="leftOpen = !leftOpen">☰</button>
       <div>
         <p class="eyebrow">FQUERY NODE EDITOR</p>
         <h1>FQuery Playground — Ψ.NL → ∇φ.FAMVIM → λ.NL</h1>
@@ -227,10 +275,11 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
       <output aria-live="polite">last event: {{ lastEvent }}</output>
       <span class="spacer" />
       <p v-if="routeError" class="error" role="alert">{{ routeError }}</p>
-      <button type="button" :aria-pressed="inspectorOpen ? 'true' : 'false'" @click="inspectorOpen = !inspectorOpen">Inspector</button>
+      <button type="button" class="hamburger" :aria-pressed="rightOpen ? 'true' : 'false'" aria-label="toggle inspector pane (N)" title="Inspector pane (N)" @click="rightOpen = !rightOpen">☰</button>
     </header>
 
     <main class="stage" aria-label="node editor">
+      <FQueryPane v-model:open="leftOpen" class="overlay-left" side="left" storage-key="fquery.playground" :tabs="leftTabs" :components="paneComponents" :context="paneContext" @event="receive" />
       <FQueryBaklavaView
         fill
         :nodes="sessionState.nodes"
@@ -241,52 +290,7 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
         :selection="sessionState.selection"
         @event="receive"
       />
-      <FQueryPalette class="overlay-palette" :registrations="registrations" @event="receive" />
-      <aside class="overlay-inspector" :hidden="!inspectorOpen">
-        <FQueryNodePanel
-          v-if="selectedNode"
-          :node="selectedNode"
-          :registration="selectedRegistration"
-          :projection="selectedProjection"
-          :connections="sessionState.connections"
-          :validate="validateFamJson"
-          :tab="inspectorTab"
-          @event="receive"
-        />
-      </aside>
+      <FQueryPane v-model:open="rightOpen" class="overlay-right" side="right" storage-key="fquery.playground" :tabs="rightTabs" :components="paneComponents" :context="paneContext" @event="receive" />
     </main>
-
-    <details class="drawer">
-      <summary>Records — FAM / projection / FAMLog / receipt / debug · Session decisions（補助表示）</summary>
-      <div class="drawer-grid">
-        <FQueryRecordsPanel
-          :fam="fam"
-          :semantic-projection="semanticProjection"
-          :provider-receipt="providerReceipt"
-          :debug-events="debugEvents"
-        />
-        <div>
-          <section v-if="editReceipts.length" class="session-receipt" aria-label="fam edit receipts">
-            <h2>FAM edit receipts</h2>
-            <ul>
-              <li v-for="(receipt, index) in editReceipts" :key="index" :data-edit-status="receipt.status">
-                <strong>{{ receipt.status }}</strong> ops={{ receipt.appliedOperations }} touched={{ receipt.touchedPaths.join(", ") || "-" }} retained={{ receipt.retainedUntouchedPaths }}
-                <span v-if="receipt.validation"> validator={{ receipt.validation.valid ? "valid" : `${receipt.validation.issueCount} issue(s)` }}</span>
-                <span v-if="receipt.rejectedOperation"> — {{ receipt.rejectedOperation.reason }}</span>
-                <span v-if="receipt.loss.length"> loss={{ receipt.loss.map((entry) => entry.kind).join(",") }}</span>
-              </li>
-            </ul>
-          </section>
-          <section class="session-receipt" aria-label="session decisions">
-            <h2>Session decisions</h2>
-            <ul>
-              <li v-for="decision in sessionState.decisions" :key="decision.requestId" :data-decision-status="decision.status">
-                <code>{{ decision.kind }}</code> {{ decision.requestId }} → <strong>{{ decision.status }}</strong><span v-if="decision.reason"> — {{ decision.reason }}</span>
-              </li>
-            </ul>
-          </section>
-        </div>
-      </div>
-    </details>
   </div>
 </template>
