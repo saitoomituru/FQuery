@@ -8,9 +8,10 @@ import {
   registerCoreNodes,
   statusTone,
 } from "@fquery/ui-core";
-import { readFamJson, validateFamJson } from "@fquery/fam-core";
+import { readFamJson, validateFamJson, type FamDocument, type FamJsonRecord } from "@fquery/fam-core";
 import {
   FAM_DRAFT_PATCH_SCHEMA_VERSION,
+  FamRevisionStore,
   applyFamPatch,
   diffJson,
   escapeToken,
@@ -19,6 +20,7 @@ import {
   parsePointer,
   patchFromDiff,
   serializeFamValue,
+  replaceFamUnit,
   type FamDraftPatch,
   type FamEditReceipt,
   type FamPatch,
@@ -42,9 +44,32 @@ export class EditReceiptStore {
   }
 }
 
+/** canonical FAMと全revisionをReact外で保持するHost store。 */
+export class FamDocumentStore {
+  #current: FamDocument | undefined;
+  readonly #revisions = new FamRevisionStore();
+  readonly #listeners = new Set<() => void>();
+  get current(): FamDocument | undefined { return this.#current; }
+  set(value: FamJsonRecord): FamDocument {
+    const document = readFamJson(serializeFamValue(value));
+    if (!this.#revisions.get(value.fam_id, value.revision_id)) this.#revisions.append(document);
+    this.#current = document;
+    for (const listener of this.#listeners) listener();
+    return document;
+  }
+  setDecision(document: FamDocument): void {
+    if (!this.#revisions.get(document.value.fam_id, document.value.revision_id)) this.#revisions.append(document);
+    this.#current = document;
+    for (const listener of this.#listeners) listener();
+  }
+  get(famId: string, revisionId: string): FamDocument | undefined { return this.#revisions.get(famId, revisionId); }
+  subscribe(listener: () => void): () => void { this.#listeners.add(listener); return () => { this.#listeners.delete(listener); }; }
+}
+
 export interface PlaygroundSession {
   readonly session: PresentationSession;
   readonly receipts: EditReceiptStore;
+  readonly fams: FamDocumentStore;
 }
 
 /**
@@ -56,6 +81,7 @@ export function createPlaygroundSession(): PlaygroundSession {
   const registry = new PluginPresentationRegistry();
   registerCoreNodes(registry);
   const receipts = new EditReceiptStore();
+  const fams = new FamDocumentStore();
   let editSequence = 0;
   const session = new PresentationSession(createFixtureDecisionPort({
     registry,
@@ -68,11 +94,35 @@ export function createPlaygroundSession(): PlaygroundSession {
     },
     // Host責務: FAMVIM／Node Panelからのfam.patch / fam.textをcanonical valueへ適用する。GUIは適用しない。
     resolveProperty: (node, property, value, request) => {
+      if (property === "unit.replace") {
+        if (!node.foldRef || !fams.current) return { rejected: "unit-or-parent-fam-not-provided" };
+        const replacement = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};
+        const replacementText = typeof replacement.replacementText === "string" ? replacement.replacementText : "";
+        editSequence += 1;
+        const result = replaceFamUnit(fams.current, {
+          operationId: request.requestId,
+          unitRef: node.foldRef,
+          baseParentRevisionId: fams.current.value.revision_id,
+          resultParentRevisionId: `rev://playground/fam-edit/${editSequence}`,
+          resultUnitRevisionRef: `${node.foldRef}/revision/${editSequence + 1}`,
+          replacementText,
+          claimKind: typeof replacement.claimKind === "string" ? replacement.claimKind : "world-fact",
+          overrideSourceRef: typeof replacement.overrideSourceRef === "string" ? replacement.overrideSourceRef : `input://playground/user-override/${editSequence}`,
+          overrideObserverRef: typeof replacement.overrideObserverRef === "string" ? replacement.overrideObserverRef : "observer://playground/user",
+        });
+        receipts.push(result.decision.receipt);
+        if (result.decision.status === "rejected") return { rejected: result.decision.receipt.reason ?? "fam-unit-replacement-rejected" };
+        fams.setDecision(result.decision.document);
+        const outputUnits = (result.decision.document.value.λ as { output_units?: unknown[] }).output_units ?? [];
+        const changed = outputUnits.find((unit) => unit && typeof unit === "object" && !Array.isArray(unit) && (unit as { Q?: { unit_ref?: unknown } }).Q?.unit_ref === node.foldRef);
+        return { ...node, value: { ...(node.value && typeof node.value === "object" && !Array.isArray(node.value) ? node.value as Record<string, unknown> : {}), unit: changed }, revisionRef: `${node.foldRef}/revision/${editSequence + 1}`, projectionFreshness: "unknown", evidenceRefs: [...node.evidenceRefs, `fam-edit://${request.requestId}/${result.decision.receipt.resultRevisionId}`] };
+      }
       if (property !== "fam.patch" && property !== "fam.text") return undefined;
-      if (node.value === null || node.value === undefined) return { rejected: "fam-not-provided" };
+      const canonicalValue = fams.current?.value ?? node.value;
+      if (canonicalValue === null || canonicalValue === undefined) return { rejected: "fam-not-provided" };
       let document;
       try {
-        document = readFamJson(serializeFamValue(node.value as JsonValue));
+        document = readFamJson(serializeFamValue(canonicalValue as JsonValue));
       } catch (error) {
         return { rejected: error instanceof Error ? `canonical-fam-invalid:${error.message}` : "canonical-fam-invalid" };
       }
@@ -104,6 +154,7 @@ export function createPlaygroundSession(): PlaygroundSession {
       }, { validate: validateFamJson });
       receipts.push(decision.receipt);
       if (decision.status === "rejected") return { rejected: decision.receipt.reason ?? "fam-edit-rejected" };
+      fams.setDecision(decision.document);
       const semantic = "unknown";
       return {
         ...node,
@@ -113,7 +164,7 @@ export function createPlaygroundSession(): PlaygroundSession {
       };
     },
   }), { registry });
-  return { session, receipts };
+  return { session, receipts, fams };
 }
 
 /**

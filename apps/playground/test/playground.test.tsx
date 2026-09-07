@@ -9,6 +9,18 @@ beforeEach(() => { try { localStorage.clear(); } catch { /* ignore */ } });
 
 const json = (value: unknown, status = 200) => new Response(JSON.stringify(value), { status, headers: { "content-type": "application/json" } });
 const fixtureRoutes = [{ provider: "fixture", label: "Fixture", available: true, models: ["mock-fam-transformer"] }];
+const fixtureAccessMap = {
+  schema_version: "fam.json/0.1.0-draft", fam_id: "fam://fquery/test/basic-commons-access-mapper", revision_id: "rev://fquery/test/basic-commons-access-mapper/1", kind: "access-map", title: "テスト用Basic Commons Access Mapper", title_language: "ja", index_subjects: ["Access Map"],
+  ψ: { source_fold_ref: "fold://fquery/test/decomposition", source_registry_ref: "registry://fquery/test/basic-commons@1", accepted_claim_kinds: ["world-fact"] },
+  "∇φ": { mapping_rules: [
+    { rule_id: "rule://fquery/test/basic-commons/world-fact", source_claim_kind: "world-fact", target_dimension_ref: "dimension://fquery/test/world", claim_scope_ref: "scope://world/fixture-local", evidence_scope: ["fixture-local"] },
+    { rule_id: "rule://fquery/test/basic-commons/unknown", source_claim_kind: "unknown", target_dimension_ref: "dimension://fquery/test/unmapped", claim_scope_ref: "scope://unknown", evidence_scope: ["unknown", "not-absence"] },
+  ], loss_declarations: [], source_mutation: false },
+  λ: { target_fold_ref: "fold://fquery/test/basic-commons", target_dimension_refs: ["dimension://fquery/test/world", "dimension://fquery/test/unmapped"], output_kind: "classification-binding" },
+  Q: { observer_ref: "observer://fquery/test-fixture-author", registry_ref: "registry://fquery/test/basic-commons@1", fact_scope_ref: "world://fquery/test/issue-35", authority_ref: "authority://fquery/test-fixture-only", unknown_policy: "retain", unmapped_policy: "retain-unmapped", fallback_policy: "none", source_mutation: false, unknowns: [], unknown_is_absence: false },
+  pointers: [], provenance: { claim_scope: "TEST_FIXTURE", source_refs: ["https://github.com/saitoomituru/FQuery/issues/35"], source_mutation: false },
+};
+const decompositionResponse = (value: unknown, events: readonly unknown[] = []) => ({ result: { value, transport_status: "succeeded", plugin_status: "resolved", resolution_status: "resolved", connection_status: "connected" }, events, access_map: fixtureAccessMap });
 const canvasNodes = (container: HTMLElement) => [...container.querySelectorAll<HTMLElement>(".fquery-flow-node")];
 const leftPane = (container: HTMLElement) => container.querySelector<HTMLElement>('[aria-label="left pane"]')!;
 const rightPane = (container: HTMLElement) => container.querySelector<HTMLElement>('[aria-label="right pane"]')!;
@@ -30,7 +42,7 @@ describe("FQuery Playground", () => {
         { provider: "gemini", label: "Gemini", available: true, models: ["gemini-2.5-flash-lite"], credentialName: "gemini-local" },
         { provider: "ollama", label: "Ollama Local", available: true, models: ["qwen3:8b", "mistral:7b"] },
       ]))
-      .mockResolvedValueOnce(json({ result: { value: createLiteralDecompositionFam("自然言語テスト", "q://test/playground") }, events: [{ eventType: "result", status: "result" }] }));
+      .mockResolvedValueOnce(json(decompositionResponse(createLiteralDecompositionFam("自然言語テスト", "q://test/playground"), [{ eventType: "result", status: "result" }])));
     const { container } = await mountWithGraph(fetcher);
     expect(container.textContent).toContain("FQUERY NODE EDITOR");
     const psi = within(canvasNodes(container)[0]!).getByLabelText("route controls");
@@ -50,14 +62,14 @@ describe("FQuery Playground", () => {
     openLeftTab(container, "outline");
     fireEvent.click(container.querySelector('[data-node-id="q://playground/node/3"] .fquery-outliner-select')!);
     await waitFor(() => expect(container.querySelector('.fquery-outliner [data-node-id="q://playground/node/3"]')?.getAttribute("data-active")).toBe("true"));
-    await waitFor(() => expect(canvasNodes(container)[2]?.getAttribute("data-selected")).toBe("true"));
+    await waitFor(() => expect(container.querySelector('.fquery-flow-node[data-node-id="q://playground/node/3"]')?.getAttribute("data-selected")).toBe("true"));
     fireEvent.click(container.querySelector('[data-node-id="q://playground/node/3"] .fquery-outliner-focus')!);
   });
 
-  it("pluginなしでCore 3 nodeがcanvas内に中身付きで並び、分解結果が∇φ.FAMVIMとλ.NLへ投影される", async () => {
+  it("pluginなしでCore graphが立ち上がり、分解後は1 Ψ → N ∇φ → 1 λへ投影される", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(json(fixtureRoutes))
-      .mockResolvedValueOnce(json({ result: { value: createLiteralDecompositionFam("雨が降る。傘を持つ。", "q://test/playground"), transport_status: "succeeded", plugin_status: "resolved", resolution_status: "resolved", connection_status: "connected" }, events: [] }));
+      .mockResolvedValueOnce(json(decompositionResponse(createLiteralDecompositionFam("雨が降る。傘を持つ。", "q://test/playground"))));
     const { container } = await mountWithGraph(fetcher);
     const nodes = canvasNodes(container);
     expect(nodes.map((node) => node.getAttribute("data-node-id"))).toEqual(["q://playground/node/1", "q://playground/node/2", "q://playground/node/3"]);
@@ -78,12 +90,17 @@ describe("FQuery Playground", () => {
     await act(async () => { fireEvent.click(canvasNodes(container)[0]!.querySelector('[aria-label="route controls"] button')!); });
     await waitFor(() => expect(canvasNodes(container)[0]!.querySelector('[data-axis="transport"]')?.textContent).toContain("succeeded"));
     expect(canvasNodes(container)[0]!.querySelector('[data-axis="semantic"]')?.textContent).toContain("unknown");
-    expect(canvasNodes(container)[1]!.textContent).toContain("units=2");
-    await waitFor(() => expect(canvasNodes(container)[2]!.textContent).toContain("雨が降る。"));
-    expect(canvasNodes(container)[2]!.querySelector('[data-axis="lambda"]')?.textContent).toContain("unknown");
+    await waitFor(() => expect(canvasNodes(container)).toHaveLength(4));
+    const projected = canvasNodes(container).filter((node) => node.querySelector("[data-fold-ref]"));
+    expect(projected).toHaveLength(2);
+    expect(projected[0]!.textContent).toContain("雨が降る。");
+    expect(projected[0]!.textContent).toContain("dimension://fquery/test/unmapped");
+    const lambdaNode = container.querySelector<HTMLElement>('[data-node-id="q://playground/node/3"]')!;
+    await waitFor(() => expect(lambdaNode.textContent).toContain("雨が降る。"));
+    expect(lambdaNode.querySelector('[data-axis="lambda"]')?.textContent).toContain("unknown");
 
     fireEvent.click(container.querySelector('[aria-label="Plugin node palette"] [data-capability="core.gradient.famvim"]')!);
-    await waitFor(() => expect(canvasNodes(container)).toHaveLength(4));
+    await waitFor(() => expect(canvasNodes(container)).toHaveLength(5));
     // 新規nodeはHostがviewport中央へ配置し、layout write-backとしてsessionへ通る
     openLeftTab(container, "decisions");
     await waitFor(() => expect(container.querySelector('[aria-label="session decisions"]')?.textContent).toContain("playground:place:1 → accepted"));
@@ -92,22 +109,34 @@ describe("FQuery Playground", () => {
 });
 
 describe("FQuery Playground FAMVIM", () => {
-  it("∇φ.FAMVIM nodeのRAW編集からinspectorを開き、fam.patchでcanonical FAMがunknown fieldを保持したまま更新される", async () => {
-    const famWithExtension = { ...createLiteralDecompositionFam("自然言語テスト", "q://test/playground"), "x-plugin-extension": { retained: true } };
+  it("独立∇φ nodeのunit局所差替えで他unitと拡張fieldを保持する", async () => {
+    const famWithExtension = { ...createLiteralDecompositionFam("自然言語。テスト。", "q://test/playground"), "x-plugin-extension": { retained: true } };
     const fetcher = vi.fn()
       .mockResolvedValueOnce(json(fixtureRoutes))
-      .mockResolvedValueOnce(json({ result: { value: famWithExtension, transport_status: "succeeded", plugin_status: "resolved" }, events: [] }));
+      .mockResolvedValueOnce(json(decompositionResponse(famWithExtension)));
     const { container } = await mountWithGraph(fetcher);
     expect(rightPane(container).hasAttribute("hidden")).toBe(true);
     await act(async () => { fireEvent.click(canvasNodes(container)[0]!.querySelector('[aria-label="route controls"] button')!); });
-    await waitFor(() => expect(canvasNodes(container)[1]!.textContent).toContain("units="));
+    await waitFor(() => expect(canvasNodes(container)).toHaveLength(4));
 
-    fireEvent.click(canvasNodes(container)[1]!.querySelector("button")!);
+    const unitNodes = canvasNodes(container).filter((node) => node.querySelector("[data-fold-ref]"));
+    const untouchedText = unitNodes[1]!.textContent;
+    const unitEditor = unitNodes[0]!.querySelector("textarea")!;
+    setText(unitEditor, "差替えた意味単位。");
+    await act(async () => { fireEvent.click(unitNodes[0]!.querySelector("button")!); });
+    await waitFor(() => expect(unitNodes[0]!.textContent).toContain("差替えた意味単位。"));
+    expect(unitNodes[1]!.textContent).toBe(untouchedText);
+    openLeftTab(container, "records");
+    expect(container.querySelector('[data-record-kind="fam"]')?.textContent).toContain("x-plugin-extension");
+    openLeftTab(container, "decisions");
+    expect(container.querySelector('[aria-label="fam edit receipts"]')?.textContent).toContain("accepted");
+
+    fireEvent.click(unitNodes[0]!.querySelectorAll("button")[1]!);
     await waitFor(() => expect(rightPane(container).hasAttribute("hidden")).toBe(false));
     expect(rightPane(container).querySelector('[data-pane-section="decomposer"]')).toBeNull();
     await waitFor(() => expect(rightPane(container).querySelector('[data-pane-tab="raw"]')?.getAttribute("aria-selected")).toBe("true"));
     const panel = container.querySelector('[aria-label="FQuery node panel"]')!;
-    expect(panel.getAttribute("data-node-id")).toContain("q://playground/node/2");
+    expect(panel.getAttribute("data-node-id")).toContain("q://playground/node/");
     expect(panel.getAttribute("data-only")).toBe("raw");
     const famvim = container.querySelector('[aria-label="FAMVIM RAW FAM editor"]')!;
     expect(famvim.querySelector('[data-pointer="/x-plugin-extension/retained"]')).not.toBeNull();
@@ -119,7 +148,7 @@ describe("FQuery Playground FAMVIM", () => {
     expect(container.querySelector('[data-record-kind="fam"]')?.textContent).toContain("x-plugin-extension");
     openLeftTab(container, "decisions");
     expect(container.querySelector('[aria-label="fam edit receipts"]')?.textContent).toContain("accepted");
-    expect(container.querySelector('[aria-label="fam edit receipts"]')?.textContent).toContain("rev://playground/fam-edit/1");
+    expect(container.querySelector('[aria-label="fam edit receipts"]')?.textContent).toContain("rev://playground/fam-edit/2");
 
     // GUIはinvalid draftもrequestできるが、Coreがrejectしcanonical revisionを変更しない
     const invalidEditor = container.querySelector('[aria-label="FAMVIM RAW FAM editor"] textarea') as HTMLTextAreaElement;

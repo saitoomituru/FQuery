@@ -1,7 +1,9 @@
 import { randomUUID } from "node:crypto";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { resolveCredential, standaloneCredentialSources } from "@fquery/config";
 import { evaluateQ, Q, toWireQueryResult, type CoreEvent, type PluginResolver } from "@fquery/core";
-import { createLiteralDecompositionFam } from "@fquery/fam-core";
+import { createLiteralDecompositionFam, readAccessMapProfile, readFamJson } from "@fquery/fam-core";
 import { discoverGeminiModels, GeminiFamPlugin } from "@fquery/plugin-gemini";
 import { discoverOllamaModels, OllamaFamPlugin } from "@fquery/plugin-ollama";
 
@@ -64,7 +66,9 @@ export async function decomposeText(request: DecomposeRequest, options: GatewayO
     { kind: "literal", value: request.source },
     { queryId: `q://playground/${randomUUID()}`, operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: request.provider === "fixture" ? "none" : "network", limits: { maxDepth: 32, maxNodes: 10_000, timeoutMs: 120_000 } } },
   ), { pluginResolver: resolver, outputConnected: true, emit: (event) => events.push(event) });
-  return Object.freeze({ result: toWireQueryResult(result), events: Object.freeze(events) });
+  const accessMapDocument = readFamJson(await readFile(join(options.repoRoot, "fixtures/test-cases/basic-commons-access-mapper/access-map.fam.json"), "utf8"));
+  readAccessMapProfile(accessMapDocument.value);
+  return Object.freeze({ result: toWireQueryResult(result), events: Object.freeze(events), access_map: accessMapDocument.value });
 }
 
 function createResolver(request: DecomposeRequest, options: GatewayOptions): PluginResolver {

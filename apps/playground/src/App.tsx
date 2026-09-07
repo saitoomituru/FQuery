@@ -1,11 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { FQueryFlowView, FQueryPane, type NodeRendererMap, type PresentationCanvasHandle } from "@fquery/ui-react";
 import { CORE_RENDERER_HINT, createPaneContext, findRegistrationByPresentation, type FQueryUiEvent, type GuiEventAbi } from "@fquery/ui-core";
-import { validateFamJson } from "@fquery/fam-core";
+import { isFamJsonRecord, readAccessMapProfile, validateFamJson, type AccessMapProfile } from "@fquery/fam-core";
 import { createPlaygroundSession } from "./host/session.js";
-import { useEditReceipts, useSessionState } from "./host/use-session.js";
-import { buildCoreGraph, placeUnplacedNodes, type CoreNodeIds } from "./host/core-graph.js";
-import { DecomposerContext, FIXTURE_ROUTE, isRecord, projectFamvimNode, projectLambdaNode, projectPsiNode, requestDecompose, resultRecord, type DecomposerContextValue, type PlaygroundRoute } from "./host/decomposer.js";
+import { useCanonicalFam, useEditReceipts, useSessionState } from "./host/use-session.js";
+import { buildCoreGraph, placeUnplacedNodes, projectDecompositionGraph, refreshDecompositionNodes, type CoreNodeIds } from "./host/core-graph.js";
+import { DecomposerContext, FIXTURE_ROUTE, isRecord, projectLambdaNode, projectPsiNode, requestDecompose, resultRecord, type DecomposerContextValue, type PlaygroundRoute } from "./host/decomposer.js";
 import { PANE_COMPONENTS, createPlaygroundPaneRegistry } from "./host/pane-registry.js";
 import { PlaygroundPaneContext, type PlaygroundEditReceiptView, type PlaygroundPaneContextValue } from "./context.js";
 import { CoreNodeRenderer } from "./nodes/CoreNodeRenderer.js";
@@ -18,12 +18,14 @@ const NODE_RENDERERS: NodeRendererMap = { [CORE_RENDERER_HINT]: CoreNodeRenderer
  * canonical stateはsessionが持ち、React stateにはUI局所状態だけを置く。
  */
 export function App() {
-  const { session, receipts } = useMemo(() => createPlaygroundSession(), []);
+  const { session, receipts, fams } = useMemo(() => createPlaygroundSession(), []);
   const paneRegistry = useMemo(() => createPlaygroundPaneRegistry(session.registry), [session]);
   const state = useSessionState(session);
   const editReceiptRecords = useEditReceipts(receipts);
+  const canonicalDocument = useCanonicalFam(fams);
   const canvas = useRef<PresentationCanvasHandle>(null);
   const coreIds = useRef<CoreNodeIds>({});
+  const accessMap = useRef<AccessMapProfile | undefined>(undefined);
   // dev modeのStrictMode二重effectとFast Refreshのeffect再実行でCore graphを二重構築しないための同期guard
   const coreGraphBuilt = useRef(false);
   const [routes, setRoutes] = useState<readonly PlaygroundRoute[]>([FIXTURE_ROUTE]);
@@ -64,7 +66,8 @@ export function App() {
     }
     if (event.type === "inspect") {
       void session.dispatch({ type: "node.select.requested", requestId: `playground:select:${Date.now()}`, nodeIds: [event.nodeId], activeNodeId: event.nodeId });
-      setRightTab(event.nodeId === coreIds.current.famvim ? "raw" : "node");
+      const inspected = session.state.nodes.find((node) => node.nodeId === event.nodeId);
+      setRightTab(event.nodeId === coreIds.current.famvim || Boolean(inspected?.foldRef) ? "raw" : "node");
       setRightOpen(true);
       return;
     }
@@ -85,10 +88,16 @@ export function App() {
     setResponse(outcome.response);
     if (isRecord(outcome.response) && Array.isArray(outcome.response.events)) setLastEvent(JSON.stringify(outcome.response.events.at(-1) ?? "完了"));
     projectPsiNode(session, coreIds.current, { response: outcome.response, running: false, source, provider, model });
-    projectFamvimNode(session, coreIds.current, outcome.response);
-    projectLambdaNode(session, coreIds.current);
+    const famValue = resultRecord(outcome.response)?.value;
+    const accessMapValue = isRecord(outcome.response) ? outcome.response.access_map : undefined;
+    if (isFamJsonRecord(famValue) && isFamJsonRecord(accessMapValue)) {
+      accessMap.current = readAccessMapProfile(accessMapValue);
+      fams.set(famValue);
+      coreIds.current = await projectDecompositionGraph(session, coreIds.current, famValue, accessMap.current);
+      projectLambdaNode(session, coreIds.current, famValue);
+    }
     setRunning(false);
-  }, [session, source, provider, model]);
+  }, [session, fams, source, provider, model]);
 
   const decomposer = useMemo<DecomposerContextValue>(() => ({
     routes, provider, model, source, running,
@@ -97,9 +106,12 @@ export function App() {
   }), [routes, provider, model, source, running, execute]);
 
   // Host責務: ∇φ.FAMVIMのcanonical FAMが変わったら、接続先λ.NLへmanifestationをfixture projectionとして投影する（λ判定はしない）
-  const famvimNode = state.nodes.find((node) => node.nodeId === coreIds.current.famvim);
-  const fam = famvimNode?.value ?? undefined;
-  useEffect(() => { projectLambdaNode(session, coreIds.current); }, [session, fam]);
+  const fam = canonicalDocument?.value;
+  useEffect(() => {
+    if (!fam || !accessMap.current) return;
+    refreshDecompositionNodes(session, coreIds.current, fam, accessMap.current);
+    projectLambdaNode(session, coreIds.current, fam);
+  }, [session, fam]);
 
   const psiNode = state.nodes.find((node) => node.nodeId === coreIds.current.psi);
   /** active cursor nodeはsessionのselection。未選択時はΨ.NLを既定にする */

@@ -1,8 +1,10 @@
+import { useEffect, useState } from "react";
 import type { NodeRendererProps } from "@fquery/ui-react";
 import { isRecord } from "../host/decomposer.js";
 
 /** ∇φ.FAMVIM renderer。canonical FAMの要約を表示し、RAW編集はinspectorへ委譲する（React版では未移植）。 */
 export function FamvimNode({ model, emit }: NodeRendererProps) {
+  if (model.foldRef) return <IndependentFoldNode model={model} emit={emit} />;
   const fam = isRecord(model.value) ? model.value : undefined;
   const lambda = fam?.λ;
   const units = isRecord(lambda) && Array.isArray(lambda.output_units) ? lambda.output_units : [];
@@ -27,6 +29,39 @@ export function FamvimNode({ model, emit }: NodeRendererProps) {
       <div className="famvim-node-actions">
         <button type="button" className="nodrag" onClick={() => emit({ type: "inspect", nodeId: model.nodeId })}>RAW編集 / Unsupported Data</button>
         {semantic && <span className="fquery-badge" data-axis="semantic" data-tone={semantic.tone}><small>semantic</small>{semantic.value}</span>}
+      </div>
+    </div>
+  );
+}
+
+function IndependentFoldNode({ model, emit }: NodeRendererProps) {
+  const wrapper = isRecord(model.value) ? model.value : undefined;
+  const unit = isRecord(wrapper?.unit) ? wrapper.unit : undefined;
+  const lambda = isRecord(unit?.λ) ? unit.λ : undefined;
+  const q = isRecord(unit?.Q) ? unit.Q : undefined;
+  const classification = isRecord(wrapper?.classification) ? wrapper.classification : undefined;
+  const manifestation = typeof lambda?.manifestation === "string" ? lambda.manifestation : "";
+  const [draft, setDraft] = useState(manifestation);
+  useEffect(() => setDraft(manifestation), [manifestation]);
+  const changed = draft !== manifestation && draft.trim().length > 0;
+  return (
+    <div className="famvim-node fold-unit-node" data-fold-ref={model.foldRef} data-projection-freshness={model.projectionFreshness}>
+      <p className="famvim-node-title"><strong>{manifestation}</strong></p>
+      <p className="famvim-node-meta"><code>{model.foldRef}</code></p>
+      <p className="famvim-node-meta">revision: <code>{model.revisionRef ?? String(q?.unit_revision_ref ?? "unknown")}</code></p>
+      <p className="famvim-node-meta">dimension: <code>{String(classification?.dimensionRef ?? "unmapped")}</code></p>
+      <label className="fold-unit-editor nowheel">意味単位を局所差替え
+        <textarea className="nodrag" rows={3} value={draft} onChange={(event) => setDraft(event.target.value)} />
+      </label>
+      <div className="famvim-node-actions">
+        <button type="button" className="nodrag" disabled={!changed} onClick={() => emit({
+          type: "property.change.requested",
+          requestId: `ui:unit-replace:${Date.now()}`,
+          targetRef: model.nodeId,
+          property: "unit.replace",
+          value: { replacementText: draft, claimKind: "world-fact", overrideObserverRef: "observer://playground/user", overrideSourceRef: `input://playground/user-override/${Date.now()}` },
+        })}>選択unitだけ差替え</button>
+        <button type="button" className="nodrag" onClick={() => emit({ type: "inspect", nodeId: model.nodeId })}>詳細 / FoldLog</button>
       </div>
     </div>
   );

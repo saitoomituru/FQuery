@@ -81,20 +81,19 @@ export function projectFamvimNode(session: PresentationSession, ids: CoreNodeIds
 }
 
 /** λ.NLへmanifestationを投影する。fixture projectionであり、λ satisfactionは`unknown`のまま。 */
-export function projectLambdaNode(session: PresentationSession, ids: CoreNodeIds): void {
+export function projectLambdaNode(session: PresentationSession, ids: CoreNodeIds, canonicalFam?: unknown, projectionStatus: "fresh" | "needs-recomposition" | "unknown" = "fresh"): void {
   const state = session.state;
   const node = state.nodes.find((entry) => entry.nodeId === ids.lambda);
-  const famvim = state.nodes.find((entry) => entry.nodeId === ids.famvim);
   if (!node) return;
   const connected = state.connections.some((connection) => connection.toPortId === corePortId(node.nodeId, "fam"));
-  const value = famvim?.value;
+  const value = canonicalFam ?? state.nodes.find((entry) => entry.nodeId === ids.famvim)?.value;
   const lambda = isRecord(value) && isRecord(value.λ) ? value.λ : undefined;
   const units = lambda && Array.isArray(lambda.output_units) ? lambda.output_units : [];
   const manifestations = units.map((unit) => isRecord(unit) && isRecord(unit.λ) && typeof unit.λ.manifestation === "string" ? unit.λ.manifestation : "").filter(Boolean);
-  const projected = connected && manifestations.length > 0;
+  const projected = connected && manifestations.length > 0 && projectionStatus === "fresh";
   session.applyEngineEvent({
     type: "fam.node.changed",
-    node: { ...node, badges: [{ axis: "lambda", value: "unknown", tone: statusTone("unknown") }], value: projected ? { projection_kind: "fixture-projection", manifestations } : null },
+    node: { ...node, projectionFreshness: projectionStatus === "fresh" ? "fresh" : projectionStatus === "needs-recomposition" ? "stale" : "unknown", badges: [{ axis: "lambda", value: projectionStatus === "needs-recomposition" ? "needs-recomposition" : "unknown", tone: statusTone(projectionStatus === "needs-recomposition" ? "warning" : "unknown") }], value: projected ? { projection_kind: "fixture-projection", manifestations } : projectionStatus === "needs-recomposition" ? { projection_kind: "stale-blocked", manifestations: [] } : null },
   });
 }
 

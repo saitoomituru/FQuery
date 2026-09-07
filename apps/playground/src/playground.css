@@ -42,3 +42,6 @@ html, body, #app { margin: 0; height: 100%; background: #080b13; color: #eef2ff;
 .famvim-node-meta, .lambda-node-meta { font-family: ui-monospace, monospace; color: #aeb8cc; }
 .famvim-node-units { margin: 0; padding-left: 1.2rem; max-height: 7rem; overflow: auto; }
 .lambda-node-output { margin: 0; max-height: 7rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; color: #eef2ff; }
+.fold-unit-editor { display: grid; gap: .35rem; margin-top: .6rem; color: #aeb8cc; font-size: .75rem; }
+.fold-unit-editor textarea { min-width: 0; resize: vertical; }
+.fold-unit-node[data-projection-freshness="stale"] { outline: 2px solid #d99824; }

@@ -62,18 +62,27 @@ export function DecisionsSection() {
 function NodePanelSection({ only, context }: { readonly only: NodePanelTab } & Pick<PaneSectionProps, "context">) {
   const host = usePlaygroundPane();
   if (!host || !context.activeNode) return <p className="fquery-pane-muted">active nodeなし</p>;
+  const panelNode = only === "raw" && host.fam !== undefined ? { ...context.activeNode, value: host.fam } : context.activeNode;
+  const jumpPointer = only === "raw" ? canonicalJumpPointer(host.inspectorJump, host.selectedRegistration?.editor?.famRole, host.fam !== undefined) : undefined;
   return (
     <FQueryNodePanel
       only={only}
-      node={context.activeNode}
+      node={panelNode}
       registration={host.selectedRegistration}
       projection={host.selectedProjection}
       connections={host.sessionState.connections}
       validate={host.validate}
-      jumpPointer={only === "raw" ? host.inspectorJump : undefined}
+      jumpPointer={jumpPointer}
       onEvent={host.receive}
     />
   );
+}
+
+/** node局所pointerを、親canonical FAMを表示するRAW panel上のpointerへ写像する。 */
+function canonicalJumpPointer(pointer: string | null, famRole: string | undefined, displaysParentFam: boolean): string | undefined {
+  if (!pointer) return undefined;
+  if (!displaysParentFam || !famRole || famRole === "∇φ") return pointer;
+  return `/${famRole}${pointer}`;
 }
 
 export const NodeSettingsSection = ({ context }: PaneSectionProps) => <NodePanelSection only="settings" context={context} />;

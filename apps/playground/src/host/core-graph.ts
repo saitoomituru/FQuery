@@ -1,9 +1,11 @@
 import { corePortId, type PresentationSession, type PresentationSessionState } from "@fquery/ui-core";
+import { projectDecompositionUnits, type AccessMapProfile, type FamJsonRecord } from "@fquery/fam-core";
 
 export interface CoreNodeIds {
   readonly psi?: string | undefined;
   readonly famvim?: string | undefined;
   readonly lambda?: string | undefined;
+  readonly gradients?: readonly string[] | undefined;
 }
 
 export function layoutSlotRef(nodeId: string): string {
@@ -29,6 +31,84 @@ export async function addCoreNode(session: PresentationSession, capability: stri
   const state = await session.dispatch({ type: "node.add.requested", requestId: `playground:add:${sequence}`, capability });
   const decision = state.decisions.at(-1);
   return decision?.kind === "node.add" && decision.status === "accepted" ? decision.node?.nodeId : undefined;
+}
+
+let graphSequence = 10;
+
+/** canonical decomposition FAMを、1 Ψ → N ∇φ → 1 λの独立node graphへ投影する。 */
+export async function projectDecompositionGraph(
+  session: PresentationSession,
+  current: CoreNodeIds,
+  fam: FamJsonRecord,
+  accessMap: AccessMapProfile,
+): Promise<CoreNodeIds> {
+  const removable = [...(current.gradients ?? []), ...(current.famvim ? [current.famvim] : [])];
+  for (const nodeId of new Set(removable)) {
+    graphSequence += 1;
+    await session.dispatch({ type: "node.remove.requested", requestId: `playground:remove-gradient:${graphSequence}`, nodeId });
+  }
+  const units = projectDecompositionUnits(fam, accessMap);
+  const gradients: string[] = [];
+  for (const unit of units) {
+    graphSequence += 1;
+    const nodeId = await addCoreNode(session, "core.gradient.famvim", graphSequence);
+    if (!nodeId) continue;
+    gradients.push(nodeId);
+    const node = session.state.nodes.find((candidate) => candidate.nodeId === nodeId)!;
+    session.applyEngineEvent({
+      type: "fam.node.changed",
+      node: {
+        ...node,
+        label: `∇φ-${unit.order + 1}`,
+        foldRef: unit.unitRef,
+        parentFoldRef: unit.parentFamRef,
+        revisionRef: unit.unitRevisionRef,
+        depth: 0,
+        collapsed: false,
+        projectionFreshness: "fresh",
+        value: { unit: unit.value, classification: unit.classification, sourcePointer: unit.sourcePointer },
+        badges: [{ axis: "classification", value: unit.classification.dimensionRef ?? "unmapped", tone: unit.classification.status === "mapped" ? "active" : "unknown" }],
+        evidenceRefs: [`${accessMap.famId}@${accessMap.revisionId}`],
+      },
+    });
+    if (current.psi) await session.dispatch({ type: "connection.add.requested", requestId: `playground:connect-psi-gradient:${graphSequence}`, fromPortId: corePortId(current.psi, "observation"), toPortId: corePortId(nodeId, "psi") });
+    if (current.lambda) await session.dispatch({ type: "connection.add.requested", requestId: `playground:connect-gradient-lambda:${graphSequence}`, fromPortId: corePortId(nodeId, "fam"), toPortId: corePortId(current.lambda, "fam") });
+  }
+  await layoutDecomposition(session, current.psi, gradients, current.lambda);
+  return Object.freeze({ psi: current.psi, lambda: current.lambda, gradients: Object.freeze(gradients) });
+}
+
+/** unit編集後、node identityとlayoutを維持したまま値・classification・revisionだけを再投影する。 */
+export function refreshDecompositionNodes(session: PresentationSession, current: CoreNodeIds, fam: FamJsonRecord, accessMap: AccessMapProfile): void {
+  const byFold = new Map(projectDecompositionUnits(fam, accessMap).map((unit) => [unit.unitRef, unit]));
+  for (const nodeId of current.gradients ?? []) {
+    const node = session.state.nodes.find((candidate) => candidate.nodeId === nodeId);
+    const unit = node?.foldRef ? byFold.get(node.foldRef) : undefined;
+    if (!node || !unit) continue;
+    session.applyEngineEvent({
+      type: "fam.node.changed",
+      node: {
+        ...node,
+        revisionRef: unit.unitRevisionRef,
+        projectionFreshness: "fresh",
+        value: { unit: unit.value, classification: unit.classification, sourcePointer: unit.sourcePointer },
+        badges: [{ axis: "classification", value: unit.classification.dimensionRef ?? "unmapped", tone: unit.classification.status === "mapped" ? "active" : "unknown" }],
+      },
+    });
+  }
+}
+
+async function layoutDecomposition(session: PresentationSession, psi: string | undefined, gradients: readonly string[], lambda: string | undefined): Promise<void> {
+  const middle = Math.max(0, (gradients.length - 1) * 150);
+  const positions = [
+    ...(psi ? [{ nodeId: psi, x: 40, y: 80 + middle }] : []),
+    ...gradients.map((nodeId, index) => ({ nodeId, x: 420, y: 80 + index * 300 })),
+    ...(lambda ? [{ nodeId: lambda, x: 800, y: 80 + middle }] : []),
+  ];
+  for (const position of positions) {
+    graphSequence += 1;
+    await session.dispatch({ type: "node.move.requested", requestId: `playground:layout-decomposition:${graphSequence}`, nodeId: position.nodeId, layoutSlotRef: layoutSlotRef(position.nodeId), x: position.x, y: position.y });
+  }
 }
 
 let placementSequence = 0;
