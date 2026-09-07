@@ -79,6 +79,48 @@ export async function projectDecompositionGraph(
   return Object.freeze({ psi: current.psi, lambda: current.lambda, gradients: Object.freeze(gradients) });
 }
 
+/** recursive Whyの子decompositionを、親unit identityを保った階層nodeとして追加する。 */
+export async function projectRecursiveDecompositionGraph(
+  session: PresentationSession,
+  parentNodeId: string,
+  fam: FamJsonRecord,
+  accessMap: AccessMapProfile,
+): Promise<readonly string[]> {
+  const parent = session.state.nodes.find((node) => node.nodeId === parentNodeId);
+  if (!parent?.foldRef) throw new TypeError("recursive-parent-fold-ref-required");
+  const parentLayout = session.state.layout.find((entry) => entry.nodeId === parentNodeId);
+  const childNodeIds: string[] = [];
+  for (const unit of projectDecompositionUnits(fam, accessMap)) {
+    graphSequence += 1;
+    const nodeId = await addCoreNode(session, "core.gradient.famvim", graphSequence);
+    if (!nodeId) continue;
+    childNodeIds.push(nodeId);
+    const node = session.state.nodes.find((candidate) => candidate.nodeId === nodeId)!;
+    session.applyEngineEvent({ type: "fam.node.changed", node: {
+      ...node,
+      label: `↳ ∇φ-${unit.order + 1}`,
+      foldRef: unit.unitRef,
+      parentFoldRef: parent.foldRef,
+      depth: (parent.depth ?? 0) + 1,
+      collapsed: false,
+      revisionRef: unit.unitRevisionRef,
+      projectionFreshness: "fresh",
+      value: { unit: unit.value, classification: unit.classification, sourcePointer: unit.sourcePointer, recursiveParentFamRef: fam.fam_id },
+      badges: [{ axis: "recursive", value: "child", tone: "notice" }, { axis: "classification", value: unit.classification.dimensionRef ?? "unmapped", tone: unit.classification.status === "mapped" ? "active" : "unknown" }],
+      evidenceRefs: [`${accessMap.famId}@${accessMap.revisionId}`, `parent-fold://${parent.foldRef}`],
+    } });
+    await session.dispatch({
+      type: "node.move.requested",
+      requestId: `playground:layout-recursive:${graphSequence}`,
+      nodeId,
+      layoutSlotRef: layoutSlotRef(nodeId),
+      x: (parentLayout?.x ?? 420) + 360,
+      y: (parentLayout?.y ?? 80) + unit.order * 280,
+    });
+  }
+  return Object.freeze(childNodeIds);
+}
+
 /** unit編集後、node identityとlayoutを維持したまま値・classification・revisionだけを再投影する。 */
 export function refreshDecompositionNodes(session: PresentationSession, current: CoreNodeIds, fam: FamJsonRecord, accessMap: AccessMapProfile, reprojection?: FoldReprojectionResult): void {
   const byFold = new Map(projectDecompositionUnits(fam, accessMap).map((unit) => [unit.unitRef, unit]));

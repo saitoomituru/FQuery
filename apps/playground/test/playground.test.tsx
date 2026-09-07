@@ -112,6 +112,28 @@ describe("FQuery Playground", () => {
 });
 
 describe("FQuery Playground FAMVIM", () => {
+  it("選択unitのWhy再分解を子Foldとして追加し、親子identityをFoldLogへ残す", async () => {
+    const parentFam = createLiteralDecompositionFam("前提である。結論である。", "q://test/playground/recursive-parent");
+    const childFam = createLiteralDecompositionFam("理由Aである。理由Bである。", "q://test/playground/recursive-child");
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(json(fixtureRoutes))
+      .mockResolvedValueOnce(json(decompositionResponse(parentFam)))
+      .mockResolvedValueOnce(json(decompositionResponse(childFam)));
+    const { container } = await mountWithGraph(fetcher);
+    await act(async () => { fireEvent.click(canvasNodes(container)[0]!.querySelector('[aria-label="route controls"] button')!); });
+    await waitFor(() => expect(canvasNodes(container)).toHaveLength(4));
+    const parentUnit = canvasNodes(container).find((node) => node.querySelector("[data-fold-ref]"))!;
+    await act(async () => { fireEvent.click(within(parentUnit).getByText("Whyを再分解")); });
+    await waitFor(() => expect(canvasNodes(container)).toHaveLength(6));
+    const children = canvasNodes(container).filter((node) => node.querySelector('[data-fold-ref^="q://test/playground/recursive-child"]'));
+    expect(children).toHaveLength(2);
+    openLeftTab(container, "outline");
+    expect(container.querySelectorAll('.fquery-outliner [data-depth="1"]')).toHaveLength(2);
+    openLeftTab(container, "records");
+    expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain('"operation": "recursive-decompose"');
+    expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain("q://test/playground/recursive-parent/fam/unit/1");
+  });
+
   it("TC2の38→0で取消gateを記録し、stale λを出力せず再構成待ちにする", async () => {
     const fam = createLiteralDecompositionFam("降水確率は38%である。不安である。傘を持つ。", "q://test/playground/tc2");
     const fetcher = vi.fn().mockResolvedValueOnce(json(fixtureRoutes)).mockResolvedValueOnce(json(decompositionResponse(fam)));
@@ -154,7 +176,7 @@ describe("FQuery Playground FAMVIM", () => {
     openLeftTab(container, "decisions");
     expect(container.querySelector('[aria-label="fam edit receipts"]')?.textContent).toContain("accepted");
 
-    fireEvent.click(unitNodes[0]!.querySelectorAll("button")[1]!);
+    fireEvent.click(unitNodes[0]!.querySelectorAll("button")[2]!);
     await waitFor(() => expect(rightPane(container).hasAttribute("hidden")).toBe(false));
     expect(rightPane(container).querySelector('[data-pane-section="decomposer"]')).toBeNull();
     await waitFor(() => expect(rightPane(container).querySelector('[data-pane-tab="raw"]')?.getAttribute("aria-selected")).toBe("true"));

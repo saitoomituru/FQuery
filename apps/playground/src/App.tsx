@@ -4,7 +4,7 @@ import { CORE_RENDERER_HINT, createPaneContext, findRegistrationByPresentation, 
 import { isFamJsonRecord, readAccessMapProfile, validateFamJson, type AccessMapProfile } from "@fquery/fam-core";
 import { createPlaygroundSession } from "./host/session.js";
 import { useCanonicalFam, useEditReceipts, useFoldLogRecords, useSessionState } from "./host/use-session.js";
-import { buildCoreGraph, placeUnplacedNodes, projectDecompositionGraph, refreshDecompositionNodes, type CoreNodeIds } from "./host/core-graph.js";
+import { buildCoreGraph, placeUnplacedNodes, projectDecompositionGraph, projectRecursiveDecompositionGraph, refreshDecompositionNodes, type CoreNodeIds } from "./host/core-graph.js";
 import { DecomposerContext, FIXTURE_ROUTE, isRecord, projectLambdaNode, projectPsiNode, requestDecompose, resultRecord, type DecomposerContextValue, type PlaygroundRoute } from "./host/decomposer.js";
 import { PANE_COMPONENTS, createPlaygroundPaneRegistry } from "./host/pane-registry.js";
 import { PlaygroundPaneContext, type PlaygroundEditReceiptView, type PlaygroundPaneContextValue } from "./context.js";
@@ -77,9 +77,46 @@ export function App() {
     if (!isGuiRequest(event)) return;
     void session.dispatch(event).then((next) => {
       if (event.type === "node.add.requested") return placeUnplacedNodes(session, next, canvas.current?.viewportCenter() ?? { x: 400, y: 200 });
+      if (event.type === "property.change.requested" && event.property === "unit.recursive-decompose" && next.decisions.at(-1)?.status === "accepted") {
+        const parent = session.state.nodes.find((node) => node.nodeId === event.targetRef);
+        const payload = isRecord(event.value) ? event.value : {};
+        const sourceText = typeof payload.sourceText === "string" ? payload.sourceText : "";
+        if (!parent?.foldRef || !sourceText) return undefined;
+        const parentFoldRef = parent.foldRef;
+        return requestDecompose({ provider, model, source: `なぜ: ${sourceText}` }).then(async (outcome) => {
+          if (outcome.error) { setError(outcome.error); return; }
+          const childValue = resultRecord(outcome.response)?.value;
+          const mapperValue = isRecord(outcome.response) ? outcome.response.access_map : undefined;
+          if (!isFamJsonRecord(childValue)) { setError("recursive-decomposition-fam-not-provided"); return; }
+          const mapper = isFamJsonRecord(mapperValue) ? readAccessMapProfile(mapperValue) : accessMap.current;
+          if (!mapper) { setError("recursive-access-map-not-provided"); return; }
+          fams.add(childValue);
+          const children = await projectRecursiveDecompositionGraph(session, parent.nodeId, childValue, mapper);
+          const q = childValue.Q as Record<string, unknown>;
+          logs.append({
+            traceId: `foldlog://playground/${fams.current?.value.fam_id ?? childValue.fam_id}`,
+            parentEventId: logs.last()?.eventId ?? null,
+            operation: "recursive-decompose",
+            sourceFoldRef: parentFoldRef,
+            affectedFoldRefs: children.flatMap((nodeId) => session.state.nodes.find((node) => node.nodeId === nodeId)?.foldRef ?? []),
+            sourceFamRef: fams.current?.value.fam_id ?? childValue.fam_id,
+            sourceRevisionRef: fams.current?.value.revision_id ?? childValue.revision_id,
+            resultFamRef: childValue.fam_id,
+            resultRevisionRef: childValue.revision_id,
+            accessMapFamRef: mapper.famId,
+            accessMapRevisionRef: mapper.revisionId,
+            registryRef: typeof q.registry_ref === "string" ? q.registry_ref : mapper.registryRef,
+            roles: { observerRef: "observer://playground/user", recorderRef: "recorder://fquery/playground/foldlog", initiatorRef: "observer://playground/user", executorRef: `executor://fquery/provider/${provider}`, transformerRef: "transformer://fquery/recursive-why", causalContributorRefs: [parentFoldRef] },
+            semanticStatus: "unknown",
+            projectionStatus: "fresh",
+            cancelledEdgeRefs: [], selectedBranchRefs: [], recompositionRequired: false,
+            detail: { promptKind: "recursive-why", persistenceBoundary: "volatile-browser-memory" },
+          });
+        });
+      }
       return undefined;
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "session-dispatch-failed"));
-  }, [session]);
+  }, [session, fams, logs, provider, model]);
 
   const execute = useCallback(async () => {
     setRunning(true);

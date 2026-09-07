@@ -61,6 +61,13 @@ function IndependentFoldNode({ model, emit }: NodeRendererProps) {
           property: "unit.replace",
           value: { replacementText: draft, claimKind: "world-fact", overrideObserverRef: "observer://playground/user", overrideSourceRef: `input://playground/user-override/${Date.now()}` },
         })}>選択unitだけ差替え</button>
+        <button type="button" className="nodrag" onClick={() => emit({
+          type: "property.change.requested",
+          requestId: `ui:recursive-decompose:${Date.now()}`,
+          targetRef: model.nodeId,
+          property: "unit.recursive-decompose",
+          value: { sourceText: manifestation },
+        })}>Whyを再分解</button>
         <button type="button" className="nodrag" onClick={() => emit({ type: "inspect", nodeId: model.nodeId })}>詳細 / FoldLog</button>
       </div>
     </div>

@@ -58,6 +58,11 @@ export class FamDocumentStore {
     for (const listener of this.#listeners) listener();
     return document;
   }
+  add(value: FamJsonRecord): FamDocument {
+    const document = readFamJson(serializeFamValue(value));
+    if (!this.#revisions.get(value.fam_id, value.revision_id)) this.#revisions.append(document);
+    return document;
+  }
   setDecision(document: FamDocument): void {
     if (!this.#revisions.get(document.value.fam_id, document.value.revision_id)) this.#revisions.append(document);
     this.#current = document;
@@ -113,6 +118,10 @@ export function createPlaygroundSession(): PlaygroundSession {
     },
     // Host責務: FAMVIM／Node Panelからのfam.patch / fam.textをcanonical valueへ適用する。GUIは適用しない。
     resolveProperty: (node, property, value, request) => {
+      if (property === "unit.recursive-decompose") {
+        if (!node.foldRef) return { rejected: "unit-ref-not-provided" };
+        return { ...node, badges: [...node.badges, { axis: "recursive", value: "requested", tone: "notice" }], evidenceRefs: [...node.evidenceRefs, `recursive-decompose://${request.requestId}`] };
+      }
       if (property === "unit.replace") {
         if (!node.foldRef || !fams.current) return { rejected: "unit-or-parent-fam-not-provided" };
         const replacement = value && typeof value === "object" && !Array.isArray(value) ? value as Record<string, unknown> : {};

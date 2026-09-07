@@ -42,6 +42,8 @@ export function FQueryOutliner({ nodes, selection, connections, presentations, o
               data-presentation-mode={row.mode}
               aria-selected={selection.nodeIds.includes(row.node.nodeId) ? "true" : "false"}
               data-active={selection.activeNodeId === row.node.nodeId ? "true" : undefined}
+              data-depth={row.node.depth ?? 0}
+              style={{ paddingInlineStart: `${(row.node.depth ?? 0) * 14}px` }}
             >
               <button
                 type="button"
