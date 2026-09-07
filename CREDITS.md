@@ -1,10 +1,23 @@
 # CREDITS
 
-本ファイルは、FQuery / FAM の設計過程で概念的・工学的な示唆を受けた作品・研究・実装への謝辞と、参照範囲の記録です。
+本ファイルは、FQuery / FAM の設計過程で概念的・工学的な示唆を受け、**現在も現行設計・test case・説明上の参照として扱う作品・研究・実装**への謝辞と、参照範囲の記録です。
+
+歴史的に設計形成へ寄与した一方、現在は再確認困難、撤回、理論更新、参照用途終了などにより**現行test case生成や定期見直しの入力から外した参照**は [`HISTORICAL_CREDITS.md`](./HISTORICAL_CREDITS.md) に分離して保持します。
 
 ここに挙げる作品から、コード、asset、shader、画像、schema 等の転用は行っていません。参考にしたのは主として「node editorとしてどう振る舞うべきか」「複雑系の故障モードをどのように観測・分解するか」といった概念・体験・思考モデルです。各作品・研究の権利はそれぞれの作者・権利者に帰属します。
 
-また、本ファイルでは現在検索可能な情報だけを正本とはしません。参照当時に確認した一次資料・現物・公開文献の記録を保持し、後年の撤回、改題、掲載先変更、理論更新、検索不能化は履歴として追記します。AI / RAG による補完情報は一次資料より下位の補助情報として扱います。
+また、本repositoryでは現在検索可能な情報だけを正本とはしません。参照当時に確認した一次資料・現物・公開文献の記録を保持し、後年の撤回、改題、掲載先変更、理論更新、検索不能化、追試による支持強化は履歴として扱います。AI / RAG による補完情報は一次資料より下位の補助情報として扱います。
+
+## Creditsの二層運用
+
+FQuery / FAMでは、**参照元の寿命とtest caseの寿命を分離**します。
+
+- `CREDITS.md`: active provenance。現在も設計説明、motif、test case生成・見直しの参照として利用するもの
+- `HISTORICAL_CREDITS.md`: historical provenance。設計形成への寄与は保持するが、現行test case生成や定期見直しの必須入力から外したもの
+
+historicalへの移動は「誤り」「失敗」の烙印ではありません。再確認不能、撤回、理論更新、別理論への統合、研究停止、参照用途終了など、**現在の参照状態が変化したこと**を表します。
+
+逆に、後年の追試、査読、再現、正式出版等によって支持や書誌状態が強くなった場合は `strengthened` / `revived` として履歴を残し、必要に応じてactive側へ再昇格できます。
 
 ## Special Thanks — GUI概念の参考
 
@@ -41,25 +54,22 @@
 
 特に臨床・社会構造に関する文献は、人間とAIの実装同一性を主張するためではなく、**人間という長期間実運用された複雑系で観測される認知負荷・情報分断・責任集中・依存・判断劣化などの故障モードを、AI / 情報システム向けの負荷テストへ抽象化して転写するためのreference failure corpus**として参照しています。
 
-後に否定・取り下げ・修正された研究も、思考モデル形成に寄与した事実は削除せず、その後の状態とFAM側の影響を追記します。
+表中の `#` は履歴追跡のためのstable reference IDです。historical側へ移動しても欠番を詰めません。
 
 | # | 文献 | FAM / FQueryでの参照点 | 状態note |
 |---|---|---|---|
-| 1 | Vaswani, A. et al. (2017). *Attention is All You Need*. NIPS. | 意味空間における注意制御、系列処理の非再帰的最適化。∇φ（意味勾配）の圧縮観点 | — |
-| 2 | Mikolov, T. et al. (2013). *Distributed Representations of Words and Phrases and their Compositionality*. NeurIPS. | 高次元ベクトル空間への意味投射。IBD側vector / store責務との境界設定 | — |
-| 3 | Bengio, Y. (2017/2021). *The Consciousness Prior*. arXiv:1709.08568. | 潜在空間における意識的探索経路のFold的アプローチ | preprint |
-| 4 | Ribeiro, M. T., Singh, S., & Guestrin, C. (2016). *"Why Should I Trust You?"*. KDD. | 決定の透明性と相互解釈可能性。FAMLog / receiptによる観測境界 | — |
-| 5 | Schuld, M., Sinayskiy, I., & Petruccione, F. (2015). *An Introduction to Quantum Machine Learning*. Contemporary Physics 56(2). | 波動関数的意味探索の比喩。ψ（wave / trigger）命名の着想 | 比喩・命名上の参照。FAM / FQueryが量子計算、量子スピントロニクス、その他の量子ハードウェアを実装しているという主張ではない。情報子工学では、量子化以前を含む情報表現・写像・観測構造を独自の工学対象として扱う |
-| 6 | Bengio, Y., Courville, A., & Vincent, P. (2013). *Representation Learning: A Review and New Perspectives*. IEEE TPAMI 35(8). | 多層的特徴表現と意味空間の圧縮・展開（∇φ / 将来のΔφ） | — |
-| 7 | Jaeger, H. (2001). *Echo State Network*. GMD Report 148. | リザバー計算による高次元波形推論。Fold Compiler（#31）の参考。写像としての再投影、vector DB friendlyなメタ構造の検討材料 | — |
-| 8 | Tishby, N., & Zaslavsky, N. (2015). *Deep Learning and the Information Bottleneck Principle*. arXiv:1503.02406. | 情報圧縮と展開を通じた説明可能性。lossless reader / loss receiptの設計動機 | preprint |
-| 9 | Yang, Y., Feng, C., Shen, Y., & Tian, D. (2018). *FoldingNet: Point Cloud Auto-encoder via Deep Grid Deformation*. CVPR. | 「folding」操作による形状再構成。Fold命名の参照点。メタ構造と操作性の両立を考える際の数論ブリッジとして参照 | 実装責務の同一性は主張しない |
-| 10 | Nguyen, M., & Wu, N. (2022). *Folding over Neural Networks*. arXiv:2207.01090. | NN構造を再帰的データ型として表現しfold / unfoldで形式化。recursive FAMNode契約の参考 | preprint |
-| 11 | Ben Dror, A. et al. (2022). *Layer Folding: Neural Network Depth Reduction using Activation Linearization*. BMVC. | 連続線形層のfoldによる深さ削減。Fold→model蒸留（#31）の参考 | 参照当時はpreprint。後にBMVC 2022として出版状態がより明確になったため書誌情報を更新。FAM側の参照点に変更なし |
-| 12 | Matsumoto, T. (2022). *Addiction and Dopaminergic Reward Pathways: Understanding A10 Circuit Dysregulation in Psychiatric Disorders*. NCNP. | A10回路・報酬系異常と強化学習モデル。domination / dependency risk（#24 B-4）や、注意資源・報酬偏りをstress testへ転写する際の材料 | 参照当時に原文を確認。後年の公開状態・書誌・学説的位置づけの変化により現行検索で再確認できない場合があるため、履歴として保持。医学的主張はFAM仕様の正本ではない |
-| 13 | NCNP (2023). *Amygdala Function in Working Memory and Self-Referential Reward Processing*. Journal of Neurological Research. | 扁桃体・短期記憶・自己参照報酬を、人間側の認知負荷・観測cost・ψ granularity（#24 B-1）の故障モードとして参照。Sphere-aae等の軽量MoE / vector cache設計を考える際の人間側reference failure model | 参照当時に原文を確認。現行検索で再確認できない場合も履歴として保持。人間脳とAIの実装同一性は主張しない |
-| 14 | Yamada, H., & Sato, M. (2024). *The Role of the Cerebellum and Pituitary Network in Cognitive Processing*. Neuroscience Letters. | 小脳・脳下垂体を介した推論ネットワーク接続を、parent Ψ_context / parallel Fold（#24 A-4）や劣化性vector cacheの構造検討における人間側reference modelとして参照 | 参照当時に原文を確認。現行検索で再確認できない場合も履歴として保持。protein neural networkとAIの同一実装を主張しない |
-| 15 | 小椋哲 (2021). 『医師を疲弊させない! 精神医療革命』. 幻冬舎メディアコンサルティング. | 医療現場における認知負荷、情報分断、責任集中、制度上の要求と実務可能性の乖離を、人間社会構造のstress testとして参照。`responsibility-abstraction-inversion`（#20）、silo化、説明責任と実務負荷の衝突など、制度工学系test caseの問題設定に寄与 | 旧 `Medical Journal Press` 表記はAI / RAGによる自動転記時の誤りと判断し、手元の現物と書誌に基づき訂正。FAMが医療制度そのものを再現・実装するという主張ではない |
+| 1 | Vaswani, A. et al. (2017). *Attention is All You Need*. NIPS. | 意味空間における注意制御、系列処理の非再帰的最適化。∇φ（意味勾配）の圧縮観点 | active |
+| 2 | Mikolov, T. et al. (2013). *Distributed Representations of Words and Phrases and their Compositionality*. NeurIPS. | 高次元ベクトル空間への意味投射。IBD側vector / store責務との境界設定 | active |
+| 3 | Bengio, Y. (2017/2021). *The Consciousness Prior*. arXiv:1709.08568. | 潜在空間における意識的探索経路のFold的アプローチ | active / preprint |
+| 4 | Ribeiro, M. T., Singh, S., & Guestrin, C. (2016). *"Why Should I Trust You?"*. KDD. | 決定の透明性と相互解釈可能性。FAMLog / receiptによる観測境界 | active |
+| 5 | Schuld, M., Sinayskiy, I., & Petruccione, F. (2015). *An Introduction to Quantum Machine Learning*. Contemporary Physics 56(2). | 波動関数的意味探索の比喩。ψ（wave / trigger）命名の着想 | active。比喩・命名上の参照。FAM / FQueryが量子計算、量子スピントロニクス、その他の量子ハードウェアを実装しているという主張ではない |
+| 6 | Bengio, Y., Courville, A., & Vincent, P. (2013). *Representation Learning: A Review and New Perspectives*. IEEE TPAMI 35(8). | 多層的特徴表現と意味空間の圧縮・展開（∇φ / 将来のΔφ） | active |
+| 7 | Jaeger, H. (2001). *Echo State Network*. GMD Report 148. | リザバー計算による高次元波形推論。Fold Compiler（#31）の参考。写像としての再投影、vector DB friendlyなメタ構造の検討材料 | active |
+| 8 | Tishby, N., & Zaslavsky, N. (2015). *Deep Learning and the Information Bottleneck Principle*. arXiv:1503.02406. | 情報圧縮と展開を通じた説明可能性。lossless reader / loss receiptの設計動機 | active / preprint |
+| 9 | Yang, Y., Feng, C., Shen, Y., & Tian, D. (2018). *FoldingNet: Point Cloud Auto-encoder via Deep Grid Deformation*. CVPR. | 「folding」操作による形状再構成。Fold命名の参照点。メタ構造と操作性の両立を考える際の数論ブリッジとして参照 | active。実装責務の同一性は主張しない |
+| 10 | Nguyen, M., & Wu, N. (2022). *Folding over Neural Networks*. arXiv:2207.01090. | NN構造を再帰的データ型として表現しfold / unfoldで形式化。recursive FAMNode契約の参考 | active / preprint |
+| 11 | Ben Dror, A. et al. (2022). *Layer Folding: Neural Network Depth Reduction using Activation Linearization*. BMVC. | 連続線形層のfoldによる深さ削減。Fold→model蒸留（#31）の参考 | strengthened。参照当時はpreprint。後にBMVC 2022として出版状態がより明確になったため書誌情報を更新。FAM側の参照点に変更なし |
+| 15 | 小椋哲 (2021). 『医師を疲弊させない! 精神医療革命』. 幻冬舎メディアコンサルティング. | 医療現場における認知負荷、情報分断、責任集中、制度上の要求と実務可能性の乖離を、人間社会構造のstress testとして参照。`responsibility-abstraction-inversion`（#20）、silo化、説明責任と実務負荷の衝突など、制度工学系test caseの問題設定に寄与 | active。旧 `Medical Journal Press` 表記はAI / RAGによる自動転記時の誤りと判断し、手元の現物と書誌に基づき訂正。FAMが医療制度そのものを再現・実装するという主張ではない |
 
 ## 人間臨床・社会構造からAI負荷テストへの転写
 
@@ -81,7 +91,9 @@ FAM / FQueryで臨床・精神医学・社会制度の知見を参照する目�
 ## 運用規則
 
 - 文献の追加・訂正はこのファイルへ追記し、FAM仕様への影響がある場合はIssueで`spec-revision`として扱う
-- 参照した文献が後に否定・撤回・改題・掲載先変更・検索不能化した場合、行を削除せず「状態note」に日付・理由・FAM側の対応（仕様修正 / 影響なし）を記す
+- 現行のtest case生成・定期見直しに使わなくなった参照は削除せず `HISTORICAL_CREDITS.md` へ移す
+- historical化は価値判断ではなく参照状態の遷移として記録する
+- 後年の追試・査読・再現・正式出版等で支持が強くなった場合は `strengthened` / `revived` を記録し、必要に応じてactive側へ戻す
 - 書誌情報の誤りは訂正する。訂正前の記述はcommit履歴に残す
 - 参照当時に確認した一次資料・現物の記録を、後年の検索結果だけで上書きしない
 - AI / RAGによる補完情報は一次資料・現物・確定書誌より下位の補助情報として扱う
