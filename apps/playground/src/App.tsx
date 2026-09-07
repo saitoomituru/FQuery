@@ -3,7 +3,7 @@ import { FQueryFlowView, FQueryPane, type NodeRendererMap, type PresentationCanv
 import { CORE_RENDERER_HINT, createPaneContext, findRegistrationByPresentation, type FQueryUiEvent, type GuiEventAbi } from "@fquery/ui-core";
 import { isFamJsonRecord, readAccessMapProfile, validateFamJson, type AccessMapProfile } from "@fquery/fam-core";
 import { createPlaygroundSession } from "./host/session.js";
-import { useCanonicalFam, useEditReceipts, useSessionState } from "./host/use-session.js";
+import { useCanonicalFam, useEditReceipts, useFoldLogRecords, useSessionState } from "./host/use-session.js";
 import { buildCoreGraph, placeUnplacedNodes, projectDecompositionGraph, refreshDecompositionNodes, type CoreNodeIds } from "./host/core-graph.js";
 import { DecomposerContext, FIXTURE_ROUTE, isRecord, projectLambdaNode, projectPsiNode, requestDecompose, resultRecord, type DecomposerContextValue, type PlaygroundRoute } from "./host/decomposer.js";
 import { PANE_COMPONENTS, createPlaygroundPaneRegistry } from "./host/pane-registry.js";
@@ -18,11 +18,12 @@ const NODE_RENDERERS: NodeRendererMap = { [CORE_RENDERER_HINT]: CoreNodeRenderer
  * canonical stateはsessionが持ち、React stateにはUI局所状態だけを置く。
  */
 export function App() {
-  const { session, receipts, fams } = useMemo(() => createPlaygroundSession(), []);
+  const { session, receipts, fams, logs } = useMemo(() => createPlaygroundSession(), []);
   const paneRegistry = useMemo(() => createPlaygroundPaneRegistry(session.registry), [session]);
   const state = useSessionState(session);
   const editReceiptRecords = useEditReceipts(receipts);
   const canonicalDocument = useCanonicalFam(fams);
+  const foldLogRecords = useFoldLogRecords(logs);
   const canvas = useRef<PresentationCanvasHandle>(null);
   const coreIds = useRef<CoreNodeIds>({});
   const accessMap = useRef<AccessMapProfile | undefined>(undefined);
@@ -95,9 +96,29 @@ export function App() {
       fams.set(famValue);
       coreIds.current = await projectDecompositionGraph(session, coreIds.current, famValue, accessMap.current);
       projectLambdaNode(session, coreIds.current, famValue);
+      const q = famValue.Q as Record<string, unknown>;
+      logs.append({
+        traceId: `foldlog://playground/${famValue.fam_id}`,
+        parentEventId: logs.last()?.eventId ?? null,
+        operation: "decompose",
+        sourceFoldRef: famValue.fam_id,
+        affectedFoldRefs: coreIds.current.gradients?.flatMap((nodeId) => session.state.nodes.find((node) => node.nodeId === nodeId)?.foldRef ?? []) ?? [],
+        sourceFamRef: famValue.fam_id,
+        sourceRevisionRef: famValue.revision_id,
+        resultFamRef: famValue.fam_id,
+        resultRevisionRef: famValue.revision_id,
+        accessMapFamRef: accessMap.current.famId,
+        accessMapRevisionRef: accessMap.current.revisionId,
+        registryRef: typeof q.registry_ref === "string" ? q.registry_ref : accessMap.current.registryRef,
+        roles: { observerRef: "observer://playground/user", recorderRef: "recorder://fquery/playground/foldlog", initiatorRef: "observer://playground/user", executorRef: `executor://fquery/provider/${provider}`, transformerRef: "transformer://fquery/fam-decompose", causalContributorRefs: [] },
+        semanticStatus: String(resultRecord(outcome.response)?.semantic_status ?? "unknown"),
+        projectionStatus: "fresh",
+        cancelledEdgeRefs: [], selectedBranchRefs: [], recompositionRequired: false,
+        detail: { provider, model, persistenceBoundary: "volatile-browser-memory", oaeManagementSystem: false },
+      });
     }
     setRunning(false);
-  }, [session, fams, source, provider, model]);
+  }, [session, fams, logs, source, provider, model]);
 
   const decomposer = useMemo<DecomposerContextValue>(() => ({
     routes, provider, model, source, running,
@@ -147,9 +168,9 @@ export function App() {
   })), [editReceiptRecords]);
 
   const paneHost = useMemo<PlaygroundPaneContextValue>(() => ({
-    sessionState: state, registrations, fam, semanticProjection, providerReceipt, debugEvents, editReceipts,
+    sessionState: state, registrations, fam, semanticProjection, providerReceipt, debugEvents, famLog: foldLogRecords, editReceipts,
     selectedRegistration, selectedProjection, inspectorJump, validate: validateFamJson, receive,
-  }), [state, registrations, fam, semanticProjection, providerReceipt, debugEvents, editReceipts, selectedRegistration, selectedProjection, inspectorJump, receive]);
+  }), [state, registrations, fam, semanticProjection, providerReceipt, debugEvents, foldLogRecords, editReceipts, selectedRegistration, selectedProjection, inspectorJump, receive]);
 
   /** Blender流: T=左Tool pane、N=右Inspector pane、Home=Frame all。入力中は無効。 */
   function onKeyDown(event: KeyboardEvent<HTMLDivElement>) {

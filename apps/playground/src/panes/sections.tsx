@@ -21,7 +21,7 @@ export function OutlinerSection() {
 
 export function RecordsSection() {
   const host = usePlaygroundPane();
-  return host ? <FQueryRecordsPanel fam={host.fam} semanticProjection={host.semanticProjection} providerReceipt={host.providerReceipt} debugEvents={host.debugEvents} /> : null;
+  return host ? <FQueryRecordsPanel fam={host.fam} semanticProjection={host.semanticProjection} famLog={host.famLog} providerReceipt={host.providerReceipt} debugEvents={host.debugEvents} /> : null;
 }
 
 export function DecisionsSection() {

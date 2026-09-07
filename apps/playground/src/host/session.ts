@@ -26,6 +26,7 @@ import {
   type FamPatch,
   type JsonValue,
 } from "@fquery/fam-edit";
+import { FoldLog, type FoldLogAppendInput, type FoldLogRecord } from "@fquery/famlog";
 
 export const PLAYGROUND_RENDERER_ID = "react-flow";
 
@@ -66,10 +67,27 @@ export class FamDocumentStore {
   subscribe(listener: () => void): () => void { this.#listeners.add(listener); return () => { this.#listeners.delete(listener); }; }
 }
 
+/** FoldLog alpha recordのvolatile Host store。IBD永続化を名乗らない。 */
+export class FoldLogStore {
+  readonly #log = new FoldLog();
+  readonly #listeners = new Set<() => void>();
+  #snapshot: readonly FoldLogRecord[] = Object.freeze([]);
+  get records(): readonly FoldLogRecord[] { return this.#snapshot; }
+  append(input: FoldLogAppendInput): FoldLogRecord {
+    const record = this.#log.append(input);
+    this.#snapshot = this.#log.records();
+    for (const listener of this.#listeners) listener();
+    return record;
+  }
+  last(): FoldLogRecord | undefined { return this.#snapshot.at(-1); }
+  subscribe(listener: () => void): () => void { this.#listeners.add(listener); return () => { this.#listeners.delete(listener); }; }
+}
+
 export interface PlaygroundSession {
   readonly session: PresentationSession;
   readonly receipts: EditReceiptStore;
   readonly fams: FamDocumentStore;
+  readonly logs: FoldLogStore;
 }
 
 /**
@@ -82,6 +100,7 @@ export function createPlaygroundSession(): PlaygroundSession {
   registerCoreNodes(registry);
   const receipts = new EditReceiptStore();
   const fams = new FamDocumentStore();
+  const logs = new FoldLogStore();
   let editSequence = 0;
   const session = new PresentationSession(createFixtureDecisionPort({
     registry,
@@ -111,6 +130,7 @@ export function createPlaygroundSession(): PlaygroundSession {
           overrideObserverRef: typeof replacement.overrideObserverRef === "string" ? replacement.overrideObserverRef : "observer://playground/user",
         });
         receipts.push(result.decision.receipt);
+        appendEditFoldLog(logs, node.foldRef, fams.current.value, result.decision.receipt);
         if (result.decision.status === "rejected") return { rejected: result.decision.receipt.reason ?? "fam-unit-replacement-rejected" };
         fams.setDecision(result.decision.document);
         const outputUnits = (result.decision.document.value.λ as { output_units?: unknown[] }).output_units ?? [];
@@ -153,6 +173,7 @@ export function createPlaygroundSession(): PlaygroundSession {
         patches,
       }, { validate: validateFamJson });
       receipts.push(decision.receipt);
+      appendEditFoldLog(logs, node.foldRef ?? document.value.fam_id, document.value, decision.receipt);
       if (decision.status === "rejected") return { rejected: decision.receipt.reason ?? "fam-edit-rejected" };
       fams.setDecision(decision.document);
       const semantic = "unknown";
@@ -164,7 +185,31 @@ export function createPlaygroundSession(): PlaygroundSession {
       };
     },
   }), { registry });
-  return { session, receipts, fams };
+  return { session, receipts, fams, logs };
+}
+
+function appendEditFoldLog(logs: FoldLogStore, sourceFoldRef: string, sourceFam: FamJsonRecord, receipt: FamEditReceipt): void {
+  const q = sourceFam.Q as Record<string, unknown>;
+  logs.append({
+    traceId: `foldlog://playground/${sourceFam.fam_id}`,
+    parentEventId: logs.last()?.eventId ?? null,
+    operation: "edit",
+    sourceFoldRef,
+    affectedFoldRefs: [sourceFoldRef],
+    sourceFamRef: sourceFam.fam_id,
+    sourceRevisionRef: receipt.baseRevisionId,
+    ...(receipt.resultRevisionId ? { resultFamRef: sourceFam.fam_id, resultRevisionRef: receipt.resultRevisionId } : {}),
+    registryRef: typeof q.registry_ref === "string" ? q.registry_ref : "registry://fquery/playground/unknown",
+    roles: { observerRef: "observer://playground/user", recorderRef: "recorder://fquery/playground/foldlog", initiatorRef: "observer://playground/user", executorRef: "executor://fquery/fam-edit", causalContributorRefs: [] },
+    semanticStatus: receipt.status,
+    projectionStatus: "unknown",
+    cancelledEdgeRefs: [],
+    selectedBranchRefs: [],
+    recompositionRequired: false,
+    beforeSha256: receipt.beforeSha256,
+    ...(receipt.afterSha256 ? { afterSha256: receipt.afterSha256 } : {}),
+    detail: { operationId: receipt.operationId, reason: receipt.reason ?? null, persistenceBoundary: "volatile-browser-memory" },
+  });
 }
 
 /**

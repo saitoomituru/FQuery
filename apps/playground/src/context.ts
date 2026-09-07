@@ -25,6 +25,7 @@ export interface PlaygroundPaneContextValue {
   readonly semanticProjection: unknown;
   readonly providerReceipt: unknown;
   readonly debugEvents: unknown;
+  readonly famLog: unknown;
   readonly editReceipts: readonly PlaygroundEditReceiptView[];
   readonly selectedRegistration: PluginPresentationRegistration | undefined;
   readonly selectedProjection: PresentationProjection | undefined;

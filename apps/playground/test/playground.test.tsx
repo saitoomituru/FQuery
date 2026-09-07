@@ -54,6 +54,9 @@ describe("FQuery Playground", () => {
     openLeftTab(container, "records");
     await waitFor(() => expect(container.querySelector('[data-record-kind="fam"]')?.textContent).toContain("fam.json/0.1.0-draft"));
     expect(container.querySelector('[data-record-kind="fam"]')?.textContent).toContain("ψ");
+    expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain("fold.log/0.1.0-alpha");
+    expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain("oae.record/0.1.0-alpha");
+    expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain("volatile-browser-memory");
     expect(container.querySelector('[data-record-kind="semantic-projection"]')?.textContent).toContain("未生成");
     expect(container.querySelector('[data-record-kind="debug-event"]')?.textContent).toContain("result");
     // recordsは左Tool paneのtabであり、canvasの主表示を奪わない
@@ -128,6 +131,8 @@ describe("FQuery Playground FAMVIM", () => {
     expect(unitNodes[1]!.textContent).toBe(untouchedText);
     openLeftTab(container, "records");
     expect(container.querySelector('[data-record-kind="fam"]')?.textContent).toContain("x-plugin-extension");
+    expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain('"operation": "edit"');
+    expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain('"persistenceStatus": "volatile"');
     openLeftTab(container, "decisions");
     expect(container.querySelector('[aria-label="fam edit receipts"]')?.textContent).toContain("accepted");
 
