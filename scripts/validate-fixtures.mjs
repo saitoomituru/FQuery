@@ -8,6 +8,7 @@ const knownSchemas = new Set([
   "fquery.famlog/0.1.0-draft",
   "fquery.famlog-diff/0.1.0-draft",
   "fquery.ui/0.1.0-draft",
+  "fquery.ui.core-nodes/0.1.0-draft",
   "fam.json/0.1.0-draft",
 ]);
 const statusAxes = {
@@ -33,6 +34,7 @@ for (const root of roots) {
     if (value.schema_version === "fquery.famlog/0.1.0-draft") validateFamLog(path, value);
     if (value.schema_version === "fquery.famlog-diff/0.1.0-draft") validateFamLogDiff(path, value);
     if (value.schema_version === "fquery.ui/0.1.0-draft") validateUi(path, value);
+    if (value.schema_version === "fquery.ui.core-nodes/0.1.0-draft") validateCoreNodes(path, value);
     if (value.schema_version === "fam.json/0.1.0-draft") validateFam(path, value);
     count += 1;
   }
@@ -58,6 +60,18 @@ function validateUi(path, value) {
   for (const node of value.nodes) {
     if (typeof node.nodeId !== "string" || !Array.isArray(node.badges) || !Array.isArray(node.ports)) throw new Error(`${path}: NodeViewModelが不正です`);
   }
+}
+
+function validateCoreNodes(path, value) {
+  const roles = ["ψ", "∇φ", "λ"];
+  if (!Array.isArray(value.nodes) || value.nodes.length !== 3) throw new Error(`${path}: Core nodeは3つでなければなりません`);
+  value.nodes.forEach((node, index) => {
+    if (node.famRole !== roles[index]) throw new Error(`${path}: nodes[${index}].famRoleは${roles[index]}でなければなりません`);
+    if (typeof node.nodeType !== "string" || typeof node.capability !== "string" || !Array.isArray(node.ports) || node.ports.length === 0) throw new Error(`${path}: nodes[${index}]の契約が不正です`);
+    for (const port of node.ports) if (!["input", "output"].includes(port.direction) || typeof port.portKey !== "string") throw new Error(`${path}: nodes[${index}]のportが不正です`);
+    if ("x" in node || "y" in node) throw new Error(`${path}: Core node契約にpixel layoutを置けません`);
+  });
+  if (value.expectedGraph?.requiresPlugins !== false) throw new Error(`${path}: Core graphはpluginなしで成立しなければなりません`);
 }
 
 function validateFamLog(path, value) {

@@ -1,8 +1,8 @@
 # GUI Presentation contract
 
-Status: `IMPLEMENTED-CONTRACT / SESSION-CONTROLLER / CORE-NODES / BAKLAVA-POC / HUMAN-TEST-WAIT`
+Status: `IMPLEMENTED-CONTRACT / SESSION-CONTROLLER / CORE-NODES / FAMVIM / NODE-PANEL / BAKLAVA-POC / HUMAN-TEST-WAIT`
 
-Authority: FQuery Issue #23, #25  
+Authority: FQuery Issue #23, #25, #27, #28  
 Design source: ZeroRoomLab-manifest Issue #41 comment / Issue #44
 
 ## MVC境界

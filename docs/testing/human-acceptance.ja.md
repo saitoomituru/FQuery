@@ -17,6 +17,44 @@
 - 旧 `blocks[]` 候補がFAM paneへ表示されない
 - Gemini routeでBrowserのNetwork payload／画面／consoleへcredentialの`key / secret`が出ず、表示用`name`だけが見える
 
+## Node Editor（Issue #23 / #25 / #27 / #28）
+
+automated testはSession判定往復、Core 3 node契約、fam-edit round-trip、component描画までを検証済み。以下は人間が実画面で判断する。
+
+### Core graph
+
+- `npm run dev`起動直後、pluginを一つも追加せずに`Ψ.NL → ∇φ.FAMVIM → λ.NL`の3 nodeがBaklava surfaceへ並び、2本の接続が見える
+- `λ.NL`の`manifestation` portだけが`unconnected`として点線表示され、errorに見えない
+- Session decisions paneに`node.add` / `connection.add` / `node.move`が`accepted`として時系列で並ぶ
+- Paletteで「Core」「FAMVIM」「ψ」などを検索すると3 nodeが候補に出て、追加すると4 node目が現れる
+
+### Baklava操作
+
+- nodeをdragすると`node.move.requested`がSession decisionsへ`accepted`として記録され、位置が保持される
+- `λ.NL:fam`から`Ψ.NL:observation`へ逆向きにdragすると接続が確定せず、decisionが`rejected — port-direction-mismatch`と読める
+- 同じinput portへ2本目を繋ぐと`rejected — input-already-connected`になる
+- 接続が拒否された後もnodeとportが消えない
+
+### FAMVIM / Node Panel
+
+- 自然言語を分解した後、Node panelが`∇φ.FAMVIM`を対象にし、RAW FAM tabでcanonical FAMの全文が読める
+- path navigationで`/λ/output_units/0/ψ/source_text`などを押すとtextareaの該当行が選択される
+- RAW textを1箇所書き換えるとdiff previewに`replaced`が1件だけ出て、他のpathが出ない
+- 「編集をrequest」後、FAM record paneの内容が更新され、FAM edit receiptsに`applied ops=1 touched=/λ/purpose`のように読める
+- 編集前後で`x-plugin-extension`のような未知fieldがFAM record paneから消えない
+- textを壊してrequestすると`draft unparsed（保持中）`が表示され、Session decisionsに`rejected — fam-text-unparsed`が残り、canonical FAMは前の状態のまま
+- `ψ`を丸ごと削除してrequestすると、validatorが`axis-required`を出しつつ編集自体は通り、FAMVIM nodeのsemantic badgeが`semantic-unsatisfied`になる（editableとvalidが別軸）
+- Unsupported Data tabにpanel外のpathが列挙され、「RAWへ」でRAW tabへ切り替わり該当pathが選択される
+- Node panelの「接続」tabで`切断をrequest`すると接続が消え、portが`unconnected`へ戻る
+- Node viewerで`Ψ.NL`の`inspect`を押すとNode panelの対象が切り替わり、`fquery.core@0.1.0-draft`が設定tabに出る
+- 各tab、path button、「編集をrequest」までkeyboardだけで到達できる
+
+### 意味境界の確認
+
+- `accepted`はGUI操作が確定しただけで、semantic badgeは`unknown`のまま昇格していない
+- `unresolved`のdecisionがある場合、portが`unconnected`のまま残り、errorとして描画されない
+- 縦型FAM（`ψ / ∇φ / λ / Q`）がFAM paneの主表示で、provider receiptとdebug eventが補助paneに分かれている
+
 ## Host
 
 - VS Code Webviewの実APIでeventがextension側へ一度だけ届く
@@ -25,4 +63,6 @@
 
 ## 記録
 
-実施時はOS、runtime、Host version、commit、スクリーンショットまたは操作記録、合否、残課題をIssue #5へ記録する。provider交換と自然言語FAM分解はIssue #19にも結果を反映する。
+実施時はOS、runtime、Host version、commit、スクリーンショットまたは操作記録、合否、残課題をIssue #5へ記録する。provider交換と自然言語FAM分解はIssue #19にも結果を反映する。Node Editor／FAMVIM／Node Panelの結果はIssue #23 / #25 / #27 / #28へ反映する。
+
+自動snapshotはhuman visual reviewの代用にしない。
