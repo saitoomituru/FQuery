@@ -27,9 +27,20 @@ automated testはSession判定往復、Core 3 node契約、fam-edit round-trip�
 - `Ψ.NL` node本体にsource textarea、decomposer（provider）／model select、「分解を実行」がある
 - `∇φ.FAMVIM` node本体に分解後のFAM要約（title / fam_id / units / unknowns）と「RAW編集 / Unsupported Data」がある
 - `λ.NL` node本体に分解後のmanifestation行が`fixture-projection`として出て、λ badgeは`unknown`のまま
-- 左上のpaletteと右のInspector drawer（topbarのInspectorボタン）がcanvasに重なり、canvasの操作を妨げない
 - node本体のtextarea／selectを操作してもnodeがdragされず、canvasがzoomしない
-- 下端の「Records」drawerを開くとFAM／provider receipt／debug／decisionsが補助表示として読める
+
+### 左Tool pane／右Inspector pane（Issue #33）
+
+- topbar左のハンバーガーまたは`T`で左Tool paneが開閉し、`Add Node` / `階層` / `Records` / `Decisions`のtabが並ぶ
+- topbar右のハンバーガーまたは`N`で右Inspector paneが開閉し、active nodeに応じて`Node` / `Q` / `Unsupported Data` / `RAW FAM`のtabが並ぶ
+- textareaやselectに入力中は`T` / `N` / `Home`が効かない
+- `Add Node`はcategory（Coreが先頭）ごとに折り畳めるtreeで、検索中は折り畳みが解除される。追加したnodeはviewport中央に置かれ、重ならない
+- `階層`でnodeをclickするとcanvas上のnodeが選択状態になり、右paneの対象が切り替わる。shift+clickで追加選択、⌖でそのnodeがviewportへ収まる
+- `Frame all`（`Home`）でgraph全体がviewportへ収まる
+- `Ψ.NL`をactiveにすると右paneの`Node` tabに`Ψ.NL decomposer route` sectionが`設定`の上にstackされ、他のnodeでは出ない
+- sectionの折り畳み、最後に開いたtab、paneの開閉がreloadしても保持される（localStorage）
+- `Unsupported Data` tabの「RAWへ」で右paneが`RAW FAM` tabへ切り替わり、FAMVIMの該当pathが選択される
+- paneがcanvasに重なっていてもnodeのdrag／接続／zoomを妨げない。paneを閉じるとcanvasが全面になる
 
 ### Core graph
 
@@ -54,9 +65,8 @@ automated testはSession判定往復、Core 3 node契約、fam-edit round-trip�
 - 編集前後で`x-plugin-extension`のような未知fieldがFAM record paneから消えない
 - textを壊してrequestすると`draft unparsed（保持中）`が表示され、Session decisionsに`rejected — fam-text-unparsed`が残り、canonical FAMは前の状態のまま
 - `ψ`を丸ごと削除してrequestすると、validatorが`axis-required`を出しつつ編集自体は通り、FAMVIM nodeのsemantic badgeが`semantic-unsatisfied`になる（editableとvalidが別軸）
-- Unsupported Data tabにpanel外のpathが列挙され、「RAWへ」でRAW tabへ切り替わり該当pathが選択される
-- Node panelの「接続」tabで`切断をrequest`すると接続が消え、portが`unconnected`へ戻る
-- Node viewerで`Ψ.NL`の`inspect`を押すとNode panelの対象が切り替わり、`fquery.core@0.1.0-draft`が設定tabに出る
+- 右paneの`Node` tab「接続」sectionで`切断をrequest`すると接続が消え、portが`unconnected`へ戻る
+- canvas上の`Ψ.NL`本体の`inspector`ボタンで右paneの対象が切り替わり、`fquery.core@0.1.0-draft`が`設定`sectionに出る
 - 各tab、path button、「編集をrequest」までkeyboardだけで到達できる
 
 ### 意味境界の確認

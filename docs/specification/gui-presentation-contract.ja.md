@@ -202,8 +202,11 @@ PaneContext = { activeNode?, selection, registration?, projection?, famRole?, ca
 - plugin registrationは`editor.panes`（`PluginPaneContribution`、`appliesTo: own-node | any-node | always`）で宣言し、`PaneRegistry.registerPlugin`が取り込む
 - `FQueryPane`はtab strip→section stack（折り畳み可）を描画し、`componentRef`が未解決ならsection宣言を保持したままfallbackを表示する
 - 開閉・最終tab・折り畳みはper-viewerの便宜としてlocalStorageへ残す。graphの永続化ではない
-- 左=Tool pane（Add Node / Records / Decisions、`T`）、右=Inspector pane（active nodeの詳細、`N`）。keyは入力中は無効
+- 左=Tool pane（Add Node / 階層 / Records / Decisions、`T`）、右=Inspector pane（Node / Q / Unsupported Data / RAW FAM、`N`）。keyは入力中は無効
 - sectionはModelを書かない。`FQueryUiEvent`をemitするだけ
+- `FQueryNodePanel`は`only`で1 tab分だけをsectionとして描画でき、Unsupported→RAWのjumpは`jump` eventとしてHostへ委ねる。Hostは`FQueryPane`の`activeTab`でtabを切り替え、`jumpPointer`でFAMVIMへpointerを渡す
+- `FQueryOutliner`（階層）はnodeを一覧し、click→`node.select.requested`、shift/⌘+clickで追加選択、⌖→`focus` event。Hostは`FQueryBaklavaView.focusNode`で該当nodeをviewportへ収める
+- `FQueryPalette`（Add Node）はcategory tree。新規nodeの配置はHost責務で、`viewportCenter()`を使い`node.move.requested`として通す。`zoomToFit()`はFrame all（`Home`）
 
 参考: Blender HIG Sidebar Tabs、ComfyUI `registerSidebarTab`、Unreal `IDetailCustomization`、Node-RED `RED.sidebar.addTab`、n8n Parameters/Settings（`CREDITS.md`）
 
