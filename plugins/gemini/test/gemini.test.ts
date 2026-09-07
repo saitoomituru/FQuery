@@ -22,6 +22,16 @@ describe("GeminiFamPlugin", () => {
     const result = await evaluateQ(Q({ kind: "literal", value: "source" }, { queryId: "q://test/invalid", operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: "network" } }), { pluginResolver: plugin });
     expect(result.transportStatus).toBe("failed");
   });
+  it("validator違反を1回だけproviderへ返して全置換する", async () => {
+    const generate = vi.fn()
+      .mockResolvedValueOnce({ text: JSON.stringify({ schema_version: "fquery.candidate-fam/0.1.0-draft", blocks: [] }) })
+      .mockResolvedValueOnce({ text: JSON.stringify(createLiteralDecompositionFam("雨が降る。", "q://test/repair")), requestId: "repair-request" });
+    const plugin = new GeminiFamPlugin({ model: "gemini-2.5-flash", credentialName: "gemini-local", credentialSources: [explicitSource([{ name: "gemini-local", key: "not-a-real-key" }])], generate });
+    const result = await evaluateQ(Q({ kind: "literal", value: "雨が降る。" }, { queryId: "q://test/repair", operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: "network" } }), { pluginResolver: plugin });
+    expect(result.transportStatus).toBe("succeeded");
+    expect(generate).toHaveBeenCalledTimes(2);
+    expect(generate.mock.calls[1]?.[0].prompt).toContain("Validator findings");
+  });
   it("credentialなしをnetwork callせずLast Orderへ接続する", async () => {
     const generate = vi.fn(); const plugin = new GeminiFamPlugin({ model: "gemini-2.5-flash", credentialName: "missing", credentialSources: [], generate });
     const result = await evaluateQ(Q({ kind: "literal", value: null }, { queryId: "q://test/missing", operations: [{ kind: "invoke", capability: "fam.project" }], policy: { sideEffect: "network" } }), { pluginResolver: plugin });

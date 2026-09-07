@@ -21,6 +21,16 @@ describe("OllamaFamPlugin", () => {
     expect(result.transportStatus).toBe("failed");
   });
 
+  it("validator違反を1回だけproviderへ返して全置換する", async () => {
+    const generate = vi.fn()
+      .mockResolvedValueOnce({ text: JSON.stringify({ schema_version: "fquery.candidate-fam/0.1.0-draft", blocks: [] }) })
+      .mockResolvedValueOnce({ text: JSON.stringify(createLiteralDecompositionFam("المطر يهطل.", "q://test/repair")) });
+    const plugin = new OllamaFamPlugin({ model: "qwen3:8b", generate });
+    const result = await evaluateQ(Q({ kind: "literal", value: "المطر يهطل." }, { queryId: "q://test/repair", operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: "network" } }), { pluginResolver: plugin });
+    expect(result.transportStatus).toBe("succeeded");
+    expect(generate).toHaveBeenCalledTimes(2);
+  });
+
   it("network許可なしではtransportを呼ばない", async () => {
     const generate = vi.fn();
     const plugin = new OllamaFamPlugin({ model: "qwen3:8b", generate });

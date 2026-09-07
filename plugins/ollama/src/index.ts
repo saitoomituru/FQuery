@@ -36,11 +36,19 @@ export class OllamaFamPlugin implements PluginResolver {
     if (!CAPABILITIES.includes(request.capability as OllamaFamCapability)) return undefined;
     if (request.sideEffect !== "network") return { pluginId: ollamaPluginManifest.pluginId, pluginStatus: "rejected", transportStatus: "failed", reason: "network-side-effect-not-authorized" };
     try {
-      const response = await (this.#options.generate ?? ollamaGenerate)({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_JSON_RESPONSE_SCHEMA });
+      const generate = this.#options.generate ?? ollamaGenerate;
+      let response = await generate({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_JSON_RESPONSE_SCHEMA });
+      let fam: unknown;
+      try {
+        fam = parseFam(response.text);
+      } catch (validationError) {
+        response = await generate({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildRepairPrompt(request, validationError), responseSchema: FAM_JSON_RESPONSE_SCHEMA });
+        fam = parseFam(response.text);
+      }
       return {
         pluginId: ollamaPluginManifest.pluginId,
         transportStatus: "succeeded",
-        value: parseFam(response.text),
+        value: fam,
         evidenceRefs: [],
         execution: { provider: "ollama", model: this.#options.model, pluginVersion: ollamaPluginManifest.pluginVersion },
       };
@@ -84,6 +92,10 @@ function buildPrompt(request: CapabilityInvocation): string {
   const sourceLanguageHint = inferSourceLanguage(request.input);
   const translationTarget = sourceLanguageHint === "en" ? "ja" : "en";
   return JSON.stringify({ proton_profile: "proton://fquery/fam-json-core@0.1.0-draft", capability: request.capability, source: request.input, source_language_hint: sourceLanguageHint, translation_target: translationTarget, instruction: "Return one fam.json/0.1.0-draft record. The input language is the canonical origin language: never replace its title, index_subjects, Q.unknowns, ψ, ∇φ source_expression, or λ manifestation with a translation. Set λ.purpose exactly to the machine token source-decomposition. Set title_language and every source_language/manifestation_language consistently. λ.output_units must cover the complete source in original order without omission or duplication. Each output unit must preserve an exact source substring in ψ.source_text, every ∇φ[*].source_expression, and λ.manifestation, and must include Observer/Registry/fact-scope/unknown Q fields. Put other-language natural-language text only in λ.sub_splitters as a nested ψ/∇φ/λ/Q translation-witness FAM. Its ψ retains the canonical source text plus source_language and target_language; its λ.manifestation is the translation and manifestation_language equals target_language; its Q contains copy_role=translation-witness, source_node_ref, unknowns, unknown_is_absence=false, and translation_error={status:not-evaluated,metric_refs:[],measurements:[]}. Keep provenance structured and do not add other-language prose there. Do not return blocks[], RPC/MCP envelopes, FAMLog, or transport events." });
+}
+
+function buildRepairPrompt(request: CapabilityInvocation, error: unknown): string {
+  return `${buildPrompt(request)}\nThe previous candidate was rejected by the FAM validator. Return a complete replacement, not a patch. Validator findings: ${error instanceof Error ? error.message : "invalid-fam-json"}`;
 }
 
 function parseFam(text: string): unknown {
