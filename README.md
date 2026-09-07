@@ -21,7 +21,7 @@ FAMLog          observable execution dump / trace
 - credential注入: `name / key / secret`の可搬なsource解決あり。保護強度はHost／上位IAM責務
 - FAM JSON Core: 再帰的な `ψ / ∇φ / λ / Q`、入力言語正本、翻訳sub-splitter写本、unknown保持を検証するmachine contractあり
 - Gemini FAM plugin: structured JSONを実FAMとして受け取り、返却後もFAM validatorを通すadapterあり
-- Vue Node Viewer: Presentation FAM／GUI Event ABI、BaklavaJS View-only PoC、VS Code／Sphere Host bridgeあり（人間テスト待ち）
+- Node Editor: Presentation FAM／GUI Event ABI、React + React Flow renderer backend、VS Code／Sphere Host bridgeあり（Node Editorはhuman test合格、Host組み込みは未実施）
 - Atlantis 1.x native C++ runtime: `CONTRACT-WAIT`
 
 API、tool、pluginの呼び出し成功は、目的 `λ` の達成証拠ではありません。pluginが存在することと、GUI上でportが次nodeへ接続されていることも別状態です。
@@ -40,12 +40,12 @@ API、tool、pluginの呼び出し成功は、目的 `λ` の達成証拠では�
 | `packages/famlog/` | append-only semantic traceと差分 |
 | `packages/benchmark/` | 同一Qの複数plugin／model route比較 |
 | `packages/ui-core/` | runtime非依存ViewModel／event contract |
-| `packages/ui-vue/` | Vue 3／BaklavaJS Presentation component。semantic engineは持たない |
+| `packages/ui-react/` | React + React Flow Presentation component。semantic engineは持たない |
 | `packages/hosts/` | VS Code／Sphere等のHost bridge |
 | `packages/config/` | credential sourceの順序付き解決。表示は`name`のみ |
 | `plugins/gemini/` | Gemini APIから検証済みFAMを得るnetwork plugin |
 | `plugins/ollama/` | ローカルOllamaのmodel発見と検証済みFAM変換plugin |
-| `apps/playground/` | API key不要のlocalhost Vue検証面 |
+| `apps/playground/` | API key不要のlocalhost検証面（React） |
 | `fixtures/` | 正例、負例、benchmark入力 |
 | `native/` | Atlantis 1.x向け予約地。現時点ではruntimeではない |
 

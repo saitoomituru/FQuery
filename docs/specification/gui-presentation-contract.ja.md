@@ -1,8 +1,8 @@
 # GUI Presentation contract
 
-Status: `IMPLEMENTED-CONTRACT / SESSION-CONTROLLER / CORE-NODES / FAMVIM / NODE-PANEL / BAKLAVA-POC / HUMAN-TEST-WAIT`
+Status: `IMPLEMENTED-CONTRACT / SESSION-CONTROLLER / CORE-NODES / FAMVIM / NODE-PANEL / REACT-FLOW-BACKEND / NODE-EDITOR-HUMAN-TEST-PASS`
 
-Authority: FQuery Issue #23, #25, #27, #28  
+Authority: FQuery Issue #23, #25, #27, #28, #36  
 Design source: ZeroRoomLab-manifest Issue #41 comment / Issue #44
 
 ## MVC境界
@@ -19,9 +19,10 @@ Controller
     - renderer fallback
 
 View
-  = @fquery/ui-vue
-    - Vue 3
-    - BaklavaJSは交換可能な第一候補adapter
+  = @fquery/ui-react
+    - React 19
+    - React Flow（@xyflow/react 12）は交換可能なgraph presentation surface
+    - src/model/ はDOM非依存の純関数層。別renderer backend（React Native等）と共有する候補
 ```
 
 GUIはFAMを実行するengineではない。Q、SIN、hash、divergence、vector similarity、connection ABIを計算せず、engineが返したstateを表示する。
@@ -51,7 +52,7 @@ registry座標は`pluginId + capability`であり、複数providerが同じcapab
 - rendererがhintを扱えない: semantic refを保った`generic`
 - pluginが未ロード／消失: semantic nodeを消さない`ghost`
 
-renderer固有componentやBaklava graph objectをFAM Core正本へ昇格しない。
+renderer固有componentやReact Flowのnode／edge objectをFAM Core正本へ昇格しない。
 
 ## GUI Event ABI
 
@@ -173,17 +174,17 @@ PresentationProjection.mode
   ghost    plugin消失 -> generic cardにghost表示。dataは保持
 ```
 
-- `FQueryBaklavaView`は`nodeRenderers: { [rendererHint]: Component }`を受け取り、`FQueryCanvasNodeContent`をBaklavaの非port interface（`setPort(false)`）として各nodeへ載せる。Baklavaの`node` slotは使わない（Baklava 2.8.1のdragMoves index不整合を避ける）
-- rendererは`{ model: NodeViewModel, projection }`を受け取り、`FQueryUiEvent`をemitするだけでModelを書かない
+- `FQueryFlowView`は`nodeRenderers: { [rendererHint]: Component }`を受け取り、`FQueryFlowNode`がheader、portとしての`Handle`、node本体の順に描画する。port座標はReact Flowの`Handle`が所有し、FQuery側でDOMを測らない
+- rendererは`{ model: NodeViewModel, projection, emit }`を受け取り、`FQueryUiEvent`をemitするだけでModelを書かない
 - Core 3 node（`Ψ.NL` / `∇φ.FAMVIM` / `λ.NL`）は`fquery-core-node` hintの最初のrendererであり、pluginは同じ経路で自分のrendererを登録する
-- adapterは`useBaklava()`が返すreactive editorへgraphを変更する。生のEditorへ追加するとmount後の変更が描画へ伝播しない
-- Playgroundの構成: 全画面canvas、左上floating palette、右inspector drawer（Node Panel）、下端records drawer
+- node本体の入力要素には`nodrag`／`nowheel`を付け、drag／zoomと衝突させない
+- Playgroundの構成: 全画面canvas、左Tool pane、右Inspector pane（overlay）
 
 ## Selectionとslot式pane（Issue #33）
 
 ### active cursor node
 
-Baklavaのclick／box select、outliner、inspectボタンはすべて`node.select.requested`へ変換され、sessionが`selection`（`activeNodeId` + `nodeIds`）として受理する。選択はGUI局所状態でありcanonical FAMではないため、engine判定を経由せず、存在しないnodeだけを落とす。`node.remove`で選択から外れ、activeは残りへ移る。`FQueryBaklavaView`はsession selectionをBaklavaへ反映する（正本はsession側）。
+canvasのclick／box select、outliner、inspectボタンはすべて`node.select.requested`へ変換され、sessionが`selection`（`activeNodeId` + `nodeIds`）として受理する。選択はGUI局所状態でありcanonical FAMではないため、engine判定を経由せず、存在しないnodeだけを落とす。`node.remove`で選択から外れ、activeは残りへ移る。`FQueryFlowView`はsession selectionをReact Flowへ反映する（正本はsession側）。選択requestはuser gesture由来のselect changeだけから作り、React Flowの`onSelectionChange`は使わない（nodes propのfeedbackにも反応してsessionと打ち消し合うため）。
 
 ### PaneContribution
 
@@ -206,7 +207,7 @@ PaneContext = { activeNode?, selection, registration?, projection?, famRole?, ca
 - 左=Tool pane（Add Node / 階層 / Records / Decisions、`T`）、右=Inspector pane（Node / Q / Unsupported Data / RAW FAM、`N`）。keyは入力中は無効
 - sectionはModelを書かない。`FQueryUiEvent`をemitするだけ
 - `FQueryNodePanel`は`only`で1 tab分だけをsectionとして描画でき、Unsupported→RAWのjumpは`jump` eventとしてHostへ委ねる。Hostは`FQueryPane`の`activeTab`でtabを切り替え、`jumpPointer`でFAMVIMへpointerを渡す
-- `FQueryOutliner`（階層）はnodeを一覧し、click→`node.select.requested`、shift/⌘+clickで追加選択、⌖→`focus` event。Hostは`FQueryBaklavaView.focusNode`で該当nodeをviewportへ収める
+- `FQueryOutliner`（階層）はnodeを一覧し、click→`node.select.requested`、shift/⌘+clickで追加選択、⌖→`focus` event。Hostは`PresentationCanvasHandle.focusNode`で該当nodeをviewportへ収める
 - `FQueryPalette`（Add Node）はcategory tree。新規nodeの配置はHost責務で、`viewportCenter()`を使い`node.move.requested`として通す。`zoomToFit()`はFrame all（`Home`）
 
 参考: Blender HIG Sidebar Tabs、ComfyUI `registerSidebarTab`、Unreal `IDetailCustomization`、Node-RED `RED.sidebar.addTab`、n8n Parameters/Settings（`CREDITS.md`）
@@ -217,17 +218,23 @@ PaneContext = { activeNode?, selection, registration?, projection?, famRole?, ca
 
 GUIはeventのstateを再計算・再裁定しない。
 
-## BaklavaJS境界
+## React Flow境界（Issue #36）
 
-`@fquery/ui-vue`はBaklavaJS 2.8.1の`core`、`renderer-vue`、`themes`をnode-editor surfaceとして利用する。`@baklavajs/engine`は導入しない。Baklavaのgraph JSONをcanonical保存形式にせず、確定済み`NodeViewModel`とconnectionを一方向投影する。
+`@fquery/ui-react`は`@xyflow/react` 12をgraph presentation surfaceとして利用する。React Flowのnode／edge配列はcanonical stateではなく描画cacheであり、確定済み`NodeViewModel`、connection、accepted layout、selectionを一方向投影する。
 
-connection gestureは`connection.add.requested`としてengineへ返し、Baklava側だけでは確定しない。node移動も`node.move.requested`としてHostへ返し、layout storeから確定値が返るまでは元位置へ戻す。
+- renderer責務（node position、edge端点、pan／zoom、viewport、selection、drag、fit view、edge描画）はReact Flowが所有する。FQuery側にDOM測定code（`getElementById`／`offsetLeft`／`ResizeObserver`）を置かない
+- drag中はReact Flowの`applyNodeChanges`で動いたnodeだけを描画cacheへ差分適用し、drag終了で`node.move.requested`を出す。decisionが届いたら暫定座標を捨て、rejected時の位置復帰はaccepted layoutの再投影だけで起きる（rollback補正codeを持たない）
+- connection gestureは`connection.add.requested`としてengineへ返し、React Flow側だけでは確定しない。edgeの削除・再接続はGUIで確定させない
+- 差分の無いchange（同値のdimensions／select）では配列を据え置く。新配列を作るとReact Flowの`setNodes`と往復して無限更新になる
+- `src/model/`（投影純関数、暫定座標reducer、request採番）はDOM APIと`@xyflow/react`をimportしない。React Native等の別backendと共有する候補
 
-BaklavaJS 2.8.1のCommonJS entryとESM-only `uuid`にはNode test上の互換問題があるため、Vitestだけ公式ESM entryへ解決する。vendor型exportのNodeNext差分は`baklava-renderer-vue-compat.d.ts`へ隔離する。Browser buildのruntime contractは変更しない。
+### historical: BaklavaJS（Vue 3）backend
+
+`main`の`7f22e4c`以前は`@fquery/ui-vue`がBaklavaJS 2.8.1をsurfaceとして使っていた。connection全破棄再生成、DOM実測によるport座標逆算、`ResizeObserver`によるedge追従がFQuery側へ入った（`74847c4`、`b4abed8`）ことをrenderer責務の漏れとみなし、Issue #36で交換した。経緯は`docs/decisions/0001-react-flow-renderer-backend.ja.md`を参照する。
 
 ## 検証境界
 
 - contract／registry／fallback／局所更新: automated unit test
-- Vue projection: component test
-- Baklava操作性、Blender系UX、VS Code／Sphere Runner: human test
+- React projection: component test（jsdom。React Flowのdrag／edge描画は再現しない）
+- canvas操作性、Blender系UX、VS Code／Sphere Runner: human test
 - layoutの実IBD永続化: integration test

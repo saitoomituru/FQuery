@@ -60,7 +60,7 @@ export function createPlaygroundSession(): PlaygroundSession {
   const session = new PresentationSession(createFixtureDecisionPort({
     registry,
     renderer: { rendererId: PLAYGROUND_RENDERER_ID, supportedHints: [CORE_RENDERER_HINT] },
-    nodeIdPrefix: "q://playground-react/node",
+    nodeIdPrefix: "q://playground/node",
     createNode: (capability, nodeId) => {
       const contract = findCoreNodeContract(capability);
       if (!contract) throw new Error(`core-contract-not-found:${capability}`);

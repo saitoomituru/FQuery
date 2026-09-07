@@ -4,7 +4,7 @@
 
 自動検証は型、状態軸、イベント配送、fixture描画、buildまでを対象にする。以下は人間が実画面と実Hostで判断するまで完了扱いにしない。
 
-## Vue component
+## GUI component
 
 - `unknown`、`bottom`、`last-order`、`plugin-not-found`、`semantic-unsatisfied`が色だけに依存せず識別できる
 - `unconnected`がerrorに見えず、`plugin-not-found`と混同しない
@@ -49,7 +49,7 @@ automated testはSession判定往復、Core 3 node契約、fam-edit round-trip�
 - Session decisions paneに`node.add` / `connection.add` / `node.move`が`accepted`として時系列で並ぶ
 - Paletteで「Core」「FAMVIM」「ψ」などを検索すると3 nodeが候補に出て、追加すると4 node目が現れる
 
-### Baklava操作
+### canvas操作
 
 - nodeをdragすると`node.move.requested`がSession decisionsへ`accepted`として記録され、位置が保持される
 - `λ.NL:fam`から`Ψ.NL:observation`へ逆向きにdragすると接続が確定せず、decisionが`rejected — port-direction-mismatch`と読める
@@ -77,7 +77,7 @@ automated testはSession判定往復、Core 3 node契約、fam-edit round-trip�
 
 ## React Flow renderer比較（Issue #36）
 
-状態: `HUMAN-TEST-WAIT`。branch `agent/gui-react`。Vue版（`npm run dev`、3000）とReact版（`npm run dev:react`、3001）を同時に開き、同じ操作で比べる。結果から「Vue削除」「Issue #36をクライム失敗として閉じる」「別案」を決める。
+状態: `HUMAN-TEST-PASS`（2026-09-08、User確認）。Vue版（3000）とReact版（3001）を同時に開いて比較し、drag追従・reject後の復帰・操作感・機能取りこぼしをUserが確認した。結果として案「Vue削除」を採用し、`packages/ui-vue`と旧`apps/playground`を撤去した。以下は再検証時の観点として残す。
 
 ### renderer責務の吸収
 
@@ -97,7 +97,7 @@ automated testはSession判定往復、Core 3 node契約、fam-edit round-trip�
 
 ### 機能取りこぼしの確認
 
-Vue版の全機能を移植済み。上の「Node Editor」節の各項目をReact版（3001）でも同じ手順で実施し、Vue版で通る項目がReact版で通らないものを記録する。取りこぼしゼロを確認できたらVue削除へ進む。
+Vue版の全機能を移植済み。上の「Node Editor」節の各項目をReact版でも同じ手順で実施し、取りこぼしゼロをUserが確認した。
 
 ## Host
 

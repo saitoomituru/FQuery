@@ -157,7 +157,7 @@ export function App() {
             <button type="button" className="hamburger" aria-pressed={leftOpen} aria-label="toggle tool pane (T)" title="Tool pane (T)" onClick={() => setLeftOpen((open) => !open)}>☰</button>
             <div>
               <p className="eyebrow">FQUERY NODE EDITOR · REACT FLOW</p>
-              <h1>FQuery Playground (React) — Ψ.NL → ∇φ.FAMVIM → λ.NL</h1>
+              <h1>FQuery Playground — Ψ.NL → ∇φ.FAMVIM → λ.NL</h1>
             </div>
             <output aria-live="polite">last event: {lastEvent}</output>
             <span className="spacer" />
@@ -167,7 +167,7 @@ export function App() {
           </header>
           <main className="stage" aria-label="node editor">
             <div className="overlay-left">
-              <FQueryPane side="left" storageKey="fquery.playground-react" tabs={leftTabs} components={PANE_COMPONENTS} context={paneContext} open={leftOpen} onEvent={receive} onOpenChange={setLeftOpen} />
+              <FQueryPane side="left" storageKey="fquery.playground" tabs={leftTabs} components={PANE_COMPONENTS} context={paneContext} open={leftOpen} onEvent={receive} onOpenChange={setLeftOpen} />
             </div>
             <FQueryFlowView
               ref={canvas}
@@ -182,7 +182,7 @@ export function App() {
               requestPrefix="ui"
             />
             <div className="overlay-right">
-              <FQueryPane side="right" storageKey="fquery.playground-react" tabs={rightTabs} components={PANE_COMPONENTS} context={paneContext} open={rightOpen} activeTab={rightTab} onEvent={receive} onOpenChange={setRightOpen} onActiveTabChange={setRightTab} />
+              <FQueryPane side="right" storageKey="fquery.playground" tabs={rightTabs} components={PANE_COMPONENTS} context={paneContext} open={rightOpen} activeTab={rightTab} onEvent={receive} onOpenChange={setRightOpen} onActiveTabChange={setRightTab} />
             </div>
           </main>
         </div>

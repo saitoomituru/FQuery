@@ -7,7 +7,7 @@ import type { NodeSelection } from "./session.js";
  * Blenderの`bl_region_type + bl_category`、ComfyUIの`registerSidebarTab`、
  * Node-REDの`RED.sidebar.addTab`に相当する宣言登録。
  *
- * ui-coreはVueを知らないので、componentは`componentRef`（Host／Viewが解決するkey）で参照する。
+ * ui-coreはReactを知らないので、componentは`componentRef`（Host／Viewが解決するkey）で参照する。
  * rendererHint→renderer componentと同じ経路。
  */
 export type PaneSide = "left" | "right";

@@ -22,7 +22,7 @@ async function mountWithGraph(fetcher: ReturnType<typeof vi.fn>) {
   return view;
 }
 
-describe("FQuery Playground (React)", () => {
+describe("FQuery Playground", () => {
   it("複数provider/modelを発見し、Ψ.NL node内のdecomposerで分解する", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(json([
@@ -48,10 +48,10 @@ describe("FQuery Playground (React)", () => {
     expect([...leftPane(container).querySelectorAll('[role="tab"]')].map((tab) => tab.getAttribute("data-pane-tab"))).toEqual(["add", "outline", "records", "decisions"]);
     // outlinerからの選択はsession selectionを通り、canvasのnodeとinspectorに反映される
     openLeftTab(container, "outline");
-    fireEvent.click(container.querySelector('[data-node-id="q://playground-react/node/3"] .fquery-outliner-select')!);
-    await waitFor(() => expect(container.querySelector('.fquery-outliner [data-node-id="q://playground-react/node/3"]')?.getAttribute("data-active")).toBe("true"));
+    fireEvent.click(container.querySelector('[data-node-id="q://playground/node/3"] .fquery-outliner-select')!);
+    await waitFor(() => expect(container.querySelector('.fquery-outliner [data-node-id="q://playground/node/3"]')?.getAttribute("data-active")).toBe("true"));
     await waitFor(() => expect(canvasNodes(container)[2]?.getAttribute("data-selected")).toBe("true"));
-    fireEvent.click(container.querySelector('[data-node-id="q://playground-react/node/3"] .fquery-outliner-focus')!);
+    fireEvent.click(container.querySelector('[data-node-id="q://playground/node/3"] .fquery-outliner-focus')!);
   });
 
   it("pluginなしでCore 3 nodeがcanvas内に中身付きで並び、分解結果が∇φ.FAMVIMとλ.NLへ投影される", async () => {
@@ -60,7 +60,7 @@ describe("FQuery Playground (React)", () => {
       .mockResolvedValueOnce(json({ result: { value: createLiteralDecompositionFam("雨が降る。傘を持つ。", "q://test/playground"), transport_status: "succeeded", plugin_status: "resolved", resolution_status: "resolved", connection_status: "connected" }, events: [] }));
     const { container } = await mountWithGraph(fetcher);
     const nodes = canvasNodes(container);
-    expect(nodes.map((node) => node.getAttribute("data-node-id"))).toEqual(["q://playground-react/node/1", "q://playground-react/node/2", "q://playground-react/node/3"]);
+    expect(nodes.map((node) => node.getAttribute("data-node-id"))).toEqual(["q://playground/node/1", "q://playground/node/2", "q://playground/node/3"]);
     expect(nodes.every((node) => node.querySelector(".fquery-canvas-node")?.getAttribute("data-presentation-mode") === "native")).toBe(true);
     expect(nodes[0]!.querySelector('[aria-label="route controls"]')).not.toBeNull();
     expect(nodes[1]!.textContent).toContain("canonical FAM未生成");
@@ -91,7 +91,7 @@ describe("FQuery Playground (React)", () => {
   });
 });
 
-describe("FQuery Playground (React) FAMVIM", () => {
+describe("FQuery Playground FAMVIM", () => {
   it("∇φ.FAMVIM nodeのRAW編集からinspectorを開き、fam.patchでcanonical FAMがunknown fieldを保持したまま更新される", async () => {
     const famWithExtension = { ...createLiteralDecompositionFam("自然言語テスト", "q://test/playground"), "x-plugin-extension": { retained: true } };
     const fetcher = vi.fn()
@@ -107,7 +107,7 @@ describe("FQuery Playground (React) FAMVIM", () => {
     expect(rightPane(container).querySelector('[data-pane-section="decomposer"]')).toBeNull();
     await waitFor(() => expect(rightPane(container).querySelector('[data-pane-tab="raw"]')?.getAttribute("aria-selected")).toBe("true"));
     const panel = container.querySelector('[aria-label="FQuery node panel"]')!;
-    expect(panel.getAttribute("data-node-id")).toContain("q://playground-react/node/2");
+    expect(panel.getAttribute("data-node-id")).toContain("q://playground/node/2");
     expect(panel.getAttribute("data-only")).toBe("raw");
     const famvim = container.querySelector('[aria-label="FAMVIM RAW FAM editor"]')!;
     expect(famvim.querySelector('[data-pointer="/x-plugin-extension/retained"]')).not.toBeNull();
@@ -143,7 +143,7 @@ describe("FQuery Playground (React) FAMVIM", () => {
 
     // Ψ.NLのinspectorボタンで対象が切り替わり、設定tabへ戻る。Ψ.NLではHostのdecomposer sectionがstackされる
     fireEvent.click(canvasNodes(container)[0]!.querySelectorAll("button")[1]!);
-    await waitFor(() => expect(container.querySelector('[aria-label="FQuery node panel"]')?.getAttribute("data-node-id")).toContain("q://playground-react/node/1"));
+    await waitFor(() => expect(container.querySelector('[aria-label="FQuery node panel"]')?.getAttribute("data-node-id")).toContain("q://playground/node/1"));
     expect(container.querySelector('[aria-label="FQuery node panel"]')?.textContent).toContain("fquery.core@");
     expect([...rightPane(container).querySelectorAll('[role="tab"]')].map((tab) => tab.getAttribute("data-pane-tab"))).toEqual(["node", "q", "unsupported", "raw"]);
     expect([...rightPane(container).querySelectorAll("[data-pane-section]")].map((section) => section.getAttribute("data-pane-section"))).toEqual(["decomposer", "settings", "connections"]);

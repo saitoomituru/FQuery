@@ -7,7 +7,7 @@ export interface CoreNodeIds {
 }
 
 export function layoutSlotRef(nodeId: string): string {
-  return `layout://playground-react/${nodeId}`;
+  return `layout://playground/${nodeId}`;
 }
 
 /** Core 3 nodeをpluginなしで構築する。接続の可否はportへ委譲する。 */

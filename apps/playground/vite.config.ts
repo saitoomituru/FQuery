@@ -1,5 +1,5 @@
 import { defineConfig } from "vitest/config";
-import vue from "@vitejs/plugin-vue";
+import react from "@vitejs/plugin-react";
 import { fileURLToPath } from "node:url";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { decomposeText, listPlaygroundRoutes, type DecomposeRequest } from "./server/gateway.js";
@@ -49,17 +49,10 @@ function sendError(response: ServerResponse, error: unknown): void {
 }
 
 export default defineConfig({
-  plugins: [vue(), fqueryGateway()],
-  resolve: {
-    alias: [{
-      find: /^@baklavajs\/core$/,
-      replacement: fileURLToPath(new URL("../../node_modules/@baklavajs/core/dist/esm/index.js", import.meta.url)),
-    }],
-  },
-  ssr: { noExternal: ["@fquery/ui-vue", "@baklavajs/core", "@baklavajs/renderer-vue", "@baklavajs/events", "uuid"] },
+  plugins: [react(), fqueryGateway()],
   server: { host: "127.0.0.1", port: 3000, strictPort: true },
   test: {
     environment: "jsdom",
-    server: { deps: { inline: ["@fquery/ui-vue", "@baklavajs/renderer-vue", "@baklavajs/core", "@baklavajs/events", "uuid"] } },
+    setupFiles: ["./test/setup.ts"],
   },
 });

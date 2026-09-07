@@ -15,10 +15,9 @@
     "npm": ">=10"
   },
   "scripts": {
-    "build:libs": "npm run build -w @fquery/fam-core && npm run build -w @fquery/fam-edit && npm run build -w @fquery/core && npm run build -w @fquery/famlog && npm run build -w @fquery/plugin-sdk && npm run build -w @fquery/config && npm run build -w @fquery/plugin-gemini && npm run build -w @fquery/plugin-ollama && npm run build -w @fquery/ui-core && npm run build -w @fquery/ui-vue && npm run build -w @fquery/ui-react && npm run build -w @fquery/benchmark && npm run build -w @fquery/host-sphere && npm run build -w @fquery/host-vscode",
-    "build": "npm run build:libs && npm run build -w @fquery/playground && npm run build -w @fquery/playground-react",
+    "build:libs": "npm run build -w @fquery/fam-core && npm run build -w @fquery/fam-edit && npm run build -w @fquery/core && npm run build -w @fquery/famlog && npm run build -w @fquery/plugin-sdk && npm run build -w @fquery/config && npm run build -w @fquery/plugin-gemini && npm run build -w @fquery/plugin-ollama && npm run build -w @fquery/ui-core && npm run build -w @fquery/ui-react && npm run build -w @fquery/benchmark && npm run build -w @fquery/host-sphere && npm run build -w @fquery/host-vscode",
+    "build": "npm run build:libs && npm run build -w @fquery/playground",
     "dev": "npm run build:libs && npm run dev -w @fquery/playground",
-    "dev:react": "npm run build:libs && npm run dev -w @fquery/playground-react",
     "validate:fixtures": "node scripts/validate-fixtures.mjs",
     "verify:origins": "node scripts/verify-origin-integrity.mjs",
     "pretest": "npm run build",
@@ -32,15 +31,11 @@
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.7",
     "@vitejs/plugin-react": "^5.2.0",
-    "@vitejs/plugin-vue": "^5.2.4",
-    "@vue/test-utils": "2.4.6",
     "jsdom": "26.1.0",
     "react": "^19.2.8",
     "react-dom": "^19.2.8",
     "typescript": "5.9.3",
     "vite": "^6.4.3",
-    "vitest": "^4.1.11",
-    "vue": "^3.5.42",
-    "vue-tsc": "^3.3.11"
+    "vitest": "^4.1.11"
   }
 }

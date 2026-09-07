@@ -1,6 +1,6 @@
 # @fquery/ui-react
 
-React + React Flowをgraph presentation surfaceとして使うrenderer backend。Issue #36の検討用branch実装であり、`@fquery/ui-vue`と並行して人間が触り比べるためのもの。
+React + React Flowをgraph presentation surfaceとして使うrenderer backend（Issue #36で採用）。
 
 ## 責務境界
 
@@ -19,8 +19,14 @@ FAM / canonical engine state（session側）
 - drag中の座標は`DraftLayoutState`として描画専用に持ち、decisionが届いたら破棄する。rejected時の位置復帰はaccepted layoutの再投影だけで起き、rollback用の補正codeを持たない
 - `src/model/`はReact NativeなどDOM以外のbackendと共有する候補。DOM APIと`@xyflow/react`をimportしない
 
+## component
+
+- canvas: `FQueryFlowView`、`FQueryFlowNode`、`FQueryGenericNodeContent`、`PresentationCanvasHandle`
+- pane: `FQueryPane`（slot式contribution）、`FQueryOutliner`、`FQueryPalette`
+- inspector: `FQueryNodePanel`（設定／接続／Q／Unsupported Data／RAW FAM）、`FQueryFamvim`
+- その他: `FQueryRecordsPanel`、`FQueryNode`／`FQueryPanel`
+
 ## 検証状態
 
-- 実装: `FQueryFlowView`、`FQueryFlowNode`、generic fallback、`PresentationCanvasHandle`
-- automated test: 投影純関数、暫定座標reducer、component描画とevent emit（jsdom）
-- human test: 未実施。`apps/playground-react`で確認する
+- automated test: 投影純関数、暫定座標reducer、component描画とevent emit、pane／Node Panel／FAMVIMの契約（jsdom）
+- human test: Node Editorの操作項目は`apps/playground`で合格（2026-09-08、User確認）。Host組み込みは未実施

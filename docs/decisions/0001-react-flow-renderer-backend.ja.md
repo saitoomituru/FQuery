@@ -1,15 +1,15 @@
-# 0001: graph presentation surfaceをReact + React Flowへ交換する（検討中）
+# 0001: graph presentation surfaceをReact + React Flowへ交換する
 
-Status: `PROPOSED / HUMAN-TEST-WAIT`  
+Status: `ACCEPTED`（2026-09-08、human test合格をUserが確認し案Bを採用。Vue/Baklavaは撤去済み）  
 Authority: FQuery Issue #36  
-Branch: `agent/gui-react`
+Branch: `agent/gui-react` → `main`
 
 ## 候補
 
 | 案 | 内容 | 状態 |
 |---|---|---|
 | A | Vue 3 + BaklavaJS 2.8.1を維持し、renderer由来の補修をFQuery側で続ける | 現行`main` |
-| B | React + React Flow（`@xyflow/react` 12）へrenderer backendを交換する | 本branchで実装中 |
+| B | React + React Flow（`@xyflow/react` 12）へrenderer backendを交換する | 採用。`main`へmerge |
 | C | 別のnode editor library（Vue系／Svelte系等）へ交換する | 未検討 |
 
 ## 採用理由（Bを第一候補にする根拠）
@@ -23,7 +23,7 @@ Branch: `agent/gui-react`
 
 ## 保持する非採用branch
 
-- 案Aは`packages/ui-vue`と`apps/playground`としてbranch上に残す。human test合格前に削除しない
+- 案AはGit履歴（`7f22e4c`以前の`packages/ui-vue`と旧`apps/playground`）に残す。human test合格後に撤去した
 - Baklava固有の知見（`node` slotのdragMoves不整合、`useBaklava()`のreactive editor経由）は`docs/specification/gui-presentation-contract.ja.md`にhistoricalとして残す
 
 ## 変えないもの
