@@ -2,6 +2,8 @@ export const FAM_JSON_SCHEMA_VERSION = "fam.json/0.1.0-draft" as const;
 
 export { classifyWithAccessMap, readAccessMapProfile } from "./access-map.js";
 export type * from "./access-map.js";
+export { projectDecompositionUnits, stampDecompositionUnitIdentity } from "./unit-identity.js";
+export type * from "./unit-identity.js";
 export { propagateLocalSin, validateLocalSinMeasurement } from "./sin.js";
 export type * from "./sin.js";
 
@@ -121,7 +123,11 @@ export function validateFamDecomposition(value: unknown): FamValidationResult {
 export function createLiteralDecompositionFam(sourceText: string, queryRef: string): FamJsonRecord {
   if (sourceText.trim().length === 0) throw new TypeError("sourceTextは空にできません");
   const sourceLanguage = inferSourceLanguage(sourceText);
-  const units = splitSource(sourceText).map((sourceFragment, index): FamNode => ({
+  const famId = `${queryRef}/fam`;
+  const revisionId = `${queryRef}/revision/1`;
+  const units = splitSource(sourceText).map((sourceFragment, index): FamNode => {
+    const unitRef = `${famId}/unit/${index + 1}`;
+    return ({
     ψ: { source_text: sourceFragment, source_ref: "input://source", source_language: sourceLanguage, observation_status: "provided" },
     "∇φ": [{ gradient_type: "source-segmentation", method: "punctuation-boundary", source_expression: sourceFragment, source_language: sourceLanguage, source_mutation: false }],
     λ: { manifestation: sourceFragment, manifestation_language: sourceLanguage, semantic_role: "unclassified-wisdom-unit", sub_splitters: [] },
@@ -130,15 +136,22 @@ export function createLiteralDecompositionFam(sourceText: string, queryRef: stri
       registry_ref: "registry://fquery/fam-core",
       fact_scope_ref: queryRef,
       unit_index: index,
+      unit_ref: unitRef,
+      unit_revision_ref: `${unitRef}/revision/1`,
+      parent_fam_ref: famId,
+      parent_revision_ref: revisionId,
+      unit_order: index,
+      claim_kind: "unknown",
       classification_status: "unknown",
       unknowns: [],
       unknown_is_absence: false,
     },
-  }));
+    });
+  });
   return deepFreeze({
     schema_version: FAM_JSON_SCHEMA_VERSION,
-    fam_id: `${queryRef}/fam`,
-    revision_id: `${queryRef}/revision/1`,
+    fam_id: famId,
+    revision_id: revisionId,
     kind: "decomposition",
     title: sourceText,
     title_language: sourceLanguage,
@@ -284,10 +297,11 @@ export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Objec
               },
               Q: {
                 type: "object",
-                required: ["observer_ref", "registry_ref", "fact_scope_ref", "unknowns", "unknown_is_absence"],
+                required: ["observer_ref", "registry_ref", "fact_scope_ref", "unit_ref", "unit_revision_ref", "parent_fam_ref", "parent_revision_ref", "unit_order", "claim_kind", "unknowns", "unknown_is_absence"],
                 additionalProperties: true,
                 properties: {
                   observer_ref: { type: "string" }, registry_ref: { type: "string" }, fact_scope_ref: { type: "string" },
+                  unit_ref: { type: "string" }, unit_revision_ref: { type: "string" }, parent_fam_ref: { type: "string" }, parent_revision_ref: { type: "string" }, unit_order: { type: "integer", minimum: 0 }, claim_kind: { type: "string" },
                   unknowns: { type: "array", items: UNKNOWN_ENTRY_RESPONSE_SCHEMA }, unknown_is_absence: { type: "boolean", enum: [false] },
                 },
               },
@@ -357,6 +371,12 @@ function validateSourceUnit(
     requiredString(q, "observer_ref", `${path}.Q`, issues);
     requiredString(q, "registry_ref", `${path}.Q`, issues);
     requiredString(q, "fact_scope_ref", `${path}.Q`, issues);
+    requiredString(q, "unit_ref", `${path}.Q`, issues);
+    requiredString(q, "unit_revision_ref", `${path}.Q`, issues);
+    requiredString(q, "parent_fam_ref", `${path}.Q`, issues);
+    requiredString(q, "parent_revision_ref", `${path}.Q`, issues);
+    requiredString(q, "claim_kind", `${path}.Q`, issues);
+    if (!Number.isSafeInteger(q.unit_order) || (q.unit_order as number) < 0) issue(issues, `${path}.Q.unit_order`, "unit-order-required", "unit_orderは0以上の整数でなければなりません");
     if (!Array.isArray(q.unknowns)) issue(issues, `${path}.Q.unknowns`, "unknowns-required", "unit Q.unknownsはarrayでなければなりません");
     else validateUnknownEntries(q.unknowns, `${path}.Q.unknowns`, typeof rootSource === "string" ? rootSource : undefined, sourceLanguage, issues);
     if (q.unknown_is_absence !== false) issue(issues, `${path}.Q.unknown_is_absence`, "unknown-absence-boundary-required", "unit unknown_is_absenceはfalseでなければなりません");

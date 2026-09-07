@@ -1,5 +1,6 @@
 import {
   createLiteralDecompositionFam,
+  stampDecompositionUnitIdentity,
   validateFamDecomposition,
   type FamJsonRecord,
   type FamValidationIssue,
@@ -64,7 +65,10 @@ export function validateDecomposerCandidate(
   candidate: unknown,
   metadata: DecomposerCandidateMetadata,
 ): DecompositionOutcome {
-  const validation = validateFamDecomposition(candidate);
+  const identifiedCandidate = candidate && typeof candidate === "object" && !Array.isArray(candidate) && (candidate as { kind?: unknown }).kind === "decomposition"
+    ? stampDecompositionUnitIdentity(candidate as FamJsonRecord)
+    : candidate;
+  const validation = validateFamDecomposition(identifiedCandidate);
   const receipt = createReceipt(request, metadata, validation.valid ? "accepted" : "rejected");
   if (!validation.valid) {
     return Object.freeze({
@@ -74,7 +78,7 @@ export function validateDecomposerCandidate(
       receipt,
     });
   }
-  return Object.freeze({ status: "resolved", fam: candidate as FamJsonRecord, receipt });
+  return Object.freeze({ status: "resolved", fam: identifiedCandidate as FamJsonRecord, receipt });
 }
 
 export class ManualNlDecomposer implements Decomposer {

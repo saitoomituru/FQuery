@@ -16,13 +16,13 @@
         "ψ": { "source_text": "雨が降っている。", "source_ref": "input://source", "source_language": "ja", "observation_status": "provided" },
         "∇φ": [{ "gradient_type": "source-segmentation", "source_expression": "雨が降っている。", "source_language": "ja", "source_mutation": false }],
         "λ": { "manifestation": "雨が降っている。", "manifestation_language": "ja", "semantic_role": "weather-observation", "sub_splitters": [] },
-        "Q": { "observer_ref": "observer://fixture", "registry_ref": "registry://fquery/fam-core", "fact_scope_ref": "fixture://rain", "unknowns": [], "unknown_is_absence": false }
+        "Q": { "observer_ref": "observer://fixture", "registry_ref": "registry://fquery/fam-core", "fact_scope_ref": "fixture://rain", "unit_ref": "fam://fixture/rain-umbrella/unit/1", "unit_revision_ref": "fam://fixture/rain-umbrella/unit/1/revision/1", "parent_fam_ref": "fam://fixture/rain-umbrella", "parent_revision_ref": "revision://fixture/rain-umbrella/1", "unit_order": 0, "claim_kind": "world-fact", "unknowns": [], "unknown_is_absence": false }
       },
       {
         "ψ": { "source_text": "降水量は未確認である。", "source_ref": "input://source", "source_language": "ja", "observation_status": "provided" },
         "∇φ": [{ "gradient_type": "epistemic-boundary", "source_expression": "降水量は未確認である。", "source_language": "ja", "source_mutation": false }],
         "λ": { "manifestation": "降水量は未確認である。", "manifestation_language": "ja", "semantic_role": "unknown-retention", "sub_splitters": [] },
-        "Q": { "observer_ref": "observer://fixture", "registry_ref": "registry://fquery/fam-core", "fact_scope_ref": "fixture://rain", "unknowns": [{ "source_expression": "降水量は未確認である。", "source_language": "ja", "concept_id": "precipitation-amount" }], "unknown_is_absence": false }
+        "Q": { "observer_ref": "observer://fixture", "registry_ref": "registry://fquery/fam-core", "fact_scope_ref": "fixture://rain", "unit_ref": "fam://fixture/rain-umbrella/unit/2", "unit_revision_ref": "fam://fixture/rain-umbrella/unit/2/revision/1", "parent_fam_ref": "fam://fixture/rain-umbrella", "parent_revision_ref": "revision://fixture/rain-umbrella/1", "unit_order": 1, "claim_kind": "unknown", "unknowns": [{ "source_expression": "降水量は未確認である。", "source_language": "ja", "concept_id": "precipitation-amount" }], "unknown_is_absence": false }
       }
     ]
   },
