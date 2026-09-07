@@ -5,7 +5,7 @@ export default defineConfig({
   plugins: [react()],
   build: {
     lib: { entry: "src/index.ts", formats: ["es"], fileName: "fquery-ui-react" },
-    rollupOptions: { external: ["react", "react-dom", "react/jsx-runtime", "@fquery/ui-core", "@xyflow/react"] },
+    rollupOptions: { external: ["react", "react-dom", "react/jsx-runtime", "@fquery/ui-core", "@fquery/fam-edit", "@xyflow/react"] },
   },
   test: {
     environment: "jsdom",

@@ -10,10 +10,13 @@
     },
     "./style.css": "./dist/fquery-ui-react.css"
   },
-  "files": ["dist"],
+  "files": [
+    "dist"
+  ],
   "dependencies": {
     "@fquery/ui-core": "0.1.0-draft.0",
-    "@xyflow/react": "^12.11.6"
+    "@xyflow/react": "^12.11.6",
+    "@fquery/fam-edit": "0.1.0-draft.0"
   },
   "peerDependencies": {
     "react": "^19.0.0",
@@ -23,5 +26,8 @@
     "build": "vite build && tsc -p tsconfig.json --emitDeclarationOnly",
     "test": "vitest run",
     "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@fquery/fam-core": "0.1.0-draft.0"
   }
 }

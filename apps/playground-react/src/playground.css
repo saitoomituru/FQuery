@@ -10,18 +10,25 @@ html, body, #app { margin: 0; height: 100%; background: #080b13; color: #eef2ff;
 .topbar .error { margin: 0; color: #ff7b72; font-size: 0.75rem; }
 .stage { position: relative; min-height: 0; }
 .stage > .fquery-flow { position: absolute; inset: 0; }
-.overlay-left { position: absolute; top: 0.6rem; left: 0.6rem; bottom: 0.6rem; width: 19rem; z-index: 5; display: grid; grid-template-rows: auto 1fr; gap: 0.6rem; overflow: hidden; }
-.panel { background: rgba(13, 17, 23, 0.94); border: 1px solid #34405a; border-radius: 0.6rem; padding: 0.6rem; overflow: auto; font-size: 0.75rem; }
-.panel h2 { margin: 0 0 0.4rem; font-size: 0.8rem; }
-.panel h2 small { color: #8b98b4; margin-left: 0.4rem; font-weight: 400; }
-.add-node-list, .decision-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.3rem; }
-.add-node-list button { width: 100%; text-align: left; display: flex; justify-content: space-between; }
-.add-node-list small { color: #8b98b4; }
-.decision-list li { display: grid; gap: 0.1rem; padding: 0.3rem 0.4rem; border-left: 0.25rem solid #59647a; background: #0f1524; }
-.decision-list li[data-status="accepted"] { border-color: #7ee787; }
-.decision-list li[data-status="rejected"] { border-color: #ff7b72; }
-.decision-list li[data-status="unresolved"] { border-color: #d2a8ff; }
-.decision-list small { color: #8b98b4; font-family: ui-monospace, monospace; }
+.shell { outline: none; }
+.topbar button[aria-pressed="true"] { color: #08101e; background: #79c0ff; }
+.overlay-left { position: absolute; top: .75rem; left: .75rem; bottom: .75rem; width: min(22rem, 40%); z-index: 5; pointer-events: none; }
+.overlay-right { position: absolute; top: .75rem; right: .75rem; bottom: .75rem; width: min(34rem, 45%); z-index: 5; pointer-events: none; }
+.overlay-left > *, .overlay-right > * { pointer-events: auto; }
+.session-receipt ul { margin: 0; padding-left: 1.2rem; color: #aeb8cc; font: .75rem/1.5 ui-monospace, monospace; }
+.session-receipt h2 { margin: .5rem 0 .25rem; color: #c9d5ed; font-size: .85rem; }
+.session-receipt li[data-decision-status="rejected"], .session-receipt li[data-edit-status="rejected"] { color: #ff9b9b; }
+.session-receipt li[data-decision-status="unresolved"] { color: #d2a8ff; }
+.controls { display: grid; gap: .5rem; font-size: .8rem; }
+.controls label { display: grid; gap: .25rem; color: #aeb8cc; }
+.controls select, .controls textarea { color: #eef2ff; background: #161b27; border: 1px solid #59647a; border-radius: .4rem; padding: .4rem; font: inherit; }
+.controls button { color: #08101e; background: #79c0ff; border: 1px solid #79c0ff; border-radius: .4rem; padding: .4rem .6rem; font-weight: 700; cursor: pointer; }
+.controls button:disabled { opacity: .5; cursor: default; }
+.route-note { margin: 0; color: #8b98b4; font: .7rem ui-monospace, monospace; }
+@media (max-width: 900px) {
+  .overlay-left, .overlay-right { width: 100%; left: 0; right: 0; }
+  .overlay-right { top: auto; height: 60%; }
+}
 
 .psi-node, .famvim-node, .lambda-node { display: grid; gap: 0.4rem; font-size: 0.75rem; }
 .psi-node label { display: grid; gap: 0.2rem; color: #aeb8cc; }

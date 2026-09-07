@@ -95,9 +95,9 @@ automated testはSession判定往復、Core 3 node契約、fam-edit round-trip�
 - 分解実行後、`∇φ.FAMVIM`のsemantic badgeが`unknown`、`λ.NL`のλ badgeが`unknown`のまま昇格しない
 - `unconnected`が点線で表示され、errorに見えない
 
-### 未移植のため比較対象外
+### 機能取りこぼしの確認
 
-左Tool pane／右Inspector pane、Outliner、Node Panel、FAMVIM RAW編集、Records、`T`／`N`／`Home` key。これらはPhase 2で移植してから再比較する。
+Vue版の全機能を移植済み。上の「Node Editor」節の各項目をReact版（3001）でも同じ手順で実施し、Vue版で通る項目がReact版で通らないものを記録する。取りこぼしゼロを確認できたらVue削除へ進む。
 
 ## Host
 

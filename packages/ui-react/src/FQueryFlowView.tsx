@@ -9,7 +9,6 @@ import {
   type Edge,
   type Node,
   type NodeChange,
-  type OnSelectionChangeParams,
 } from "@xyflow/react";
 import { selectionEquals, type ConnectionViewModel, type FQueryUiEvent, type LayoutValue, type NodeSelection, type NodeViewModel, type PresentationDecision, type PresentationProjection } from "@fquery/ui-core";
 import { CanvasContext, type CanvasContextValue, type NodeRendererMap } from "./canvas-context.js";
@@ -61,6 +60,8 @@ function FlowSurface({ nodes, connections, layout, decisions, presentations, nod
   const decisionHistory = decisions ?? EMPTY_DECISIONS;
   const currentSelection = selection ?? EMPTY_SELECTION;
   const draftRef = useRef<DraftLayoutState>(EMPTY_DRAFT_LAYOUT);
+  const selectionRef = useRef<NodeSelection>(currentSelection);
+  selectionRef.current = currentSelection;
 
   // sessionから導いた投影。drag中はReact Flowのchangeを差分適用するだけで、全nodeを作り直さない
   const projection = useMemo(() => projectFlow({
@@ -77,7 +78,7 @@ function FlowSurface({ nodes, connections, layout, decisions, presentations, nod
     const pending = draftRef.current;
     setFlowNodes((previous) => {
       const previousById = new Map(previous.map((node) => [node.id, node]));
-      return projection.nodes.map((node): Node => {
+      const next = projection.nodes.map((node): Node => {
         const before = previousById.get(node.id);
         // drag中またはdecision待ちのnodeは、sessionの再投影で座標を巻き戻さない
         const keepPosition = before && (before.dragging || pending.pendingRequests.has(node.id));
@@ -95,8 +96,13 @@ function FlowSurface({ nodes, connections, layout, decisions, presentations, nod
           ...(node.unplaced ? { className: "fquery-flow-node-unplaced" } : {}),
         };
       });
+      // 全nodeが同一objectなら配列も据え置き、React Flow側のsetNodesを起こさない
+      return next.length === previous.length && next.every((node, index) => node === previous[index]) ? previous : next;
     });
   }, [projection, decisionHistory, acceptedLayout]);
+  // 直近の描画cache。select changeから次の選択を組み立てるときに参照する
+  const flowNodesRef = useRef<Node[]>(flowNodes);
+  flowNodesRef.current = flowNodes;
 
   const flowEdges = useMemo<Edge[]>(() => projection.edges.map((edge) => ({ ...edge })), [projection]);
 
@@ -109,13 +115,38 @@ function FlowSurface({ nodes, connections, layout, decisions, presentations, nod
 
   // React Flowのchangeは描画cacheへ差分適用する（動いたnodeだけが差し替わる）。canonicalはsession側
   const onNodesChange = useCallback((changes: NodeChange[]) => {
-    const applicable = changes.filter((change) => change.type !== "remove");
-    if (applicable.length === 0) return;
-    setFlowNodes((previous) => applyNodeChanges(applicable, previous));
-    for (const change of applicable) {
+    setFlowNodes((previous) => {
+      const byId = new Map(previous.map((node) => [node.id, node]));
+      // 実際に値が変わるchangeだけを通す。同じ値のdimensions／selectで新配列を作るとReact Flow側のsetNodesと往復して無限更新になる
+      const applicable = changes.filter((change) => {
+        if (change.type === "remove" || change.type === "add" || change.type === "replace") return false;
+        const node = byId.get(change.id);
+        if (!node) return false;
+        if (change.type === "position") return change.position !== undefined || change.dragging !== undefined;
+        if (change.type === "select") return node.selected !== change.selected;
+        if (change.type === "dimensions") return change.dimensions !== undefined && (node.measured?.width !== change.dimensions.width || node.measured?.height !== change.dimensions.height);
+        return false;
+      });
+      return applicable.length === 0 ? previous : applyNodeChanges(applicable, previous);
+    });
+    for (const change of changes) {
       if (change.type === "position" && change.position) draftRef.current = setDraftPosition(draftRef.current, change.id, change.position);
     }
-  }, []);
+    // 選択はuser gesture由来のselect changeだけをrequestへ変換する。
+    // `onSelectionChange`はnodes propのfeedbackにも反応してsessionと打ち消し合うため使わない
+    const selectChanges = changes.filter((change): change is NodeChange & { type: "select" } => change.type === "select");
+    if (selectChanges.length === 0) return;
+    const selected = new Set(flowNodesRef.current.filter((node) => node.selected).map((node) => node.id));
+    let active: string | undefined;
+    for (const change of selectChanges) {
+      if (change.selected) { selected.add(change.id); active = change.id; } else selected.delete(change.id);
+    }
+    const nodeIds = [...selected];
+    const activeNodeId = active ?? nodeIds.at(-1);
+    const next: NodeSelection = { nodeIds, ...(activeNodeId ? { activeNodeId } : {}) };
+    if (selectionEquals(next, selectionRef.current)) return;
+    onEvent(factory.select(next));
+  }, [factory, onEvent]);
 
   const onNodeDragStop = useCallback((_event: unknown, node: Node) => {
     const model = nodes.find((candidate) => candidate.nodeId === node.id);
@@ -135,14 +166,6 @@ function FlowSurface({ nodes, connections, layout, decisions, presentations, nod
     if (!connection.sourceHandle || !connection.targetHandle) return;
     onEvent(factory.connect(connection.sourceHandle, connection.targetHandle));
   }, [factory, onEvent]);
-
-  const onSelectionChange = useCallback(({ nodes: selectedNodes }: OnSelectionChangeParams) => {
-    const nodeIds = selectedNodes.map((node) => node.id);
-    const active = nodeIds.at(-1);
-    const next: NodeSelection = { nodeIds, ...(active ? { activeNodeId: active } : {}) };
-    if (selectionEquals(next, currentSelection)) return;
-    onEvent(factory.select(next));
-  }, [currentSelection, factory, onEvent]);
 
   useImperativeHandle(handleRef, (): PresentationCanvasHandle => ({
     viewportCenter() {
@@ -182,7 +205,6 @@ function FlowSurface({ nodes, connections, layout, decisions, presentations, nod
           onNodesChange={onNodesChange}
           onNodeDragStop={onNodeDragStop}
           onConnect={onConnect}
-          onSelectionChange={onSelectionChange}
           // edgeの削除・再接続はGUIで確定させない。requestへ変換する経路だけを残す
           edgesReconnectable={false}
           deleteKeyCode={null}
