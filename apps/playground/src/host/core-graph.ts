@@ -1,5 +1,6 @@
 import { corePortId, type PresentationSession, type PresentationSessionState } from "@fquery/ui-core";
 import { projectDecompositionUnits, type AccessMapProfile, type FamJsonRecord } from "@fquery/fam-core";
+import type { FoldReprojectionResult } from "@fquery/core";
 
 export interface CoreNodeIds {
   readonly psi?: string | undefined;
@@ -79,7 +80,7 @@ export async function projectDecompositionGraph(
 }
 
 /** unit編集後、node identityとlayoutを維持したまま値・classification・revisionだけを再投影する。 */
-export function refreshDecompositionNodes(session: PresentationSession, current: CoreNodeIds, fam: FamJsonRecord, accessMap: AccessMapProfile): void {
+export function refreshDecompositionNodes(session: PresentationSession, current: CoreNodeIds, fam: FamJsonRecord, accessMap: AccessMapProfile, reprojection?: FoldReprojectionResult): void {
   const byFold = new Map(projectDecompositionUnits(fam, accessMap).map((unit) => [unit.unitRef, unit]));
   for (const nodeId of current.gradients ?? []) {
     const node = session.state.nodes.find((candidate) => candidate.nodeId === nodeId);
@@ -90,9 +91,12 @@ export function refreshDecompositionNodes(session: PresentationSession, current:
       node: {
         ...node,
         revisionRef: unit.unitRevisionRef,
-        projectionFreshness: "fresh",
+        projectionFreshness: reprojection?.affectedFoldRefs.includes(unit.unitRef) ? (reprojection.stale ? "stale" : "fresh") : "fresh",
         value: { unit: unit.value, classification: unit.classification, sourcePointer: unit.sourcePointer },
-        badges: [{ axis: "classification", value: unit.classification.dimensionRef ?? "unmapped", tone: unit.classification.status === "mapped" ? "active" : "unknown" }],
+        badges: [
+          { axis: "classification", value: unit.classification.dimensionRef ?? "unmapped", tone: unit.classification.status === "mapped" ? "active" : "unknown" },
+          ...(reprojection?.affectedFoldRefs.includes(unit.unitRef) ? [{ axis: "projection", value: reprojection.projectionStatus, tone: reprojection.stale ? "warning" as const : "active" as const }] : []),
+        ],
       },
     });
   }

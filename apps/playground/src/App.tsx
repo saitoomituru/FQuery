@@ -9,6 +9,7 @@ import { DecomposerContext, FIXTURE_ROUTE, isRecord, projectLambdaNode, projectP
 import { PANE_COMPONENTS, createPlaygroundPaneRegistry } from "./host/pane-registry.js";
 import { PlaygroundPaneContext, type PlaygroundEditReceiptView, type PlaygroundPaneContextValue } from "./context.js";
 import { CoreNodeRenderer } from "./nodes/CoreNodeRenderer.js";
+import { reprojectWithAccessMap } from "./host/causal-projection.js";
 
 /** rendererHint -> canvas renderer。Core 3 nodeは最初のrenderer。pluginは同じ経路で登録する。 */
 const NODE_RENDERERS: NodeRendererMap = { [CORE_RENDERER_HINT]: CoreNodeRenderer };
@@ -27,6 +28,7 @@ export function App() {
   const canvas = useRef<PresentationCanvasHandle>(null);
   const coreIds = useRef<CoreNodeIds>({});
   const accessMap = useRef<AccessMapProfile | undefined>(undefined);
+  const loggedCausalRevisions = useRef(new Set<string>());
   // dev modeのStrictMode二重effectとFast Refreshのeffect再実行でCore graphを二重構築しないための同期guard
   const coreGraphBuilt = useRef(false);
   const [routes, setRoutes] = useState<readonly PlaygroundRoute[]>([FIXTURE_ROUTE]);
@@ -95,7 +97,9 @@ export function App() {
       accessMap.current = readAccessMapProfile(accessMapValue);
       fams.set(famValue);
       coreIds.current = await projectDecompositionGraph(session, coreIds.current, famValue, accessMap.current);
-      projectLambdaNode(session, coreIds.current, famValue);
+      const reprojection = reprojectWithAccessMap(famValue, accessMap.current);
+      refreshDecompositionNodes(session, coreIds.current, famValue, accessMap.current, reprojection);
+      projectLambdaNode(session, coreIds.current, famValue, reprojection?.projectionStatus ?? "fresh", reprojection?.manifestations);
       const q = famValue.Q as Record<string, unknown>;
       logs.append({
         traceId: `foldlog://playground/${famValue.fam_id}`,
@@ -130,9 +134,35 @@ export function App() {
   const fam = canonicalDocument?.value;
   useEffect(() => {
     if (!fam || !accessMap.current) return;
-    refreshDecompositionNodes(session, coreIds.current, fam, accessMap.current);
-    projectLambdaNode(session, coreIds.current, fam);
-  }, [session, fam]);
+    const reprojection = reprojectWithAccessMap(fam, accessMap.current);
+    refreshDecompositionNodes(session, coreIds.current, fam, accessMap.current, reprojection);
+    projectLambdaNode(session, coreIds.current, fam, reprojection?.projectionStatus ?? "fresh", reprojection?.manifestations);
+    if (reprojection && !loggedCausalRevisions.current.has(fam.revision_id)) {
+      loggedCausalRevisions.current.add(fam.revision_id);
+      const q = fam.Q as Record<string, unknown>;
+      logs.append({
+        traceId: `foldlog://playground/${fam.fam_id}`,
+        parentEventId: logs.last()?.eventId ?? null,
+        operation: "validate-edge",
+        sourceFoldRef: reprojection.affectedFoldRefs[0] ?? fam.fam_id,
+        affectedFoldRefs: reprojection.affectedFoldRefs,
+        sourceFamRef: fam.fam_id,
+        sourceRevisionRef: fam.revision_id,
+        resultFamRef: fam.fam_id,
+        resultRevisionRef: fam.revision_id,
+        accessMapFamRef: accessMap.current.famId,
+        accessMapRevisionRef: accessMap.current.revisionId,
+        registryRef: typeof q.registry_ref === "string" ? q.registry_ref : accessMap.current.registryRef,
+        roles: { observerRef: "observer://playground/user", recorderRef: "recorder://fquery/playground/foldlog", executorRef: "executor://fquery/core/fold-reprojection", transformerRef: "transformer://fquery/access-map-adapter", causalContributorRefs: reprojection.affectedFoldRefs },
+        semanticStatus: reprojection.stale ? "recomposition-required" : "fixture-rule-retained",
+        projectionStatus: reprojection.projectionStatus,
+        cancelledEdgeRefs: reprojection.cancelledGateRefs,
+        selectedBranchRefs: reprojection.selectedFallbackRefs,
+        recompositionRequired: reprojection.stale,
+        detail: { edgeEvaluations: reprojection.edgeEvaluations, persistenceBoundary: "volatile-browser-memory", conditionAuthority: "fixture-access-map" },
+      });
+    }
+  }, [session, logs, fam]);
 
   const psiNode = state.nodes.find((node) => node.nodeId === coreIds.current.psi);
   /** active cursor nodeはsessionのselection。未選択時はΨ.NLを既定にする */

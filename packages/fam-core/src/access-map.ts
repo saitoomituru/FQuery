@@ -127,11 +127,13 @@ function readRule(value: unknown, path: string): AccessMapRule {
 function readFactExtractor(value: unknown, path: string): AccessMapFactExtractor {
   const extractor = requiredObject(value, path);
   if (extractor.value_type !== "number") throw new TypeError(`${path}.value_type:number-required`);
+  const pattern = requiredString(extractor.pattern, `${path}.pattern`);
+  try { new RegExp(pattern, "u"); } catch { throw new TypeError(`${path}.pattern:invalid-regexp`); }
   return Object.freeze({
     extractorRef: requiredString(extractor.extractor_ref, `${path}.extractor_ref`),
     sourceUnitOrder: requiredNonNegativeInteger(extractor.source_unit_order, `${path}.source_unit_order`),
     factKey: requiredString(extractor.fact_key, `${path}.fact_key`),
-    pattern: requiredString(extractor.pattern, `${path}.pattern`),
+    pattern,
     valueType: "number",
     scopeRef: requiredString(extractor.scope_ref, `${path}.scope_ref`),
   });

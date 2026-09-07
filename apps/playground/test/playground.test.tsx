@@ -15,7 +15,7 @@ const fixtureAccessMap = {
   "∇φ": { mapping_rules: [
     { rule_id: "rule://fquery/test/basic-commons/world-fact", source_claim_kind: "world-fact", target_dimension_ref: "dimension://fquery/test/world", claim_scope_ref: "scope://world/fixture-local", evidence_scope: ["fixture-local"] },
     { rule_id: "rule://fquery/test/basic-commons/unknown", source_claim_kind: "unknown", target_dimension_ref: "dimension://fquery/test/unmapped", claim_scope_ref: "scope://unknown", evidence_scope: ["unknown", "not-absence"] },
-  ], loss_declarations: [], source_mutation: false },
+  ], fact_extractors: [{ extractor_ref: "extractor://fquery/test/issue-35/precipitation-percent", source_unit_order: 0, fact_key: "precipitationProbability", pattern: "降水確率は([0-9]+(?:\\.[0-9]+)?)%", value_type: "number", scope_ref: "scope://fixture/issue-35/tc2-text-adapter" }], causal_gates: [{ gate_ref: "gate://fquery/test/issue-35/rain-anxiety", source_unit_order: 0, fact_path: ["precipitationProbability"], condition_kind: "number-gte", threshold: 38, active_unit_orders: [1, 2], fallback_unit_orders: [], condition_scope_ref: "scope://fixture/issue-35/author-defined-38" }], loss_declarations: [], source_mutation: false },
   λ: { target_fold_ref: "fold://fquery/test/basic-commons", target_dimension_refs: ["dimension://fquery/test/world", "dimension://fquery/test/unmapped"], output_kind: "classification-binding" },
   Q: { observer_ref: "observer://fquery/test-fixture-author", registry_ref: "registry://fquery/test/basic-commons@1", fact_scope_ref: "world://fquery/test/issue-35", authority_ref: "authority://fquery/test-fixture-only", unknown_policy: "retain", unmapped_policy: "retain-unmapped", fallback_policy: "none", source_mutation: false, unknowns: [], unknown_is_absence: false },
   pointers: [], provenance: { claim_scope: "TEST_FIXTURE", source_refs: ["https://github.com/saitoomituru/FQuery/issues/35"], source_mutation: false },
@@ -112,6 +112,24 @@ describe("FQuery Playground", () => {
 });
 
 describe("FQuery Playground FAMVIM", () => {
+  it("TC2の38→0で取消gateを記録し、stale λを出力せず再構成待ちにする", async () => {
+    const fam = createLiteralDecompositionFam("降水確率は38%である。不安である。傘を持つ。", "q://test/playground/tc2");
+    const fetcher = vi.fn().mockResolvedValueOnce(json(fixtureRoutes)).mockResolvedValueOnce(json(decompositionResponse(fam)));
+    const { container } = await mountWithGraph(fetcher);
+    await act(async () => { fireEvent.click(canvasNodes(container)[0]!.querySelector('[aria-label="route controls"] button')!); });
+    await waitFor(() => expect(canvasNodes(container)).toHaveLength(5));
+    const sourceUnit = canvasNodes(container).find((node) => node.querySelector("textarea") && node.textContent?.includes("降水確率は38%"))!;
+    setText(sourceUnit.querySelector("textarea")!, "降水確率は0%である。");
+    await act(async () => { fireEvent.click(sourceUnit.querySelector("button")!); });
+    const lambdaNode = container.querySelector<HTMLElement>('[data-node-id="q://playground/node/3"]')!;
+    await waitFor(() => expect(lambdaNode.textContent).toContain("再構成待ち"));
+    expect(lambdaNode.textContent).not.toContain("不安である。");
+    openLeftTab(container, "records");
+    await waitFor(() => expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain('"operation": "validate-edge"'));
+    expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain('"projectionStatus": "needs-recomposition"');
+    expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain("gate://fquery/test/issue-35/rain-anxiety");
+  });
+
   it("独立∇φ nodeのunit局所差替えで他unitと拡張fieldを保持する", async () => {
     const famWithExtension = { ...createLiteralDecompositionFam("自然言語。テスト。", "q://test/playground"), "x-plugin-extension": { retained: true } };
     const fetcher = vi.fn()

@@ -15,7 +15,7 @@ export function LambdaNlNode({ model }: NodeRendererProps) {
           <pre className="lambda-node-output nowheel">{lines.join("\n")}</pre>
         </>
       ) : (
-        <p className="lambda-node-muted">NOT PROVIDED — 上流FAMから出力がまだ投影されていない</p>
+        <p className="lambda-node-muted">{model.projectionFreshness === "stale" ? "再構成待ち — stale λ投影は出力しない" : "NOT PROVIDED — 上流FAMから出力がまだ投影されていない"}</p>
       )}
       {lambda && <span className="fquery-badge" data-axis="lambda" data-tone={lambda.tone}><small>λ</small>{lambda.value}</span>}
     </div>

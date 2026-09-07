@@ -81,7 +81,7 @@ export function projectFamvimNode(session: PresentationSession, ids: CoreNodeIds
 }
 
 /** λ.NLへmanifestationを投影する。fixture projectionであり、λ satisfactionは`unknown`のまま。 */
-export function projectLambdaNode(session: PresentationSession, ids: CoreNodeIds, canonicalFam?: unknown, projectionStatus: "fresh" | "needs-recomposition" | "unknown" = "fresh"): void {
+export function projectLambdaNode(session: PresentationSession, ids: CoreNodeIds, canonicalFam?: unknown, projectionStatus: "fresh" | "needs-recomposition" | "unknown" = "fresh", projectedManifestations?: readonly string[]): void {
   const state = session.state;
   const node = state.nodes.find((entry) => entry.nodeId === ids.lambda);
   if (!node) return;
@@ -89,7 +89,7 @@ export function projectLambdaNode(session: PresentationSession, ids: CoreNodeIds
   const value = canonicalFam ?? state.nodes.find((entry) => entry.nodeId === ids.famvim)?.value;
   const lambda = isRecord(value) && isRecord(value.λ) ? value.λ : undefined;
   const units = lambda && Array.isArray(lambda.output_units) ? lambda.output_units : [];
-  const manifestations = units.map((unit) => isRecord(unit) && isRecord(unit.λ) && typeof unit.λ.manifestation === "string" ? unit.λ.manifestation : "").filter(Boolean);
+  const manifestations = projectedManifestations ?? units.map((unit) => isRecord(unit) && isRecord(unit.λ) && typeof unit.λ.manifestation === "string" ? unit.λ.manifestation : "").filter(Boolean);
   const projected = connected && manifestations.length > 0 && projectionStatus === "fresh";
   session.applyEngineEvent({
     type: "fam.node.changed",
