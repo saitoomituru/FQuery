@@ -67,6 +67,10 @@ PlaygroundはHost gatewayからrouteを発見し、fixture、Gemini、ローカ�
 現在の正本参照と実行境界は[`SPHERE-DOS.md`](SPHERE-DOS.md)、repository固有規約は[`AGENTS.md`](AGENTS.md)を参照してください。
 画面と実Hostの未検証項目は[`docs/testing/human-acceptance.ja.md`](docs/testing/human-acceptance.ja.md)へ分離しています。
 
+## Credits
+
+GUIの概念設計はChatGraph（uynet）とBlenderのnode editorを参考にしています。コード・assetの転用はなく、platformもengineも異なります。詳細は[`CREDITS.md`](CREDITS.md)を参照してください。
+
 ## License
 
 code、Schema、fixtureはApache-2.0です。文書の追加license境界は制定時に各ファイルまたは`LICENSE-POLICY.ja.md`で明記します。外部正本はcopyせず、sourceとrevisionを参照します。
