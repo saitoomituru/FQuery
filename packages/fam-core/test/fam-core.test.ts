@@ -123,6 +123,21 @@ describe("FAM JSON Core", () => {
     ]));
   });
 
+  it("原文を欠落させた部分分解を拒否する", () => {
+    const value = structuredClone(createLiteralDecompositionFam("雨が降る。傘を持つ。", "q://test/coverage")) as unknown as Record<string, unknown>;
+    (value.λ as { output_units: unknown[] }).output_units.pop();
+    expect(validateFamDecomposition(value).issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "source-coverage-incomplete" }),
+    ]));
+  });
+
+  it("正本indexやprovenanceへの他言語混入を拒否する", () => {
+    const value = structuredClone(createLiteralDecompositionFam("雨が降る。", "q://test/foreign")) as unknown as Record<string, unknown>;
+    value.index_subjects = ["weather"];
+    value.provenance = { source_separation: "Observed weather" };
+    expect(validateFamDecomposition(value).issues.filter((entry) => entry.code === "foreign-language-outside-sub-splitter")).toHaveLength(2);
+  });
+
   it("provider response schemaのrequired fieldをpropertiesへ全て宣言する", () => {
     const failures: string[] = [];
     inspectSchema(FAM_JSON_RESPONSE_SCHEMA, "$", failures);

@@ -93,15 +93,22 @@ export function validateFamDecomposition(value: unknown): FamValidationResult {
   if (!sourceLanguage) issue(issues, "$.ψ.source_language", "source-language-required", "decomposition FAMには原入力のsource_languageが必要です");
   if (typeof value.title_language !== "string" || value.title_language !== sourceLanguage) issue(issues, "$.title_language", "title-language-mismatch", "title_languageは入力言語と一致しなければなりません");
   if (!Array.isArray(value["∇φ"])) issue(issues, "$.∇φ", "gradient-array-required", "decomposition FAMの∇φはarrayでなければなりません");
+  else value["∇φ"].forEach((gradient, index) => {
+    if (!isRecord(gradient) || typeof gradient.source_expression !== "string" || (isRecord(psi) && typeof psi.source_text === "string" && !psi.source_text.includes(gradient.source_expression))) issue(issues, `$.∇φ[${index}].source_expression`, "root-gradient-source-lineage-required", "root gradientは入力原文の表現を保持しなければなりません");
+    if (!isRecord(gradient) || gradient.source_language !== sourceLanguage) issue(issues, `$.∇φ[${index}].source_language`, "gradient-source-language-mismatch", "root gradientのsource_languageが一致しません");
+  });
   const lambda = value.λ;
   if (!isRecord(lambda) || !Array.isArray(lambda.output_units) || lambda.output_units.length === 0) {
     issue(issues, "$.λ.output_units", "output-units-required", "decomposition FAMには1件以上のnested output_unitsが必要です");
   } else {
     lambda.output_units.forEach((unit, index) => validateSourceUnit(unit, index, isRecord(psi) ? psi.source_text : undefined, sourceLanguage, issues));
+    const unitText = lambda.output_units.flatMap((unit) => isRecord(unit) && isRecord(unit.ψ) && typeof unit.ψ.source_text === "string" ? [unit.ψ.source_text] : []).join("");
+    if (isRecord(psi) && typeof psi.source_text === "string" && compactWhitespace(unitText) !== compactWhitespace(psi.source_text)) issue(issues, "$.λ.output_units", "source-coverage-incomplete", "output_unitsは入力原文を順序どおり過不足なくcoverしなければなりません");
   }
   const q = value.Q;
   if (!isRecord(q) || !Array.isArray(q.unknowns)) issue(issues, "$.Q.unknowns", "unknowns-required", "Q.unknownsはarrayでなければなりません");
   if (!isRecord(q) || q.unknown_is_absence !== false) issue(issues, "$.Q.unknown_is_absence", "unknown-absence-boundary-required", "unknown_is_absenceはfalseでなければなりません");
+  if (sourceLanguage) validateCanonicalLanguageFields(value, isRecord(psi) && typeof psi.source_text === "string" ? psi.source_text : "", sourceLanguage, issues);
   return freezeResult(issues, nodePaths);
 }
 
@@ -137,7 +144,8 @@ export function createLiteralDecompositionFam(sourceText: string, queryRef: stri
       observer_ref: "observer://fquery/literal-decomposition",
       registry_ref: "registry://fquery/fam-core",
       fact_scope_ref: queryRef,
-      unknowns: ["semantic-classification", "external-fact-agreement"],
+      unknowns: [],
+      pending_checks: ["semantic-classification", "external-fact-agreement"],
       unknown_is_absence: false,
       semantic_status: "not-evaluated",
     },
@@ -182,7 +190,7 @@ export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Objec
       required: ["purpose", "output_units", "satisfaction_status"],
       additionalProperties: true,
       properties: {
-        purpose: { type: "string" },
+        purpose: { type: "string", enum: ["source-decomposition"] },
         satisfaction_status: { type: "string" },
         output_units: {
           type: "array",
@@ -261,7 +269,15 @@ export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Objec
                   },
                 },
               },
-              Q: { type: "object", additionalProperties: true },
+              Q: {
+                type: "object",
+                required: ["observer_ref", "registry_ref", "fact_scope_ref", "unknowns", "unknown_is_absence"],
+                additionalProperties: true,
+                properties: {
+                  observer_ref: { type: "string" }, registry_ref: { type: "string" }, fact_scope_ref: { type: "string" },
+                  unknowns: { type: "array", items: { type: "string" } }, unknown_is_absence: { type: "boolean", enum: [false] },
+                },
+              },
             },
           },
         },
@@ -322,6 +338,11 @@ function validateSourceUnit(
   if (!isRecord(psi) || psi.source_language !== sourceLanguage) issue(issues, `${path}.ψ.source_language`, "unit-source-language-mismatch", "分解unitはrootと同じsource_languageを保持しなければなりません");
   validateSourceCanonical(unit, path, typeof text === "string" ? text : undefined, sourceLanguage, issues);
   const lambda = unit.λ;
+  const q = unit.Q;
+  if (!isRecord(q) || typeof q.observer_ref !== "string" || typeof q.registry_ref !== "string" || typeof q.fact_scope_ref !== "string" || !Array.isArray(q.unknowns) || q.unknown_is_absence !== false) issue(issues, `${path}.Q`, "unit-control-boundary-required", "分解unitにはObserver・Registry・fact scope・unknown境界が必要です");
+  else q.unknowns.forEach((entry, unknownIndex) => {
+    if (typeof entry === "string" && sourceLanguage && !usesOnlyCanonicalLanguage(entry, typeof rootSource === "string" ? rootSource : "", sourceLanguage)) issue(issues, `${path}.Q.unknowns[${unknownIndex}]`, "foreign-language-outside-sub-splitter", "unitのunknownも入力言語で保持します");
+  });
   if (!isRecord(lambda) || !Array.isArray(lambda.sub_splitters)) {
     issue(issues, `${path}.λ.sub_splitters`, "sub-splitters-required", "翻訳写本を分離するsub_splitters配列が必要です");
     return;
@@ -352,6 +373,45 @@ function validateTranslationCopy(copy: unknown, path: string, sourceText: string
   if (!isRecord(error) || !["not-evaluated", "measured"].includes(String(error.status)) || !Array.isArray(error.metric_refs) || !Array.isArray(error.measurements)) issue(issues, `${path}.Q.translation_error`, "translation-error-ledger-required", "翻訳誤差の状態・metric参照・測定履歴が必要です");
   if (!isRecord(lambda) || !isRecord(psi) || lambda.manifestation_language !== psi.target_language) issue(issues, `${path}.λ.manifestation_language`, "translation-target-language-mismatch", "翻訳顕現の言語はtarget_languageと一致しなければなりません");
 }
+
+function validateCanonicalLanguageFields(value: Record<string, unknown>, rootSource: string, sourceLanguage: string, issues: FamValidationIssue[]): void {
+  const candidates: Array<[string, unknown]> = [["$.title", value.title]];
+  if (Array.isArray(value.index_subjects)) value.index_subjects.forEach((entry, index) => candidates.push([`$.index_subjects[${index}]`, entry]));
+  if (isRecord(value.Q) && Array.isArray(value.Q.unknowns)) value.Q.unknowns.forEach((entry, index) => candidates.push([`$.Q.unknowns[${index}]`, entry]));
+  collectNarrativeFields(value.provenance, "$.provenance", candidates);
+  for (const [path, candidate] of candidates) {
+    if (typeof candidate === "string" && !usesOnlyCanonicalLanguage(candidate, rootSource, sourceLanguage)) issue(issues, path, "foreign-language-outside-sub-splitter", "他言語の自然言語表現はλ.sub_splittersの翻訳写本へ分離しなければなりません");
+  }
+}
+
+function collectNarrativeFields(value: unknown, path: string, candidates: Array<[string, unknown]>): void {
+  if (Array.isArray(value)) return value.forEach((child, index) => collectNarrativeFields(child, `${path}[${index}]`, candidates));
+  if (!isRecord(value)) return;
+  for (const [key, child] of Object.entries(value)) {
+    const childPath = `${path}.${key}`;
+    if (typeof child === "string" && ["description", "observed_text", "source_separation", "inference_note", "inference_notes"].includes(key)) candidates.push([childPath, child]);
+    else collectNarrativeFields(child, childPath, candidates);
+  }
+}
+
+function usesOnlyCanonicalLanguage(value: string, rootSource: string, sourceLanguage: string): boolean {
+  if (value.length === 0 || rootSource.includes(value)) return true;
+  const expected = expectedScripts(sourceLanguage);
+  if (expected.length === 0) return true;
+  const tokens = value.match(/[\p{L}\p{M}]+/gu) ?? [];
+  return tokens.every((token) => expected.some((pattern) => pattern.test(token)) || rootSource.includes(token));
+}
+
+function expectedScripts(sourceLanguage: string): readonly RegExp[] {
+  if (sourceLanguage === "ja") return [/^(?:\p{Script=Hiragana}|\p{Script=Katakana}|\p{Script=Han})+$/u];
+  if (sourceLanguage === "ar") return [/^\p{Script=Arabic}+$/u];
+  if (sourceLanguage === "und-Hebr" || sourceLanguage.startsWith("he")) return [/^\p{Script=Hebrew}+$/u];
+  if (sourceLanguage === "und-Hani" || sourceLanguage.startsWith("zh")) return [/^\p{Script=Han}+$/u];
+  if (sourceLanguage === "en") return [/^\p{Script=Latin}+$/u];
+  return [];
+}
+
+function compactWhitespace(value: string): string { return value.replace(/\s+/gu, ""); }
 
 function requiredString(value: Record<string, unknown>, field: string, path: string, issues: FamValidationIssue[]): void {
   if (typeof value[field] !== "string" || value[field].length === 0) issue(issues, `${path}.${field}`, "string-required", `${field}は空でないstringでなければなりません`);
