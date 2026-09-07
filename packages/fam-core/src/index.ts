@@ -347,8 +347,15 @@ function validateSourceUnit(
   validateSourceCanonical(unit, path, typeof text === "string" ? text : undefined, sourceLanguage, issues);
   const lambda = unit.λ;
   const q = unit.Q;
-  if (!isRecord(q) || typeof q.observer_ref !== "string" || typeof q.registry_ref !== "string" || typeof q.fact_scope_ref !== "string" || !Array.isArray(q.unknowns) || q.unknown_is_absence !== false) issue(issues, `${path}.Q`, "unit-control-boundary-required", "分解unitにはObserver・Registry・fact scope・unknown境界が必要です");
-  else validateUnknownEntries(q.unknowns, `${path}.Q.unknowns`, typeof rootSource === "string" ? rootSource : undefined, sourceLanguage, issues);
+  if (!isRecord(q)) issue(issues, `${path}.Q`, "unit-control-boundary-required", "分解unitにはQ objectが必要です");
+  else {
+    requiredString(q, "observer_ref", `${path}.Q`, issues);
+    requiredString(q, "registry_ref", `${path}.Q`, issues);
+    requiredString(q, "fact_scope_ref", `${path}.Q`, issues);
+    if (!Array.isArray(q.unknowns)) issue(issues, `${path}.Q.unknowns`, "unknowns-required", "unit Q.unknownsはarrayでなければなりません");
+    else validateUnknownEntries(q.unknowns, `${path}.Q.unknowns`, typeof rootSource === "string" ? rootSource : undefined, sourceLanguage, issues);
+    if (q.unknown_is_absence !== false) issue(issues, `${path}.Q.unknown_is_absence`, "unknown-absence-boundary-required", "unit unknown_is_absenceはfalseでなければなりません");
+  }
   if (!isRecord(lambda) || !Array.isArray(lambda.sub_splitters)) {
     issue(issues, `${path}.λ.sub_splitters`, "sub-splitters-required", "翻訳写本を分離するsub_splitters配列が必要です");
     return;
