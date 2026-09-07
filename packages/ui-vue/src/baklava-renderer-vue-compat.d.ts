@@ -10,8 +10,10 @@ declare module "@baklavajs/renderer-vue" {
   export const BaklavaEditor: Component;
   export interface FQueryBaklavaViewModel {
     readonly editor: Editor;
-    readonly displayedGraph: { nodes: AbstractNode[]; selectedNodes: AbstractNode[] };
+    readonly displayedGraph: { nodes: AbstractNode[]; selectedNodes: AbstractNode[]; panning: { x: number; y: number }; scaling: number };
+    readonly commandHandler: { executeCommand(name: string, throwOnNonexisting?: boolean): unknown; canExecuteCommand(name: string): boolean };
   }
+  export const ZOOM_TO_FIT_GRAPH_COMMAND: string;
   export function useBaklava(existingEditor?: Editor): FQueryBaklavaViewModel;
   export const Components: {
     readonly Node: Component;

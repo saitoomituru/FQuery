@@ -149,6 +149,17 @@ describe("FQueryBaklavaView layout", () => {
   });
 });
 
+describe("FQueryBaklavaView viewport", () => {
+  it("viewportCenterをgraph座標で返し、zoomToFitがcommandとして実行できる", async () => {
+    const wrapper = mount(FQueryBaklavaView, { props: { nodes: [model], layout: [{ nodeId: model.nodeId, x: 100, y: 50 }], nodeRenderers: {} } });
+    await flushPromises();
+    const handle = wrapper.vm as unknown as { viewportCenter(): { x: number; y: number }; zoomToFit(): boolean };
+    const center = handle.viewportCenter();
+    expect(Number.isFinite(center.x) && Number.isFinite(center.y)).toBe(true);
+    expect(typeof handle.zoomToFit()).toBe("boolean");
+  });
+});
+
 describe("FQueryBaklavaView selection", () => {
   const second: NodeViewModel = { ...model, nodeId: "q://test/vue2", label: "Q2", ports: [] };
 

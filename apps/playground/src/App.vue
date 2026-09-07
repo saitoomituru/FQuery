@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, provide, ref, shallowRef, watch } from "vue";
-import { FQueryBaklavaView, FQueryPane } from "@fquery/ui-vue";
+import { FQueryBaklavaView, FQueryPane, type FQueryBaklavaViewHandle } from "@fquery/ui-vue";
 import {
   PaneRegistry,
   PluginPresentationRegistry,
@@ -39,6 +39,7 @@ const lastEvent = ref("未実行");
 const response = ref<unknown>();
 const running = ref(false);
 const routeError = ref("");
+const canvas = ref<FQueryBaklavaViewHandle>();
 const leftOpen = ref(true);
 const rightOpen = ref(false);
 const inspectorTab = ref<"settings" | "connections" | "q" | "unsupported" | "raw" | undefined>();
@@ -145,6 +146,7 @@ function onKeydown(event: KeyboardEvent) {
   if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.tagName === "SELECT" || target.isContentEditable)) return;
   if (event.key === "t" || event.key === "T") { leftOpen.value = !leftOpen.value; event.preventDefault(); }
   if (event.key === "n" || event.key === "N") { rightOpen.value = !rightOpen.value; event.preventDefault(); }
+  if (event.key === "Home") { frameAll(); event.preventDefault(); }
 }
 
 watch(provider, () => { model.value = selectedRoute.value?.models[0] ?? ""; response.value = undefined; routeError.value = ""; });
@@ -192,8 +194,37 @@ function receive(event: FQueryUiEvent) {
     rightOpen.value = true;
     return;
   }
-  if (isGuiRequest(event)) void session.dispatch(event).catch((error: unknown) => { routeError.value = error instanceof Error ? error.message : "session-dispatch-failed"; });
+  if (isGuiRequest(event)) {
+    void session.dispatch(event).then((state) => {
+      if (event.type === "node.add.requested") void placeUnplacedNodes(state);
+    }).catch((error: unknown) => { routeError.value = error instanceof Error ? error.message : "session-dispatch-failed"; });
+  }
 }
+
+let placementSequence = 0;
+/**
+ * Host責務: acceptされたlayoutが無いnodeをviewport中央へ置く。複数あれば縦へずらす。
+ * 位置はPresentation FAMではなくlayout write-backとしてsessionへ通す。
+ */
+async function placeUnplacedNodes(state: PresentationSessionState) {
+  const placed = new Set(state.layout.map((entry) => entry.nodeId));
+  const unplaced = state.nodes.filter((node) => !placed.has(node.nodeId));
+  if (unplaced.length === 0) return;
+  const center = canvas.value?.viewportCenter() ?? { x: 400, y: 200 };
+  for (const [index, node] of unplaced.entries()) {
+    placementSequence += 1;
+    await session.dispatch({
+      type: "node.move.requested",
+      requestId: `playground:place:${placementSequence}`,
+      nodeId: node.nodeId,
+      layoutSlotRef: `layout://playground/${node.nodeId}`,
+      x: Math.round(center.x - 160),
+      y: Math.round(center.y - 60 + index * 140),
+    });
+  }
+}
+
+function frameAll() { canvas.value?.zoomToFit(); }
 
 async function execute() {
   running.value = true;
@@ -275,12 +306,14 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
       <output aria-live="polite">last event: {{ lastEvent }}</output>
       <span class="spacer" />
       <p v-if="routeError" class="error" role="alert">{{ routeError }}</p>
+      <button type="button" title="Frame all (Home)" @click="frameAll">Frame all</button>
       <button type="button" class="hamburger" :aria-pressed="rightOpen ? 'true' : 'false'" aria-label="toggle inspector pane (N)" title="Inspector pane (N)" @click="rightOpen = !rightOpen">☰</button>
     </header>
 
     <main class="stage" aria-label="node editor">
       <FQueryPane v-model:open="leftOpen" class="overlay-left" side="left" storage-key="fquery.playground" :tabs="leftTabs" :components="paneComponents" :context="paneContext" @event="receive" />
       <FQueryBaklavaView
+        ref="canvas"
         fill
         :nodes="sessionState.nodes"
         :connections="sessionState.connections"

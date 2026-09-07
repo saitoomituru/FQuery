@@ -1,6 +1,6 @@
 <script setup lang="ts">
-import { computed, provide, watch, type Component } from "vue";
-import { BaklavaEditor, useBaklava } from "@baklavajs/renderer-vue";
+import { computed, provide, ref, watch, type Component } from "vue";
+import { BaklavaEditor, ZOOM_TO_FIT_GRAPH_COMMAND, useBaklava } from "@baklavajs/renderer-vue";
 import { selectionEquals, type ConnectionViewModel, type FQueryUiEvent, type NodeSelection, type NodeViewModel, type PresentationProjection } from "@fquery/ui-core";
 import { BaklavaPresentationAdapter, type BaklavaLayoutValue } from "./baklava-adapter.js";
 import { canvasContextKey } from "./canvas-context.js";
@@ -19,6 +19,8 @@ const props = defineProps<{
   selection?: NodeSelection | undefined;
 }>();
 const emit = defineEmits<{ event: [event: FQueryUiEvent] }>();
+const root = ref<HTMLElement>();
+
 // reactive editorを先に作り、adapterはそのproxy経由でgraphを変更する（mount後の追加も描画へ伝播させる）
 const viewModel = useBaklava();
 const adapter = new BaklavaPresentationAdapter((event) => emit("event", event), { editor: viewModel.editor, inlineContent: props.nodeRenderers !== undefined });
@@ -65,10 +67,34 @@ watch(
   },
   { immediate: true },
 );
+
+/** viewportの中心をgraph座標で返す。新規nodeの初期配置にHostが使う。 */
+function viewportCenter(): { x: number; y: number } {
+  const rect = root.value?.getBoundingClientRect();
+  const width = rect?.width || 1200;
+  const height = rect?.height || 700;
+  const graph = viewModel.displayedGraph;
+  const scaling = graph.scaling || 1;
+  return { x: width / 2 / scaling - graph.panning.x, y: height / 2 / scaling - graph.panning.y };
+}
+
+/** Blender Home相当。graph全体をviewportへ収める。 */
+function zoomToFit(): boolean {
+  try {
+    if (!viewModel.commandHandler.canExecuteCommand(ZOOM_TO_FIT_GRAPH_COMMAND)) return false;
+    viewModel.commandHandler.executeCommand(ZOOM_TO_FIT_GRAPH_COMMAND);
+    return true;
+  } catch {
+    // 未attach（test環境等）ではBaklavaがDOM寸法を取れない。失敗は表示だけの問題なので握る
+    return false;
+  }
+}
+
+defineExpose({ viewportCenter, zoomToFit });
 </script>
 
 <template>
-  <section class="fquery-baklava syrup-dark" :data-fill="fill ? 'true' : undefined" aria-label="FQuery Baklava presentation" @pointerup="adapter.requestMovedNodes(nodes)">
+  <section ref="root" class="fquery-baklava syrup-dark" :data-fill="fill ? 'true' : undefined" aria-label="FQuery Baklava presentation" @pointerup="adapter.requestMovedNodes(nodes)">
     <BaklavaEditor :view-model="viewModel" />
   </section>
 </template>

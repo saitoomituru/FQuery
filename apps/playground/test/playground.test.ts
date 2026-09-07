@@ -67,6 +67,12 @@ describe("FQuery Playground", () => {
     await wrapper.get('[aria-label="Plugin node palette"] button').trigger("click");
     await flushPromises();
     expect(wrapper.findAll(".baklava-node:not(.--palette)")).toHaveLength(4);
+    // 新規nodeはHostがviewport中央へ配置し、layout write-backとしてsessionへ通る
+    await openLeftTab(wrapper, "decisions");
+    expect(wrapper.get('[aria-label="session decisions"]').text()).toContain("playground:place:1 → accepted");
+    const fourth = wrapper.findAll(".baklava-node:not(.--palette)")[3]!;
+    expect(fourth.attributes("style")).not.toContain("left: 0px");
+    await wrapper.get('[title="Frame all (Home)"]').trigger("click");
   });
 });
 
