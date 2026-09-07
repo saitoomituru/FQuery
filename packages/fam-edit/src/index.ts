@@ -63,6 +63,48 @@ export interface FamEditOptions {
   readonly clock?: () => Date;
 }
 
+export interface FamChildDependency {
+  readonly childRef: string;
+  readonly observedParentPaths: readonly string[];
+}
+
+export interface FamParentPatchProposal {
+  readonly proposalId: string;
+  readonly parentFamId: string;
+  readonly parentRevisionId: string;
+  readonly childResultRef: string;
+  readonly patches: readonly FamPatch[];
+  readonly childDependencies: readonly FamChildDependency[];
+}
+
+export type FamParentPatchAction =
+  | "accept-patch"
+  | "reject-patch"
+  | "fork-parent"
+  | "mark-exception"
+  | "escalate-to-grandparent"
+  | "requires-external-test";
+
+export interface FamParentPatchReview {
+  readonly reviewId: string;
+  readonly reviewerRef: string;
+  readonly action: FamParentPatchAction;
+  readonly reason: string;
+  readonly resultRevisionId?: string;
+}
+
+export interface FamParentPatchReviewResult {
+  readonly status: "applied" | "not-applied" | "rejected";
+  readonly action: FamParentPatchAction;
+  readonly proposalId: string;
+  readonly reviewId: string;
+  readonly parentDocument: FamDocument;
+  readonly editDecision?: FamPatchDecision;
+  readonly revalidateChildRefs: readonly string[];
+  readonly sourceMutation: false;
+  readonly reason: string;
+}
+
 const PROTECTED_ROOT_FIELDS = new Set(["schema_version", "fam_id", "revision_id"]);
 
 export function applyFamPatch(
@@ -113,6 +155,57 @@ export function applyFamPatch(
     validationIssues: Object.freeze([]),
   });
   return Object.freeze({ status: "accepted", document: nextDocument, receipt });
+}
+
+export function reviewParentPatchProposal(
+  parent: FamDocument,
+  proposal: FamParentPatchProposal,
+  review: FamParentPatchReview,
+  options: FamEditOptions = {},
+): FamParentPatchReviewResult {
+  const base = {
+    action: review.action,
+    proposalId: proposal.proposalId,
+    reviewId: review.reviewId,
+    parentDocument: parent,
+    revalidateChildRefs: affectedChildrenForPatches(proposal.patches, proposal.childDependencies),
+    sourceMutation: false as const,
+    reason: review.reason,
+  };
+  if (proposal.parentFamId !== parent.value.fam_id || proposal.parentRevisionId !== parent.value.revision_id) {
+    return Object.freeze({ ...base, status: "rejected", reason: "parent-precondition-mismatch" });
+  }
+  if (review.action !== "accept-patch") {
+    return Object.freeze({ ...base, status: "not-applied" });
+  }
+  if (!review.resultRevisionId) {
+    return Object.freeze({ ...base, status: "rejected", reason: "result-revision-required" });
+  }
+  const editDecision = applyFamPatch(parent, {
+    operationId: proposal.proposalId,
+    baseRevisionId: proposal.parentRevisionId,
+    resultRevisionId: review.resultRevisionId,
+    patches: proposal.patches,
+  }, options);
+  return Object.freeze({
+    ...base,
+    status: editDecision.status === "accepted" ? "applied" : "rejected",
+    parentDocument: editDecision.document,
+    editDecision,
+    reason: editDecision.status === "accepted" ? review.reason : editDecision.receipt.reason ?? "edit-rejected",
+  });
+}
+
+export function affectedChildrenForPatches(
+  patches: readonly FamPatch[],
+  dependencies: readonly FamChildDependency[],
+): readonly string[] {
+  const changedPaths = patches.map((patch) => canonicalPointer(patch.path));
+  return Object.freeze(dependencies.flatMap((dependency) =>
+    dependency.observedParentPaths.some((path) => changedPaths.some((changed) => pointersOverlap(changed, canonicalPointer(path))))
+      ? [dependency.childRef]
+      : [],
+  ));
 }
 
 function validateRequest(document: FamDocument, request: FamPatchRequest): FamEditRejectionReason | undefined {
@@ -179,6 +272,14 @@ function parentAt(root: unknown, segments: readonly string[]): { parent: unknown
 function parsePointer(pointer: string): readonly string[] {
   if (!pointer.startsWith("/") || pointer.includes("~") && /~(?:[^01]|$)/.test(pointer)) throw new PatchError("invalid-json-pointer");
   return pointer.slice(1).split("/").map((segment) => segment.replaceAll("~1", "/").replaceAll("~0", "~"));
+}
+
+function canonicalPointer(pointer: string): string {
+  return `/${parsePointer(pointer).map((segment) => segment.replaceAll("~", "~0").replaceAll("/", "~1")).join("/")}`;
+}
+
+function pointersOverlap(left: string, right: string): boolean {
+  return left === right || left.startsWith(`${right}/`) || right.startsWith(`${left}/`);
 }
 
 function arrayIndex(segment: string, length: number, allowEnd: boolean): number {

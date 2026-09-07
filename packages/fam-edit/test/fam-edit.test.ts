@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { readFamJson, validateFamDecomposition, writeUnmodifiedFamJson } from "@fquery/fam-core";
-import { applyFamPatch } from "../src/index.js";
+import { affectedChildrenForPatches, applyFamPatch, reviewParentPatchProposal } from "../src/index.js";
 
 const source = `{
   "schema_version": "fam.json/0.1.0-draft",
@@ -125,5 +125,57 @@ describe("FAM edit engine", () => {
     }, { clock });
     expect(invalidPointer.receipt.reason).toBe("invalid-json-pointer");
     expect(missing.receipt.reason).toBe("path-not-found");
+  });
+
+  it("parent patchはreview後だけ適用し影響childを再検証へ返す", () => {
+    const parent = readFamJson(source);
+    const proposal = {
+      proposalId: "patch://test/parent/1",
+      parentFamId: "fam://test/edit",
+      parentRevisionId: "rev://test/edit/1",
+      childResultRef: "fam://test/child-result",
+      patches: [{ op: "set" as const, path: "/Q/review_status", value: "accepted" }],
+      childDependencies: [
+        { childRef: "fam://test/child/q", observedParentPaths: ["/Q"] },
+        { childRef: "fam://test/child/psi", observedParentPaths: ["/ψ"] },
+      ],
+    };
+    const result = reviewParentPatchProposal(parent, proposal, {
+      reviewId: "review://test/1",
+      reviewerRef: "observer://test/reviewer",
+      action: "accept-patch",
+      reason: "fixture-review-accepted",
+      resultRevisionId: "rev://test/edit/2",
+    }, { clock });
+    expect(result.status).toBe("applied");
+    expect(result.parentDocument.value.revision_id).toBe("rev://test/edit/2");
+    expect(result.revalidateChildRefs).toEqual(["fam://test/child/q"]);
+    expect(parent.value.revision_id).toBe("rev://test/edit/1");
+  });
+
+  it("forkやexternal test要求は元parentへ適用しない", () => {
+    const parent = readFamJson(source);
+    const result = reviewParentPatchProposal(parent, {
+      proposalId: "patch://test/parent/fork",
+      parentFamId: "fam://test/edit",
+      parentRevisionId: "rev://test/edit/1",
+      childResultRef: "fam://test/child-result",
+      patches: [{ op: "set", path: "/title", value: "分岐候補" }],
+      childDependencies: [],
+    }, {
+      reviewId: "review://test/fork",
+      reviewerRef: "observer://test/reviewer",
+      action: "fork-parent",
+      reason: "source parentを維持する",
+    }, { clock });
+    expect(result).toMatchObject({ status: "not-applied", action: "fork-parent", sourceMutation: false, parentDocument: parent });
+    expect(result).not.toHaveProperty("editDecision");
+  });
+
+  it("変更pathと依存pathをsegment境界で比較する", () => {
+    expect(affectedChildrenForPatches(
+      [{ op: "set", path: "/Q/a", value: true }],
+      [{ childRef: "q", observedParentPaths: ["/Q"] }, { childRef: "similar", observedParentPaths: ["/QQ"] }],
+    )).toEqual(["q"]);
   });
 });
