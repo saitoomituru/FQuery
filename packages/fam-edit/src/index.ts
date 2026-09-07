@@ -11,6 +11,9 @@ import {
 } from "@fquery/fam-core";
 import { sha256Hex } from "./sha256.js";
 
+export { FamRevisionStore, replaceFamUnit } from "./unit-replacement.js";
+export type * from "./unit-replacement.js";
+
 export const FAM_EDIT_RECEIPT_VERSION = "fquery.fam-edit-receipt/0.1.0-draft" as const;
 
 export type FamPatch =

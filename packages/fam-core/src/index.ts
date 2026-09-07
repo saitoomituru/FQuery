@@ -109,7 +109,7 @@ export function validateFamDecomposition(value: unknown): FamValidationResult {
     issue(issues, "$.λ.output_units", "output-units-required", "decomposition FAMには1件以上のnested output_unitsが必要です");
   } else {
     lambda.output_units.forEach((unit, index) => validateSourceUnit(unit, index, isRecord(psi) ? psi.source_text : undefined, sourceLanguage, issues));
-    const unitText = lambda.output_units.flatMap((unit) => isRecord(unit) && isRecord(unit.ψ) && typeof unit.ψ.source_text === "string" ? [unit.ψ.source_text] : []).join("");
+    const unitText = lambda.output_units.flatMap((unit) => unitCoverageText(unit)).join("");
     if (isRecord(psi) && typeof psi.source_text === "string" && compactWhitespace(unitText) !== compactWhitespace(psi.source_text)) issue(issues, "$.λ.output_units", "source-coverage-incomplete", "output_unitsは入力原文を順序どおり過不足なくcoverしなければなりません");
   }
   const q = value.Q;
@@ -360,12 +360,13 @@ function validateSourceUnit(
   if (!isRecord(unit)) return;
   const psi = unit.ψ;
   const text = isRecord(psi) ? psi.source_text : undefined;
+  const q = unit.Q;
+  const userOverride = isRecord(q) && q.edit_origin === "user-override";
   if (typeof text !== "string" || text.length === 0) issue(issues, `${path}.ψ.source_text`, "unit-source-text-required", "分解unitには原言語source_textが必要です");
-  else if (typeof rootSource === "string" && !rootSource.includes(text)) issue(issues, `${path}.ψ.source_text`, "unit-source-not-in-root", "分解unitのsource_textはroot原文に含まれなければなりません");
+  else if (typeof rootSource === "string" && !rootSource.includes(text) && !userOverride) issue(issues, `${path}.ψ.source_text`, "unit-source-not-in-root", "分解unitのsource_textはroot原文に含まれるかUser override lineageを持たなければなりません");
   if (!isRecord(psi) || psi.source_language !== sourceLanguage) issue(issues, `${path}.ψ.source_language`, "unit-source-language-mismatch", "分解unitはrootと同じsource_languageを保持しなければなりません");
   validateSourceCanonical(unit, path, typeof text === "string" ? text : undefined, sourceLanguage, issues);
   const lambda = unit.λ;
-  const q = unit.Q;
   if (!isRecord(q)) issue(issues, `${path}.Q`, "unit-control-boundary-required", "分解unitにはQ objectが必要です");
   else {
     requiredString(q, "observer_ref", `${path}.Q`, issues);
@@ -377,6 +378,12 @@ function validateSourceUnit(
     requiredString(q, "parent_revision_ref", `${path}.Q`, issues);
     requiredString(q, "claim_kind", `${path}.Q`, issues);
     if (!Number.isSafeInteger(q.unit_order) || (q.unit_order as number) < 0) issue(issues, `${path}.Q.unit_order`, "unit-order-required", "unit_orderは0以上の整数でなければなりません");
+    if (userOverride) {
+      requiredString(q, "override_source_ref", `${path}.Q`, issues);
+      requiredString(q, "override_observer_ref", `${path}.Q`, issues);
+      requiredString(q, "replaces_source_expression", `${path}.Q`, issues);
+      if (typeof rootSource === "string" && typeof q.replaces_source_expression === "string" && !rootSource.includes(q.replaces_source_expression)) issue(issues, `${path}.Q.replaces_source_expression`, "override-source-lineage-invalid", "User overrideの置換元はroot原文に含まれなければなりません");
+    }
     if (!Array.isArray(q.unknowns)) issue(issues, `${path}.Q.unknowns`, "unknowns-required", "unit Q.unknownsはarrayでなければなりません");
     else validateUnknownEntries(q.unknowns, `${path}.Q.unknowns`, typeof rootSource === "string" ? rootSource : undefined, sourceLanguage, issues);
     if (q.unknown_is_absence !== false) issue(issues, `${path}.Q.unknown_is_absence`, "unknown-absence-boundary-required", "unit unknown_is_absenceはfalseでなければなりません");
@@ -386,6 +393,12 @@ function validateSourceUnit(
     return;
   }
   lambda.sub_splitters.forEach((copy, copyIndex) => validateTranslationCopy(copy, `${path}.λ.sub_splitters[${copyIndex}]`, typeof text === "string" ? text : undefined, sourceLanguage, issues));
+}
+
+function unitCoverageText(unit: unknown): readonly string[] {
+  if (!isRecord(unit) || !isRecord(unit.ψ) || !isRecord(unit.Q)) return [];
+  if (unit.Q.edit_origin === "user-override" && typeof unit.Q.replaces_source_expression === "string") return [unit.Q.replaces_source_expression];
+  return typeof unit.ψ.source_text === "string" ? [unit.ψ.source_text] : [];
 }
 
 function validateSourceCanonical(unit: Record<string, unknown>, path: string, sourceText: string | undefined, sourceLanguage: string | undefined, issues: FamValidationIssue[]): void {
