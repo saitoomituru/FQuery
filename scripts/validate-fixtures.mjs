@@ -8,6 +8,7 @@ const knownSchemas = new Set([
   "fquery.famlog/0.1.0-draft",
   "fquery.famlog-diff/0.1.0-draft",
   "fquery.ui/0.1.0-draft",
+  "fam.json/0.1.0-draft",
 ]);
 const statusAxes = {
   resolution_status: ["unresolved", "resolved", "bottom", "unknown"],
@@ -32,6 +33,7 @@ for (const root of roots) {
     if (value.schema_version === "fquery.famlog/0.1.0-draft") validateFamLog(path, value);
     if (value.schema_version === "fquery.famlog-diff/0.1.0-draft") validateFamLogDiff(path, value);
     if (value.schema_version === "fquery.ui/0.1.0-draft") validateUi(path, value);
+    if (value.schema_version === "fam.json/0.1.0-draft") validateFam(path, value);
     count += 1;
   }
 }
@@ -72,3 +74,36 @@ function validateFamLogDiff(path, value) {
     throw new Error(`${path}: diff envelopeが不正です`);
   }
 }
+
+function validateFam(path, value) {
+  for (const field of ["fam_id", "revision_id", "kind", "title"]) {
+    if (typeof value[field] !== "string" || value[field].length === 0) throw new Error(`${path}: ${field}がありません`);
+  }
+  if (!Array.isArray(value.index_subjects) || !Array.isArray(value.pointers) || !isRecord(value.provenance)) throw new Error(`${path}: FAM top-level metadataが不正です`);
+  validateFamNode(path, "$", value);
+  if (!isRecord(value.ψ) || typeof value.ψ.source_text !== "string") throw new Error(`${path}: ψ.source_textがありません`);
+  if (typeof value.ψ.source_language !== "string" || value.title_language !== value.ψ.source_language) throw new Error(`${path}: 入力言語とtitle_languageが一致しません`);
+  if (!isRecord(value.λ) || !Array.isArray(value.λ.output_units) || value.λ.output_units.length === 0) throw new Error(`${path}: λ.output_unitsがありません`);
+  value.λ.output_units.forEach((unit, index) => {
+    if (!isRecord(unit.ψ) || typeof unit.ψ.source_text !== "string" || !value.ψ.source_text.includes(unit.ψ.source_text) || unit.ψ.source_language !== value.ψ.source_language) throw new Error(`${path}: output_units[${index}]の原言語系譜が不正です`);
+    if (!isRecord(unit.λ) || unit.λ.manifestation !== unit.ψ.source_text || unit.λ.manifestation_language !== value.ψ.source_language || !Array.isArray(unit.λ.sub_splitters)) throw new Error(`${path}: output_units[${index}]の正本またはsub_splitters境界が不正です`);
+  });
+  if (!isRecord(value.Q) || !Array.isArray(value.Q.unknowns) || value.Q.unknown_is_absence !== false) throw new Error(`${path}: Qのunknown境界が不正です`);
+}
+
+function validateFamNode(path, pointer, value) {
+  if (!isRecord(value)) throw new Error(`${path}: ${pointer}はFAM nodeではありません`);
+  for (const axis of ["ψ", "∇φ", "λ", "Q"]) if (!(axis in value)) throw new Error(`${path}: ${pointer}.${axis}がありません`);
+  if (!isRecord(value.Q)) throw new Error(`${path}: ${pointer}.Qはobjectではありません`);
+  for (const [key, child] of Object.entries(value)) inspectFamChild(path, `${pointer}.${key}`, child);
+}
+
+function inspectFamChild(path, pointer, value) {
+  if (Array.isArray(value)) return value.forEach((child, index) => inspectFamChild(path, `${pointer}[${index}]`, child));
+  if (!isRecord(value)) return;
+  const axisCount = ["ψ", "∇φ", "λ", "Q"].filter((axis) => axis in value).length;
+  if (axisCount > 0) validateFamNode(path, pointer, value);
+  else for (const [key, child] of Object.entries(value)) inspectFamChild(path, `${pointer}.${key}`, child);
+}
+
+function isRecord(value) { return typeof value === "object" && value !== null && !Array.isArray(value); }

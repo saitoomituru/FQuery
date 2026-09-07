@@ -1,0 +1,32 @@
+{
+  "schema_version": "fam.json/0.1.0-draft",
+  "fam_id": "fam://fixture/rain-umbrella",
+  "revision_id": "revision://fixture/rain-umbrella/1",
+  "kind": "decomposition",
+  "title": "雨と傘の分解fixture",
+  "title_language": "ja",
+  "index_subjects": ["雨", "傘"],
+  "ψ": { "source_text": "雨が降っている。傘を持って出かける。ただし降水量は未確認である。", "source_ref": "input://source", "source_language": "ja", "observation_status": "provided" },
+  "∇φ": [{ "gradient_type": "decomposition", "source_expression": "雨が降っている。傘を持って出かける。ただし降水量は未確認である。", "source_language": "ja", "source_mutation": false }],
+  "λ": {
+    "purpose": "原文を意味単位へ分解する",
+    "satisfaction_status": "not-evaluated",
+    "output_units": [
+      {
+        "ψ": { "source_text": "雨が降っている。", "source_ref": "input://source", "source_language": "ja", "observation_status": "provided" },
+        "∇φ": [{ "gradient_type": "source-segmentation", "source_expression": "雨が降っている。", "source_language": "ja", "source_mutation": false }],
+        "λ": { "manifestation": "雨が降っている。", "manifestation_language": "ja", "semantic_role": "weather-observation", "sub_splitters": [] },
+        "Q": { "observer_ref": "observer://fixture", "registry_ref": "registry://fquery/fam-core", "fact_scope_ref": "fixture://rain", "unknowns": [], "unknown_is_absence": false }
+      },
+      {
+        "ψ": { "source_text": "降水量は未確認である。", "source_ref": "input://source", "source_language": "ja", "observation_status": "provided" },
+        "∇φ": [{ "gradient_type": "epistemic-boundary", "source_expression": "降水量は未確認である。", "source_language": "ja", "source_mutation": false }],
+        "λ": { "manifestation": "降水量は未確認である。", "manifestation_language": "ja", "semantic_role": "unknown-retention", "sub_splitters": [] },
+        "Q": { "observer_ref": "observer://fixture", "registry_ref": "registry://fquery/fam-core", "fact_scope_ref": "fixture://rain", "unknowns": ["降水量の正確な数値"], "unknown_is_absence": false }
+      }
+    ]
+  },
+  "Q": { "observer_ref": "observer://fixture", "registry_ref": "registry://fquery/fam-core", "fact_scope_ref": "fixture://rain", "unknowns": ["降水量の正確な数値"], "unknown_is_absence": false },
+  "pointers": [],
+  "provenance": { "claim_scope": "TEST_FIXTURE", "source_refs": ["input://source"], "source_mutation": false }
+}

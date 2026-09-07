@@ -19,7 +19,8 @@ FAMLog          observable execution dump / trace
 - Node.js / TypeScript: reference implementationと自動テストあり
 - plugin ABI / FAMLog: capability gate、trace、差分の参照実装あり
 - credential注入: `name / key / secret`の可搬なsource解決あり。保護強度はHost／上位IAM責務
-- Gemini FAM plugin: structured JSONをcandidate FAMとして受け取るadapterあり（実APIは環境ごとに検証）
+- FAM JSON Core: 再帰的な `ψ / ∇φ / λ / Q`、入力言語正本、翻訳sub-splitter写本、unknown保持を検証するmachine contractあり
+- Gemini FAM plugin: structured JSONを実FAMとして受け取り、返却後もFAM validatorを通すadapterあり
 - Vue Node Viewer: Presentation FAM／GUI Event ABI、BaklavaJS View-only PoC、VS Code／Sphere Host bridgeあり（人間テスト待ち）
 - Atlantis 1.x native C++ runtime: `CONTRACT-WAIT`
 
@@ -33,6 +34,7 @@ API、tool、pluginの呼び出し成功は、目的 `λ` の達成証拠では�
 | `docs/architecture/` | Q Core、再帰、Node→nativeの責務境界 |
 | `docs/specification/` | machine contractへ対応する人間可読仕様 |
 | `packages/core/` | backend非依存のNode参照Core |
+| `packages/fam-core/` | FAM JSONの再帰4軸、入力言語正本、翻訳写本、lossless reader |
 | `packages/plugin-sdk/` | capability、bind、invoke、result envelope |
 | `packages/famlog/` | append-only semantic traceと差分 |
 | `packages/benchmark/` | 同一Qの複数plugin／model route比較 |
@@ -40,8 +42,8 @@ API、tool、pluginの呼び出し成功は、目的 `λ` の達成証拠では�
 | `packages/ui-vue/` | Vue 3／BaklavaJS Presentation component。semantic engineは持たない |
 | `packages/hosts/` | VS Code／Sphere等のHost bridge |
 | `packages/config/` | credential sourceの順序付き解決。表示は`name`のみ |
-| `plugins/gemini/` | Gemini APIからcandidate FAMを得るnetwork plugin |
-| `plugins/ollama/` | ローカルOllamaのmodel発見とcandidate FAM変換plugin |
+| `plugins/gemini/` | Gemini APIから検証済みFAMを得るnetwork plugin |
+| `plugins/ollama/` | ローカルOllamaのmodel発見と検証済みFAM変換plugin |
 | `apps/playground/` | API key不要のlocalhost Vue検証面 |
 | `fixtures/` | 正例、負例、benchmark入力 |
 | `native/` | Atlantis 1.x向け予約地。現時点ではruntimeではない |

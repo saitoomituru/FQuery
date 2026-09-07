@@ -89,10 +89,15 @@ export function validateFamDecomposition(value: unknown): FamValidationResult {
   if (!isRecord(psi) || typeof psi.source_text !== "string" || psi.source_text.length === 0) {
     issue(issues, "$.ψ.source_text", "source-text-required", "decomposition FAMには原入力source_textが必要です");
   }
+  const sourceLanguage = isRecord(psi) && typeof psi.source_language === "string" ? psi.source_language : undefined;
+  if (!sourceLanguage) issue(issues, "$.ψ.source_language", "source-language-required", "decomposition FAMには原入力のsource_languageが必要です");
+  if (typeof value.title_language !== "string" || value.title_language !== sourceLanguage) issue(issues, "$.title_language", "title-language-mismatch", "title_languageは入力言語と一致しなければなりません");
   if (!Array.isArray(value["∇φ"])) issue(issues, "$.∇φ", "gradient-array-required", "decomposition FAMの∇φはarrayでなければなりません");
   const lambda = value.λ;
   if (!isRecord(lambda) || !Array.isArray(lambda.output_units) || lambda.output_units.length === 0) {
     issue(issues, "$.λ.output_units", "output-units-required", "decomposition FAMには1件以上のnested output_unitsが必要です");
+  } else {
+    lambda.output_units.forEach((unit, index) => validateSourceUnit(unit, index, isRecord(psi) ? psi.source_text : undefined, sourceLanguage, issues));
   }
   const q = value.Q;
   if (!isRecord(q) || !Array.isArray(q.unknowns)) issue(issues, "$.Q.unknowns", "unknowns-required", "Q.unknownsはarrayでなければなりません");
@@ -102,10 +107,11 @@ export function validateFamDecomposition(value: unknown): FamValidationResult {
 
 export function createLiteralDecompositionFam(sourceText: string, queryRef: string): FamJsonRecord {
   if (sourceText.trim().length === 0) throw new TypeError("sourceTextは空にできません");
+  const sourceLanguage = inferSourceLanguage(sourceText);
   const units = splitSource(sourceText).map((sourceFragment, index): FamNode => ({
-    ψ: { source_text: sourceFragment, source_ref: "input://source", observation_status: "provided" },
-    "∇φ": [{ gradient_type: "source-segmentation", method: "punctuation-boundary", source_mutation: false }],
-    λ: { manifestation: sourceFragment, semantic_role: "unclassified-wisdom-unit" },
+    ψ: { source_text: sourceFragment, source_ref: "input://source", source_language: sourceLanguage, observation_status: "provided" },
+    "∇φ": [{ gradient_type: "source-segmentation", method: "punctuation-boundary", source_expression: sourceFragment, source_language: sourceLanguage, source_mutation: false }],
+    λ: { manifestation: sourceFragment, manifestation_language: sourceLanguage, semantic_role: "unclassified-wisdom-unit", sub_splitters: [] },
     Q: {
       observer_ref: "observer://fquery/literal-decomposition",
       registry_ref: "registry://fquery/fam-core",
@@ -121,16 +127,17 @@ export function createLiteralDecompositionFam(sourceText: string, queryRef: stri
     fam_id: `${queryRef}/fam`,
     revision_id: `${queryRef}/revision/1`,
     kind: "decomposition",
-    title: "入力sourceのFAM分解候補",
+    title: sourceText,
+    title_language: sourceLanguage,
     index_subjects: [],
-    ψ: { source_text: sourceText, source_ref: "input://source", observation_status: "provided" },
-    "∇φ": [{ gradient_type: "decomposition", method: "literal-fixture", source_mutation: false }],
-    λ: { purpose: "sourceを改変せずFAM単位へ分解する", output_units: units, satisfaction_status: "not-evaluated" },
+    ψ: { source_text: sourceText, source_ref: "input://source", source_language: sourceLanguage, observation_status: "provided" },
+    "∇φ": [{ gradient_type: "decomposition", method: "literal-fixture", source_expression: sourceText, source_language: sourceLanguage, source_mutation: false }],
+    λ: { purpose: "source-decomposition", purpose_expression: sourceText, purpose_language: sourceLanguage, output_units: units, satisfaction_status: "not-evaluated" },
     Q: {
       observer_ref: "observer://fquery/literal-decomposition",
       registry_ref: "registry://fquery/fam-core",
       fact_scope_ref: queryRef,
-      unknowns: ["意味分類", "外部事実との一致"],
+      unknowns: ["semantic-classification", "external-fact-agreement"],
       unknown_is_absence: false,
       semantic_status: "not-evaluated",
     },
@@ -145,7 +152,7 @@ export function createLiteralDecompositionFam(sourceText: string, queryRef: stri
  */
 export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Object.freeze({
   type: "object",
-  required: ["schema_version", "fam_id", "revision_id", "kind", "title", "index_subjects", "ψ", "∇φ", "λ", "Q", "pointers", "provenance"],
+  required: ["schema_version", "fam_id", "revision_id", "kind", "title", "title_language", "index_subjects", "ψ", "∇φ", "λ", "Q", "pointers", "provenance"],
   additionalProperties: true,
   properties: {
     schema_version: { type: "string", enum: [FAM_JSON_SCHEMA_VERSION] },
@@ -153,14 +160,15 @@ export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Objec
     revision_id: { type: "string" },
     kind: { type: "string" },
     title: { type: "string" },
+    title_language: { type: "string" },
     index_subjects: { type: "array", items: {} },
     ψ: {
       type: "object",
-      required: ["source_text", "source_ref", "observation_status"],
+      required: ["source_text", "source_ref", "source_language", "observation_status"],
       additionalProperties: true,
-      properties: { source_text: { type: "string" }, source_ref: { type: "string" }, observation_status: { type: "string" } },
+      properties: { source_text: { type: "string" }, source_ref: { type: "string" }, source_language: { type: "string" }, observation_status: { type: "string" } },
     },
-    "∇φ": { type: "array", items: { type: "object", additionalProperties: true } },
+    "∇φ": { type: "array", items: { type: "object", required: ["gradient_type", "source_expression", "source_language"], additionalProperties: true } },
     λ: {
       type: "object",
       required: ["purpose", "output_units", "satisfaction_status"],
@@ -176,9 +184,32 @@ export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Objec
             required: ["ψ", "∇φ", "λ", "Q"],
             additionalProperties: true,
             properties: {
-              ψ: { type: "object", additionalProperties: true },
-              "∇φ": { type: "array", items: { type: "object", additionalProperties: true } },
-              λ: { type: "object", additionalProperties: true },
+              ψ: { type: "object", required: ["source_text", "source_ref", "source_language", "observation_status"], additionalProperties: true },
+              "∇φ": { type: "array", items: { type: "object", required: ["gradient_type", "source_expression", "source_language"], additionalProperties: true } },
+              λ: {
+                type: "object",
+                required: ["manifestation", "manifestation_language", "sub_splitters"],
+                additionalProperties: true,
+                properties: {
+                  manifestation: { type: "string" },
+                  manifestation_language: { type: "string" },
+                  sub_splitters: {
+                    type: "array",
+                    minItems: 1,
+                    items: {
+                      type: "object",
+                      required: ["ψ", "∇φ", "λ", "Q"],
+                      additionalProperties: true,
+                      properties: {
+                        ψ: { type: "object", required: ["source_text", "source_language", "target_language"], additionalProperties: true },
+                        "∇φ": { type: "array", items: { type: "object", additionalProperties: true } },
+                        λ: { type: "object", required: ["manifestation", "manifestation_language"], additionalProperties: true },
+                        Q: { type: "object", required: ["copy_role", "source_node_ref", "translation_error", "unknowns", "unknown_is_absence"], additionalProperties: true },
+                      },
+                    },
+                  },
+                },
+              },
               Q: { type: "object", additionalProperties: true },
             },
           },
@@ -224,6 +255,53 @@ function inspectNested(value: unknown, path: string, issues: FamValidationIssue[
   else for (const [key, child] of Object.entries(value)) inspectNested(child, `${path}.${key}`, issues, nodePaths);
 }
 
+function validateSourceUnit(
+  unit: unknown,
+  index: number,
+  rootSource: unknown,
+  sourceLanguage: string | undefined,
+  issues: FamValidationIssue[],
+): void {
+  const path = `$.λ.output_units[${index}]`;
+  if (!isRecord(unit)) return;
+  const psi = unit.ψ;
+  const text = isRecord(psi) ? psi.source_text : undefined;
+  if (typeof text !== "string" || text.length === 0) issue(issues, `${path}.ψ.source_text`, "unit-source-text-required", "分解unitには原言語source_textが必要です");
+  else if (typeof rootSource === "string" && !rootSource.includes(text)) issue(issues, `${path}.ψ.source_text`, "unit-source-not-in-root", "分解unitのsource_textはroot原文に含まれなければなりません");
+  if (!isRecord(psi) || psi.source_language !== sourceLanguage) issue(issues, `${path}.ψ.source_language`, "unit-source-language-mismatch", "分解unitはrootと同じsource_languageを保持しなければなりません");
+  validateSourceCanonical(unit, path, typeof text === "string" ? text : undefined, sourceLanguage, issues);
+  const lambda = unit.λ;
+  if (!isRecord(lambda) || !Array.isArray(lambda.sub_splitters)) {
+    issue(issues, `${path}.λ.sub_splitters`, "sub-splitters-required", "翻訳写本を分離するsub_splitters配列が必要です");
+    return;
+  }
+  lambda.sub_splitters.forEach((copy, copyIndex) => validateTranslationCopy(copy, `${path}.λ.sub_splitters[${copyIndex}]`, typeof text === "string" ? text : undefined, sourceLanguage, issues));
+}
+
+function validateSourceCanonical(unit: Record<string, unknown>, path: string, sourceText: string | undefined, sourceLanguage: string | undefined, issues: FamValidationIssue[]): void {
+  const gradients = unit["∇φ"];
+  if (!Array.isArray(gradients) || gradients.length === 0) issue(issues, `${path}.∇φ`, "source-gradient-required", "原言語の意味gradientが必要です");
+  else gradients.forEach((gradient, index) => {
+    if (!isRecord(gradient) || gradient.source_expression !== sourceText) issue(issues, `${path}.∇φ[${index}].source_expression`, "canonical-source-expression-required", "gradientは入力言語のunit原文を正本として保持します");
+    if (!isRecord(gradient) || gradient.source_language !== sourceLanguage) issue(issues, `${path}.∇φ[${index}].source_language`, "gradient-source-language-mismatch", "gradientのsource_languageが一致しません");
+  });
+  const manifestation = isRecord(unit.λ) ? unit.λ.manifestation : undefined;
+  if (manifestation !== sourceText) issue(issues, `${path}.λ.manifestation`, "canonical-manifestation-required", "正本nodeの顕現は入力言語のunit原文を保持します");
+  if (!isRecord(unit.λ) || unit.λ.manifestation_language !== sourceLanguage) issue(issues, `${path}.λ.manifestation_language`, "manifestation-language-mismatch", "正本nodeのmanifestation_languageが入力言語と一致しません");
+}
+
+function validateTranslationCopy(copy: unknown, path: string, sourceText: string | undefined, sourceLanguage: string | undefined, issues: FamValidationIssue[]): void {
+  if (!isRecord(copy)) return;
+  const psi = copy.ψ;
+  if (!isRecord(psi) || psi.source_text !== sourceText || psi.source_language !== sourceLanguage || typeof psi.target_language !== "string") issue(issues, `${path}.ψ`, "translation-language-lineage-required", "翻訳写本には正本原文、source_language、target_languageが必要です");
+  const q = copy.Q;
+  const lambda = copy.λ;
+  const error = isRecord(q) ? q.translation_error : undefined;
+  if (!isRecord(q) || q.copy_role !== "translation-witness" || typeof q.source_node_ref !== "string") issue(issues, `${path}.Q`, "translation-copy-lineage-required", "翻訳写本にはcopy_roleとsource_node_refが必要です");
+  if (!isRecord(error) || !["not-evaluated", "measured"].includes(String(error.status)) || !Array.isArray(error.metric_refs) || !Array.isArray(error.measurements)) issue(issues, `${path}.Q.translation_error`, "translation-error-ledger-required", "翻訳誤差の状態・metric参照・測定履歴が必要です");
+  if (!isRecord(lambda) || !isRecord(psi) || lambda.manifestation_language !== psi.target_language) issue(issues, `${path}.λ.manifestation_language`, "translation-target-language-mismatch", "翻訳顕現の言語はtarget_languageと一致しなければなりません");
+}
+
 function requiredString(value: Record<string, unknown>, field: string, path: string, issues: FamValidationIssue[]): void {
   if (typeof value[field] !== "string" || value[field].length === 0) issue(issues, `${path}.${field}`, "string-required", `${field}は空でないstringでなければなりません`);
 }
@@ -262,6 +340,17 @@ function deepFreeze<T>(value: T): T {
     return Object.freeze(value) as T;
   }
   return value;
+}
+
+/** 言語の断定ではなく、入力scriptから得られる最小のBCP 47風hintを返す。 */
+export function inferSourceLanguage(sourceText: unknown): string {
+  if (typeof sourceText !== "string") return "und";
+  if (/\p{Script=Hiragana}|\p{Script=Katakana}/u.test(sourceText)) return "ja";
+  if (/\p{Script=Arabic}/u.test(sourceText)) return "ar";
+  if (/\p{Script=Hebrew}/u.test(sourceText)) return "und-Hebr";
+  if (/\p{Script=Han}/u.test(sourceText)) return "und-Hani";
+  if (/[A-Za-z]/u.test(sourceText)) return "en";
+  return "und";
 }
 
 function splitSource(sourceText: string): string[] {

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   readFamJson,
   createLiteralDecompositionFam,
+  inferSourceLanguage,
   serializeFamJson,
   validateFamJson,
   validateFamDecomposition,
@@ -81,6 +82,44 @@ describe("FAM JSON Core", () => {
     expect(result.nodePaths).toHaveLength(4);
     expect((value.λ as { output_units: FamJsonRecord[] }).output_units[0]).toHaveProperty("ψ");
     expect(value.Q.unknown_is_absence).toBe(false);
+  });
+
+  it("入力言語を正本にし日本語固定へ寄せない", () => {
+    const arabic = createLiteralDecompositionFam("المطر يهطل.", "q://test/ar");
+    const hebrewScript = createLiteralDecompositionFam("גשם יורד.", "q://test/hebr");
+    expect(arabic.ψ).toMatchObject({ source_text: "المطر يهطل.", source_language: "ar" });
+    expect(arabic.title).toBe("المطر يهطل.");
+    expect(hebrewScript.ψ).toMatchObject({ source_text: "גשם יורד.", source_language: "und-Hebr" });
+    expect(inferSourceLanguage("雨が降る。")).toBe("ja");
+  });
+
+  it("翻訳をsub-splitter写本として誤差ledger付きで保持する", () => {
+    const value = structuredClone(createLiteralDecompositionFam("雨が降る。", "q://test/translation")) as unknown as Record<string, unknown>;
+    const units = (value.λ as { output_units: Array<Record<string, unknown>> }).output_units;
+    (units[0]!.λ as { sub_splitters: unknown[] }).sub_splitters.push({
+      ψ: { source_text: "雨が降る。", source_language: "ja", target_language: "en" },
+      "∇φ": [{ gradient_type: "translation-copy" }],
+      λ: { manifestation: "It is raining.", manifestation_language: "en" },
+      Q: {
+        copy_role: "translation-witness",
+        source_node_ref: "q://test/translation#unit-0",
+        unknowns: [],
+        unknown_is_absence: false,
+        translation_error: { status: "not-evaluated", metric_refs: [], measurements: [] },
+      },
+    });
+    expect(validateFamDecomposition(value).valid).toBe(true);
+  });
+
+  it("原言語nodeを英訳で置換した分解を拒否する", () => {
+    const value = structuredClone(createLiteralDecompositionFam("雨が降る。", "q://test/replaced")) as unknown as Record<string, unknown>;
+    const unit = (value.λ as { output_units: Array<Record<string, unknown>> }).output_units[0]!;
+    (unit["∇φ"] as Array<Record<string, unknown>>)[0]!.source_expression = "It is raining.";
+    (unit.λ as Record<string, unknown>).manifestation = "It is raining.";
+    expect(validateFamDecomposition(value).issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "canonical-source-expression-required" }),
+      expect.objectContaining({ code: "canonical-manifestation-required" }),
+    ]));
   });
 
   it("blocksだけの旧candidate形式をFAMとして受理しない", () => {

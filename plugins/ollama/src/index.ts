@@ -1,6 +1,6 @@
 import type { CapabilityInvocation, CapabilityResult, PluginResolver } from "@fquery/core";
 import type { PluginManifest } from "@fquery/plugin-sdk";
-import { FAM_JSON_RESPONSE_SCHEMA, validateFamDecomposition } from "@fquery/fam-core";
+import { FAM_JSON_RESPONSE_SCHEMA, inferSourceLanguage, validateFamDecomposition } from "@fquery/fam-core";
 
 export type OllamaFamCapability = "fam.decompose" | "fam.integrate" | "fam.compare" | "fam.project";
 const CAPABILITIES: readonly OllamaFamCapability[] = ["fam.decompose", "fam.integrate", "fam.compare", "fam.project"];
@@ -81,7 +81,9 @@ async function ollamaGenerate(request: OllamaGenerateRequest): Promise<OllamaGen
 }
 
 function buildPrompt(request: CapabilityInvocation): string {
-  return JSON.stringify({ proton_profile: "proton://fquery/fam-json-core@0.1.0-draft", capability: request.capability, source: request.input, instruction: "Return one fam.json/0.1.0-draft record. Preserve the exact source in ψ.source_text. Use ∇φ for the decomposition/meaning gradient, λ.output_units for nested ψ/∇φ/λ/Q wisdom units, and Q for Observer/Registry/fact scope/unknowns. Keep unknown_is_absence=false. Separate observed text from inference in provenance. Do not return blocks[], RPC/MCP envelopes, FAMLog, or transport events." });
+  const sourceLanguageHint = inferSourceLanguage(request.input);
+  const translationTarget = sourceLanguageHint === "en" ? "ja" : "en";
+  return JSON.stringify({ proton_profile: "proton://fquery/fam-json-core@0.1.0-draft", capability: request.capability, source: request.input, source_language_hint: sourceLanguageHint, translation_target: translationTarget, instruction: "Return one fam.json/0.1.0-draft record. The input language is the canonical origin language: never replace its title, ψ, ∇φ source_expression, or λ manifestation with a translation. Set title_language and every source_language/manifestation_language consistently. Each output unit must preserve an exact source substring in ψ.source_text, ∇φ[*].source_expression, and λ.manifestation. Put other-language text only in λ.sub_splitters as a nested ψ/∇φ/λ/Q translation-witness FAM. Its ψ retains the canonical source text plus source_language and target_language; its λ.manifestation is the translation and manifestation_language equals target_language; its Q contains copy_role=translation-witness, source_node_ref, unknowns, unknown_is_absence=false, and translation_error={status:not-evaluated,metric_refs:[],measurements:[]}. Use λ.output_units for canonical nested wisdom units and Q for Observer/Registry/fact scope/unknowns. Separate observed text from inference in provenance. Do not return blocks[], RPC/MCP envelopes, FAMLog, or transport events." });
 }
 
 function parseFam(text: string): unknown {

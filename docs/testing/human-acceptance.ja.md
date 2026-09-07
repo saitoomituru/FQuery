@@ -12,7 +12,9 @@
 - 長いquery ID、Last Order、evidence参照でも崩れない
 - `npm run dev`で`http://127.0.0.1:3000`を開き、hero、route controls、Q nodeが意図した配置で見える
 - ProviderをFixture、Gemini、Ollamaへ切り替えると、それぞれ独立したmodel候補が表示される
-- 自然言語を分解し、candidate FAM、`unresolved`、provider/model/plugin revisionが読める
+- 自然言語を分解し、入力言語の再帰的な `ψ / ∇φ / λ / Q`、`Q.unknowns`、provider/model/plugin revisionが読める
+- 他言語の写本が正本を置換せず `λ.sub_splitters` にあり、翻訳誤差が`not-evaluated`または測定receiptとして追跡できる
+- 旧 `blocks[]` 候補がFAM paneへ表示されない
 - Gemini routeでBrowserのNetwork payload／画面／consoleへcredentialの`key / secret`が出ず、表示用`name`だけが見える
 
 ## Host
