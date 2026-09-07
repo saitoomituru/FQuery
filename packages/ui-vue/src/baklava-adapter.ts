@@ -131,7 +131,9 @@ export class BaklavaPresentationAdapter {
     (node as AbstractNode & { width?: number }).width = this.nodeWidth;
     for (const [portId, intf] of [...Object.entries(node.inputs), ...Object.entries(node.outputs)]) intf.id = portId === CONTENT_INTERFACE_KEY ? `${model.nodeId}:${CONTENT_INTERFACE_KEY}` : portId;
     this.editor.graph.addNode(node);
-    const projected = { node, portSignature: signature };
+    // graph経由で取り直したreactive proxyを保持する。生のnodeへpositionを書くとrendererのdrag／描画へ伝播しない
+    const reactiveNode = this.editor.graph.findNodeById(node.id) ?? node;
+    const projected = { node: reactiveNode, portSignature: signature };
     this.#nodes.set(model.nodeId, projected);
     return projected;
   }
@@ -163,10 +165,16 @@ function portSignature(model: NodeViewModel): string {
   return model.ports.map((port) => `${port.direction}:${port.portId}:${port.label}`).join("|");
 }
 
+type PositionedNode = AbstractNode & { position?: { x: number; y: number } };
+
 function getNodePosition(node: AbstractNode): { x: number; y: number } {
-  return (node as AbstractNode & { position?: { x: number; y: number } }).position ?? { x: 0, y: 0 };
+  const position = (node as PositionedNode).position;
+  return position ? { x: position.x, y: position.y } : { x: 0, y: 0 };
 }
 
+/** rendererはposition objectをtoRefで監視するため、objectを置換せずx/yを書き換える。 */
 function setNodePosition(node: AbstractNode, x: number, y: number): void {
-  (node as AbstractNode & { position: { x: number; y: number } }).position = { x, y };
+  const positioned = node as PositionedNode;
+  if (!positioned.position) positioned.position = { x, y };
+  else { positioned.position.x = x; positioned.position.y = y; }
 }

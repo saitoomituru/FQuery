@@ -138,6 +138,17 @@ describe("FQueryBaklavaView reactivity", () => {
   });
 });
 
+describe("FQueryBaklavaView layout", () => {
+  it("mount後に届いたlayoutが描画positionへ反映される", async () => {
+    const wrapper = mount(FQueryBaklavaView, { props: { nodes: [model], layout: [], nodeRenderers: {} } });
+    await wrapper.setProps({ layout: [{ nodeId: model.nodeId, x: 250, y: 90 }] });
+    await flushPromises();
+    const style = wrapper.get(".baklava-node:not(.--palette)").attributes("style") ?? "";
+    expect(style).toContain("left: 250px");
+    expect(style).toContain("top: 90px");
+  });
+});
+
 describe("FQueryCanvasNodeContent via FQueryBaklavaView", () => {
   const Custom = defineComponent({
     props: { model: { type: Object, required: true } },
