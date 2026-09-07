@@ -1,5 +1,8 @@
 export const FAM_JSON_SCHEMA_VERSION = "fam.json/0.1.0-draft" as const;
 
+export { propagateLocalSin, validateLocalSinMeasurement } from "./sin.js";
+export type * from "./sin.js";
+
 export type JsonPrimitive = string | number | boolean | null;
 export type JsonValue = JsonPrimitive | JsonObject | readonly JsonValue[];
 export interface JsonObject { readonly [key: string]: JsonValue }
