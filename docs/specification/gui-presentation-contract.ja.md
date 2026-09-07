@@ -98,6 +98,28 @@ Node Editorの最小構成は、FAMの意味役割に沿った3標準nodeであ�
 - Voice／Video／Sensor／RAG／API／Actuator等はoptional pluginとして別registrationで参加する
 - 接続可否はportが判定する。`carries`はpresentation上のhintであり、GUIはこれで接続を裁定しない
 
+## FAMVIM RAW FAM editor
+
+Authority: FQuery Issue #28。編集primitiveは`@fquery/fam-edit`（Issue #27）。
+
+`∇φ.FAMVIM`はpluginが無くてもcanonical FAMを直接編集できるuniversal fallbackであり、debug viewerではない。
+
+```text
+canonical FAM（Host／engineが保持）
+  -> FQueryFamvim: path navigation / RAW text / validator / diff preview
+  -> property.change.requested { property: "fam.patch", value: FamPatch }
+     または { property: "fam.text", value: string }
+  -> Host／engineがfam-editで適用し、受理・拒否・loss receiptを返す
+```
+
+- GUIはModelを書かない。patch requestをemitするだけで、適用はHost／engine責務
+- 編集対象path以外を変更しない。unknown field／subtreeはround-tripで保持する
+- `knownPointers`外のleafは`unsupported`として表示する。`unsupported != invalid`
+- validator違反とparse失敗と編集可能性は別軸。validator違反でも編集requestは出せる
+- malformed draftは失わず保持し、`fam.text` requestとしてHostへ渡す。Hostがrejectすればreceiptに残る
+- FAMVIM独自schemaを持たない。`fam_id / revision_id / schema_version / provenance`はread-only表示
+- validatorは注入する。`@fquery/fam-edit`はFAM Coreのschemaを所有しない
+
 ## Engine event / VEU
 
 `fam.node.changed`、`source.diverged`、`q.changed`、`abi.mismatch`、`implementation.unavailable`等をnode/ref単位で投影する。変更対象外nodeのobject identityを保持し、全graph再構築を要求しない。

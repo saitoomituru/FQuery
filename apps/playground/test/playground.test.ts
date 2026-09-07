@@ -61,3 +61,33 @@ describe("FQuery Playground", () => {
     expect(wrapper.findAll(".fquery-node")).toHaveLength(4);
   });
 });
+
+describe("FQuery Playground FAMVIM", () => {
+  it("FAMVIM編集がfam.patch requestとしてHostへ渡りcanonical FAMがunknown fieldを保持したまま更新される", async () => {
+    const famWithExtension = { ...createLiteralDecompositionFam("自然言語テスト", "q://test/playground"), "x-plugin-extension": { retained: true } };
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ provider: "fixture", label: "Fixture", available: true, models: ["mock-fam-transformer"] }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ result: { value: famWithExtension, transport_status: "succeeded", plugin_status: "resolved" }, events: [] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetcher);
+    const wrapper = mount(App);
+    await flushPromises();
+    await wrapper.get('[aria-label="route controls"] button').trigger("click");
+    await flushPromises();
+    const famvim = wrapper.get('[aria-label="FAMVIM RAW FAM editor"]');
+    expect(famvim.get('[data-pointer="/x-plugin-extension/retained"]').attributes("data-unsupported")).toBe("true");
+    const textarea = famvim.get("textarea");
+    await textarea.setValue(textarea.element.value.replace("\"source-decomposition\"", "\"edited-purpose\""));
+    await famvim.get("footer button").trigger("click");
+    await flushPromises();
+    expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("edited-purpose");
+    expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("x-plugin-extension");
+    expect(wrapper.get('[aria-label="fam edit receipts"]').text()).toContain("applied");
+    expect(wrapper.findAll('[data-decision-status="accepted"]').length).toBeGreaterThanOrEqual(9);
+
+    await famvim.get("textarea").setValue("{ broken");
+    await famvim.get("footer button").trigger("click");
+    await flushPromises();
+    expect(wrapper.get('[aria-label="session decisions"]').text()).toContain("fam-text-unparsed");
+    expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("edited-purpose");
+  });
+});

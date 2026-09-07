@@ -4,3 +4,4 @@ export { default as FQueryPalette } from "./FQueryPalette.vue";
 export { default as FQueryRecordsPanel } from "./FQueryRecordsPanel.vue";
 export { default as FQueryBaklavaView } from "./FQueryBaklavaView.vue";
 export { BaklavaPresentationAdapter, type BaklavaLayoutValue } from "./baklava-adapter.js";
+export { default as FQueryFamvim } from "./FQueryFamvim.vue";

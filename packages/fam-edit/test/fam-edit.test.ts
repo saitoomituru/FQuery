@@ -126,3 +126,26 @@ describe("fam-edit lossless partial editing", () => {
     expect(getAtPointer(result.document.parse === "parsed" ? result.document.value : null, "/a~1b/c~0d")).toBe(2);
   });
 });
+
+describe("fam-edit diff → patch / pointer lines", () => {
+  it("patchFromDiffは配列removeを降順に並べ、適用結果がafterと一致する", async () => {
+    const { patchFromDiff } = await import("../src/index.js");
+    const before = { a: [1, 2, 3, 4], b: { x: 1 }, keep: "same" };
+    const after = { a: [1, 4], b: { x: 2, y: 3 }, keep: "same" };
+    const patch = patchFromDiff(diffJson(before, after));
+    const result = applyFamPatch(openFamText(JSON.stringify(before)), patch);
+    expect(result.receipt.status).toBe("applied");
+    expect(result.document.parse === "parsed" ? result.document.value : null).toEqual(after);
+  });
+
+  it("renderPointerLinesはJSON.stringify(2)と同じtextを返し各pointerの行を記録する", async () => {
+    const { renderPointerLines } = await import("../src/index.js");
+    const value = JSON.parse(withUnknownText) as JsonObject;
+    const render = renderPointerLines(value);
+    expect(render.text).toBe(`${JSON.stringify(value, null, 2)}\n`);
+    const line = render.lines.find((entry) => entry.pointer === "/Q/sin_measure_rule")?.line;
+    expect(line).toBeDefined();
+    expect(render.text.split("\n")[line!]).toContain("\"sin_measure_rule\"");
+    expect(render.lines.find((entry) => entry.pointer === "/pointers")).toBeDefined();
+  });
+});

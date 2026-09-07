@@ -17,7 +17,8 @@
     "@baklavajs/core": "^2.8.1",
     "@baklavajs/renderer-vue": "^2.8.1",
     "@baklavajs/themes": "^2.8.1",
-    "@fquery/ui-core": "0.1.0-draft.0"
+    "@fquery/ui-core": "0.1.0-draft.0",
+    "@fquery/fam-edit": "0.1.0-draft.0"
   },
   "peerDependencies": {
     "vue": "^3.5.0"
@@ -26,5 +27,8 @@
     "build": "vite build && vue-tsc -p tsconfig.json --emitDeclarationOnly",
     "test": "vitest run",
     "typecheck": "vue-tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@fquery/fam-core": "0.1.0-draft.0"
   }
 }

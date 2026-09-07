@@ -13,7 +13,7 @@ export default defineConfig({
   ssr: { noExternal: ["@baklavajs/core", "@baklavajs/renderer-vue", "@baklavajs/events", "uuid"] },
   build: {
     lib: { entry: "src/index.ts", formats: ["es"], fileName: "fquery-ui" },
-    rollupOptions: { external: ["vue", "@fquery/ui-core", "@baklavajs/core", "@baklavajs/renderer-vue"] },
+    rollupOptions: { external: ["vue", "@fquery/ui-core", "@fquery/fam-edit", "@baklavajs/core", "@baklavajs/renderer-vue"] },
   },
   test: {
     environment: "jsdom",

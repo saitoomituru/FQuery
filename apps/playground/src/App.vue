@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, shallowRef, watch } from "vue";
-import { FQueryBaklavaView, FQueryPalette, FQueryPanel, FQueryRecordsPanel } from "@fquery/ui-vue";
+import { FQueryBaklavaView, FQueryFamvim, FQueryPalette, FQueryPanel, FQueryRecordsPanel } from "@fquery/ui-vue";
 import {
   PluginPresentationRegistry,
   PresentationSession,
@@ -17,7 +17,8 @@ import {
   type PresentationSessionState,
   type StatusBadgeViewModel,
 } from "@fquery/ui-core";
-import { isFamJsonRecord } from "@fquery/fam-core";
+import { isFamJsonRecord, validateFamJson } from "@fquery/fam-core";
+import { applyFamPatch, openFamText, replaceFamText, serializeFamValue, type FamPatch, type FamPatchResult, type JsonValue } from "@fquery/fam-edit";
 
 interface Route { readonly provider: "fixture" | "gemini" | "ollama"; readonly label: string; readonly available: boolean; readonly models: readonly string[]; readonly credentialName?: string; readonly reason?: string }
 
@@ -42,7 +43,23 @@ const session = new PresentationSession(createFixtureDecisionPort({
     if (!contract) throw new Error(`core-contract-not-found:${capability}`);
     return createCoreNodeViewModel(contract, nodeId);
   },
+  // Host責務: FAMVIMからのfam.patch / fam.textをcanonical valueへ適用する。GUIは適用しない。
+  resolveProperty: (node, property, value) => {
+    if (property !== "fam.patch" && property !== "fam.text") return undefined;
+    if (node.value === null || node.value === undefined) return { rejected: "fam-not-provided" };
+    const document = openFamText(serializeFamValue(node.value as JsonValue));
+    const result: FamPatchResult = property === "fam.patch"
+      ? applyFamPatch(document, value as FamPatch, { validate: validateFamJson })
+      : replaceFamText(document, String(value), { validate: validateFamJson });
+    editReceipts.value = [...editReceipts.value, result.receipt];
+    if (result.receipt.status === "rejected") return { rejected: result.receipt.rejectedOperation?.reason ?? "fam-edit-rejected" };
+    if (result.document.parse === "unparsed") return { rejected: `fam-text-unparsed:${result.document.parseError}` };
+    const semantic = result.validation?.valid === false ? "semantic-unsatisfied" : "unknown";
+    return { ...node, value: result.document.value, badges: [{ axis: "semantic", value: semantic, tone: statusTone(semantic) }], evidenceRefs: [...node.evidenceRefs, `fam-edit://${result.receipt.status}/${result.receipt.appliedOperations}`] };
+  },
 }), { registry });
+const editReceipts = ref<readonly FamPatchResult["receipt"][]>([]);
+const famvimJump = ref<string | null>(null);
 const sessionState = shallowRef<PresentationSessionState>(session.state);
 session.subscribe((state) => { sessionState.value = state; });
 const registrations = computed(() => session.registry.registrations());
@@ -53,7 +70,10 @@ const resultRecord = computed<Record<string, unknown> | undefined>(() => {
   if (!isRecord(response.value) || !isRecord(response.value.result)) return undefined;
   return response.value.result;
 });
-const fam = computed(() => isFamJsonRecord(resultRecord.value?.value) ? resultRecord.value?.value : undefined);
+const responseFam = computed(() => isFamJsonRecord(resultRecord.value?.value) ? resultRecord.value?.value : undefined);
+const famvimNode = computed(() => sessionState.value.nodes.find((node) => node.nodeId === coreNodeIds.value.famvim));
+/** canonical FAMは∇φ.FAMVIM nodeが保持するvalue。provider responseはその初期投影に過ぎない。 */
+const fam = computed<unknown>(() => famvimNode.value?.value ?? undefined);
 const semanticProjection = computed(() => {
   const value = resultRecord.value?.value;
   return isRecord(value) && typeof value.schema_version === "string" && value.schema_version.startsWith("fquery.semantic-block-projection/") ? value : undefined;
@@ -145,8 +165,8 @@ function projectFamvimNode() {
   const nodeId = coreNodeIds.value.famvim;
   const node = nodeId ? session.state.nodes.find((entry) => entry.nodeId === nodeId) : undefined;
   if (!node) return;
-  const semantic = fam.value ? "unknown" : "not-evaluated";
-  session.applyEngineEvent({ type: "fam.node.changed", node: { ...node, badges: [{ axis: "semantic", value: semantic, tone: statusTone(semantic) }], value: fam.value ?? null } });
+  const semantic = responseFam.value ? "unknown" : "not-evaluated";
+  session.applyEngineEvent({ type: "fam.node.changed", node: { ...node, badges: [{ axis: "semantic", value: semantic, tone: statusTone(semantic) }], value: responseFam.value ?? null } });
 }
 
 function isGuiRequest(event: FQueryUiEvent): event is GuiEventAbi {
@@ -193,6 +213,27 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
       <FQueryPalette :registrations="registrations" @event="receive" />
       <FQueryBaklavaView :nodes="sessionState.nodes" :connections="sessionState.connections" :layout="sessionState.layout" @event="receive" />
     </div>
+    <h2 class="surface-heading">∇φ.FAMVIM</h2>
+    <FQueryFamvim
+      v-if="famvimNode"
+      :target-ref="famvimNode.nodeId"
+      :value="fam"
+      :validate="validateFamJson"
+      :known-pointers="['/ψ', '/∇φ', '/λ', '/Q']"
+      :jump-to="famvimJump"
+      @event="receive"
+    />
+    <section v-if="editReceipts.length" class="session-receipt" aria-label="fam edit receipts">
+      <h2 class="surface-heading">FAM edit receipts</h2>
+      <ul>
+        <li v-for="(receipt, index) in editReceipts" :key="index" :data-edit-status="receipt.status">
+          <strong>{{ receipt.status }}</strong> ops={{ receipt.appliedOperations }} touched={{ receipt.touchedPaths.join(", ") || "-" }} retained={{ receipt.retainedUntouchedPaths }}
+          <span v-if="receipt.validation"> validator={{ receipt.validation.valid ? "valid" : `${receipt.validation.issueCount} issue(s)` }}</span>
+          <span v-if="receipt.rejectedOperation"> — {{ receipt.rejectedOperation.reason }}</span>
+          <span v-if="receipt.loss.length"> loss={{ receipt.loss.map((entry) => entry.kind).join(",") }}</span>
+        </li>
+      </ul>
+    </section>
     <section class="session-receipt" aria-label="session decisions">
       <h2 class="surface-heading">Session decisions</h2>
       <ul>

@@ -343,3 +343,68 @@ function deepFreeze<T extends JsonValue>(value: T): T {
   if (isObject(value)) { for (const child of Object.values(value)) deepFreeze(child); return Object.freeze(value) as T; }
   return value;
 }
+
+/**
+ * diffからpatchを合成する。replaced→set、added→insert、removed→remove。
+ * 配列indexのずれを避けるため、removeはpath降順で最後に適用する。
+ */
+export function patchFromDiff(diff: readonly FamDiffEntry[]): FamPatch {
+  const sets = diff.filter((entry) => entry.change === "replaced").map((entry): FamPatchOperation => ({ op: "set", path: entry.path, value: entry.after ?? null }));
+  const inserts = diff.filter((entry) => entry.change === "added").map((entry): FamPatchOperation => ({ op: "insert", path: entry.path, value: entry.after ?? null }));
+  const removes = [...diff.filter((entry) => entry.change === "removed")]
+    .sort((left, right) => comparePointerDescending(left.path, right.path))
+    .map((entry): FamPatchOperation => ({ op: "remove", path: entry.path }));
+  return createFamPatch([...sets, ...inserts, ...removes]);
+}
+
+function comparePointerDescending(left: JsonPointer, right: JsonPointer): number {
+  const leftTokens = parsePointer(left);
+  const rightTokens = parsePointer(right);
+  const length = Math.max(leftTokens.length, rightTokens.length);
+  for (let index = 0; index < length; index += 1) {
+    const l = leftTokens[index];
+    const r = rightTokens[index];
+    if (l === r) continue;
+    if (l === undefined) return 1;
+    if (r === undefined) return -1;
+    const ln = /^\d+$/.test(l) ? Number(l) : undefined;
+    const rn = /^\d+$/.test(r) ? Number(r) : undefined;
+    if (ln !== undefined && rn !== undefined) return rn - ln;
+    return r.localeCompare(l);
+  }
+  return 0;
+}
+
+export interface PointerLine { readonly pointer: JsonPointer; readonly line: number }
+export interface PointerLineRender { readonly text: string; readonly lines: readonly PointerLine[] }
+
+/**
+ * JSONを整形しつつ各pointerの開始行（0始まり）を記録する。
+ * RAW editorのpath navigationとunsupported field jumpに使う。
+ */
+export function renderPointerLines(value: JsonValue, indent = 2): PointerLineRender {
+  const out: string[] = [];
+  const lines: PointerLine[] = [];
+  const pad = (depth: number) => " ".repeat(indent * depth);
+  const emit = (node: JsonValue, pointer: JsonPointer, depth: number, prefix: string, suffix: string) => {
+    lines.push({ pointer, line: out.length });
+    if (Array.isArray(node)) {
+      if (node.length === 0) { out.push(`${pad(depth)}${prefix}[]${suffix}`); return; }
+      out.push(`${pad(depth)}${prefix}[`);
+      node.forEach((child, index) => emit(child, `${pointer}/${index}`, depth + 1, "", index < node.length - 1 ? "," : ""));
+      out.push(`${pad(depth)}]${suffix}`);
+      return;
+    }
+    if (isObject(node)) {
+      const keys = Object.keys(node);
+      if (keys.length === 0) { out.push(`${pad(depth)}${prefix}{}${suffix}`); return; }
+      out.push(`${pad(depth)}${prefix}{`);
+      keys.forEach((key, index) => emit(node[key]!, `${pointer}/${escapeToken(key)}`, depth + 1, `${JSON.stringify(key)}: `, index < keys.length - 1 ? "," : ""));
+      out.push(`${pad(depth)}}${suffix}`);
+      return;
+    }
+    out.push(`${pad(depth)}${prefix}${JSON.stringify(node)}${suffix}`);
+  };
+  emit(value, "", 0, "", "");
+  return Object.freeze({ text: `${out.join("\n")}\n`, lines: Object.freeze(lines) });
+}
