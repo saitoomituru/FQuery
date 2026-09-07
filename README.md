@@ -35,6 +35,7 @@ API、tool、pluginの呼び出し成功は、目的 `λ` の達成証拠では�
 | `docs/specification/` | machine contractへ対応する人間可読仕様 |
 | `packages/core/` | backend非依存のNode参照Core |
 | `packages/fam-core/` | FAM JSONの再帰4軸、入力言語正本、翻訳写本、lossless reader |
+| `packages/fam-edit/` | canonical FAMのlossless部分編集primitive。validatorは注入し、FAM Coreを所有しない |
 | `packages/plugin-sdk/` | capability、bind、invoke、result envelope |
 | `packages/famlog/` | append-only semantic traceと差分 |
 | `packages/benchmark/` | 同一Qの複数plugin／model route比較 |
