@@ -1,0 +1,34 @@
+.fquery-flow { position: relative; width: 100%; height: 100%; min-height: 18rem; background: #080b13; color: #eef2ff; }
+.fquery-flow .react-flow__background { background: #080b13; }
+.fquery-flow .react-flow__edge-path { stroke: #79c0ff; stroke-width: 2; }
+.fquery-flow .react-flow__connection-path { stroke: #e3b341; stroke-width: 2; }
+
+.fquery-flow-node { width: 320px; display: grid; gap: 0.35rem; border: 1px solid #34405a; border-radius: 0.6rem; background: #0f1524; box-shadow: 0 0.4rem 1.2rem rgba(0, 0, 0, 0.45); font-size: 0.8rem; }
+.fquery-flow-node[data-selected="true"] { border-color: #79c0ff; box-shadow: 0 0 0 2px rgba(121, 192, 255, 0.35); }
+.fquery-flow-node-unplaced .fquery-flow-node { border-style: dashed; }
+.fquery-flow-node-title { padding: 0.4rem 0.6rem; border-bottom: 1px solid #34405a; font-weight: 700; cursor: grab; }
+.fquery-flow-node-ports { display: grid; grid-template-columns: 1fr 1fr; padding: 0 0.3rem; }
+.fquery-flow-node-ports-column { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.2rem; }
+.fquery-flow-node-ports-column[data-direction="output"] { justify-items: end; }
+.fquery-flow-port { position: relative; display: flex; align-items: center; gap: 0.4rem; padding: 0.1rem 0.5rem; color: #aeb8cc; }
+.fquery-flow-port[data-connection-status="unconnected"] { color: #79c0ff; }
+.fquery-flow-port[data-connection-status="unconnected"] .react-flow__handle { border-style: dotted; background: transparent; }
+.fquery-flow-node .react-flow__handle { position: absolute; width: 0.7rem; height: 0.7rem; border: 2px solid #79c0ff; background: #79c0ff; }
+.fquery-flow-node .react-flow__handle-left { left: -0.35rem; }
+.fquery-flow-node .react-flow__handle-right { right: -0.35rem; }
+
+.fquery-canvas-node { display: grid; gap: 0.4rem; padding: 0.2rem 0.6rem 0.5rem; cursor: default; }
+.fquery-canvas-node-generic { display: grid; gap: 0.35rem; font-size: 0.75rem; }
+.fquery-canvas-node-badges { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+.fquery-canvas-node .fquery-badge { border: 1px solid currentColor; border-radius: 999px; padding: 0.1rem 0.4rem; font: 0.68rem/1.2 ui-monospace, monospace; }
+.fquery-canvas-node .fquery-badge small { opacity: 0.68; margin-right: 0.3rem; }
+.fquery-canvas-node .fquery-badge[data-tone="success"] { color: #7ee787; }
+.fquery-canvas-node .fquery-badge[data-tone="notice"] { color: #79c0ff; }
+.fquery-canvas-node .fquery-badge[data-tone="warning"] { color: #e3b341; }
+.fquery-canvas-node .fquery-badge[data-tone="danger"] { color: #ff7b72; }
+.fquery-canvas-node .fquery-badge[data-tone="unknown"] { color: #d2a8ff; }
+.fquery-canvas-node-value { margin: 0; max-height: 6rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.7rem; color: #aeb8cc; }
+.fquery-canvas-node-ghost { margin: 0; color: #d2a8ff; border-left: 0.3rem dotted currentColor; padding-left: 0.4rem; }
+.fquery-canvas-node-muted { margin: 0; color: #8b98b4; }
+.fquery-canvas-node button { color: inherit; background: #252d40; border: 1px solid #59647a; border-radius: 0.35rem; padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+.fquery-canvas-node textarea, .fquery-canvas-node select, .fquery-canvas-node input { width: 100%; color: #eef2ff; background: #0d1117; border: 1px solid #59647a; border-radius: 0.35rem; padding: 0.35rem; font: 0.75rem/1.35 ui-monospace, monospace; }
