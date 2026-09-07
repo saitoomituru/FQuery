@@ -73,7 +73,83 @@ export function diffFamLogs(left: readonly FamLogEntry[], right: readonly FamLog
   return differences;
 }
 
-export type DivergenceClass = "port-hallucination" | "unsupported-success-claim" | "no-bottom-return" | "lambda-blur" | "plugin-resolution-failure" | "cross-runtime-divergence";
+export type FailureFamily = "structure" | "semantic" | "world" | "resource" | "transport" | "governance" | "observability";
+
+export type FamFailureClass =
+  | "metaphor-collapse"
+  | "operator-regression"
+  | "lambda-blur"
+  | "gradient-flattening"
+  | "false-universalization"
+  | "port-hallucination"
+  | "no-bottom-return"
+  | "projection-dimension-mismatch"
+  | "unknown-passed-as-ok"
+  | "sensor-mode-insufficient"
+  | "world-mismatch"
+  | "cross-world-symbol-leak"
+  | "effect-goal-conflict"
+  | "capability-direction-mismatch"
+  | "target-ontology-mismatch"
+  | "capability-resource-insufficient"
+  | "surface-similarity-confusion"
+  | "lexical-neighbor-substitution"
+  | "semantic-neighbor-misbinding"
+  | "responsibility-abstraction-inversion"
+  | "safety-abstraction-overcollapse"
+  | "governance-induced-semantic-blur"
+  | "protective-detail-loss"
+  | "institutional-overreach"
+  | "unsupported-success-claim"
+  | "plugin-resolution-failure"
+  | "cross-runtime-divergence";
+
+export type DivergenceClass = FamFailureClass;
+
+export interface FailureDescriptor {
+  readonly failureClass: FamFailureClass;
+  readonly family: FailureFamily;
+  readonly source: "fold-access-mapper" | "fquery-core" | "chikuwa-negative-fixture";
+}
+
+const FAILURE_FAMILIES: Readonly<Record<FamFailureClass, FailureDescriptor>> = Object.freeze({
+  "metaphor-collapse": descriptor("metaphor-collapse", "semantic", "fold-access-mapper"),
+  "operator-regression": descriptor("operator-regression", "structure", "fold-access-mapper"),
+  "lambda-blur": descriptor("lambda-blur", "semantic", "fold-access-mapper"),
+  "gradient-flattening": descriptor("gradient-flattening", "structure", "fold-access-mapper"),
+  "false-universalization": descriptor("false-universalization", "semantic", "fold-access-mapper"),
+  "port-hallucination": descriptor("port-hallucination", "transport", "fold-access-mapper"),
+  "no-bottom-return": descriptor("no-bottom-return", "structure", "fold-access-mapper"),
+  "projection-dimension-mismatch": descriptor("projection-dimension-mismatch", "structure", "fold-access-mapper"),
+  "unknown-passed-as-ok": descriptor("unknown-passed-as-ok", "observability", "fold-access-mapper"),
+  "sensor-mode-insufficient": descriptor("sensor-mode-insufficient", "observability", "fold-access-mapper"),
+  "world-mismatch": descriptor("world-mismatch", "world", "chikuwa-negative-fixture"),
+  "cross-world-symbol-leak": descriptor("cross-world-symbol-leak", "world", "chikuwa-negative-fixture"),
+  "effect-goal-conflict": descriptor("effect-goal-conflict", "semantic", "chikuwa-negative-fixture"),
+  "capability-direction-mismatch": descriptor("capability-direction-mismatch", "semantic", "chikuwa-negative-fixture"),
+  "target-ontology-mismatch": descriptor("target-ontology-mismatch", "world", "chikuwa-negative-fixture"),
+  "capability-resource-insufficient": descriptor("capability-resource-insufficient", "resource", "chikuwa-negative-fixture"),
+  "surface-similarity-confusion": descriptor("surface-similarity-confusion", "semantic", "chikuwa-negative-fixture"),
+  "lexical-neighbor-substitution": descriptor("lexical-neighbor-substitution", "semantic", "chikuwa-negative-fixture"),
+  "semantic-neighbor-misbinding": descriptor("semantic-neighbor-misbinding", "semantic", "chikuwa-negative-fixture"),
+  "responsibility-abstraction-inversion": descriptor("responsibility-abstraction-inversion", "governance", "chikuwa-negative-fixture"),
+  "safety-abstraction-overcollapse": descriptor("safety-abstraction-overcollapse", "governance", "chikuwa-negative-fixture"),
+  "governance-induced-semantic-blur": descriptor("governance-induced-semantic-blur", "governance", "chikuwa-negative-fixture"),
+  "protective-detail-loss": descriptor("protective-detail-loss", "governance", "chikuwa-negative-fixture"),
+  "institutional-overreach": descriptor("institutional-overreach", "governance", "chikuwa-negative-fixture"),
+  "unsupported-success-claim": descriptor("unsupported-success-claim", "observability", "fquery-core"),
+  "plugin-resolution-failure": descriptor("plugin-resolution-failure", "transport", "fquery-core"),
+  "cross-runtime-divergence": descriptor("cross-runtime-divergence", "observability", "fquery-core"),
+});
+
+export function describeFailureClass(failureClass: FamFailureClass): FailureDescriptor {
+  return FAILURE_FAMILIES[failureClass];
+}
+
+export function normalizeLegacyFailureMode(value: string): FamFailureClass | undefined {
+  const normalized = value.replaceAll("_", "-");
+  return normalized in FAILURE_FAMILIES ? normalized as FamFailureClass : undefined;
+}
 
 export function classifyResult(result: QueryResult): readonly DivergenceClass[] {
   const classes = new Set<DivergenceClass>();
@@ -83,4 +159,12 @@ export function classifyResult(result: QueryResult): readonly DivergenceClass[] 
   if (result.transportStatus === "succeeded" && result.lambdaStatus === "satisfied" && result.semanticStatus !== "satisfied") classes.add("lambda-blur");
   if (result.pluginStatus === "plugin-not-found") classes.add("plugin-resolution-failure");
   return [...classes];
+}
+
+function descriptor(
+  failureClass: FamFailureClass,
+  family: FailureFamily,
+  source: FailureDescriptor["source"],
+): FailureDescriptor {
+  return Object.freeze({ failureClass, family, source });
 }
