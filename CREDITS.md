@@ -33,7 +33,7 @@ historicalへの移動は「誤り」「失敗」の烙印ではありません�
   - 複数nodeを1 nodeへ畳むmodule、循環参照の検出、JSONでの保存・読み込み
 - FQueryとの違い:
   - ChatGraphはWindows向けPyQtアプリでChatGPT / Pythonをengineとする
-  - 現行FQuery GUIはVue 3 / BaklavaJS上のPresentation層であり、React / React Flow 系へのrenderer移行を Issue #36 で進めている
+  - 現行FQuery GUIはReact / React Flow上のPresentation層。Vue 3 / BaklavaJS backendは Issue #36 で交換し撤去した（2026-09-08）
   - engineはFAM / Q（Proton.md semantic ABI）側にあり、GUI frameworkは交換可能なbackendとして扱う
   - FQueryではnode本体の中身をplugin rendererが供給し、`Ψ / ∇φ / λ / Q` の意味役割へ着地させる
   - 実行成功と λ satisfaction を分離する状態境界はFQuery固有
@@ -103,7 +103,7 @@ FAM / FQueryで臨床・精神医学・社会制度の知見を参照する目�
 
 runtime dependencyのlicenseは各packageの`package.json`とlockfileを正本とします。
 
-現行GUIではBaklavaJS（MIT）をnode-editor surfaceとして通常dependencyで利用しています。React / React Flow 系へのrenderer移行は Issue #36 で進行中であり、移行後も依存関係・licenseの正本はpackage metadataとlockfileに置きます。
+現行GUIではReact Flow（`@xyflow/react`、MIT）をnode-editor surfaceとして通常dependencyで利用しています。BaklavaJS（MIT）は Issue #36 での交換前に利用していたhistorical依存であり、`THIRD_PARTY_NOTICES.md`に記録を残します。依存関係・licenseの正本はpackage metadataとlockfileに置きます。
 
 ## 境界
 
