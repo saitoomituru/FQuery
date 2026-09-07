@@ -19,6 +19,28 @@ export interface AccessMapProfile {
   readonly unknownPolicy: "retain";
   readonly unmappedPolicy: "retain-unmapped";
   readonly rules: readonly AccessMapRule[];
+  readonly factExtractors: readonly AccessMapFactExtractor[];
+  readonly causalGates: readonly AccessMapCausalGate[];
+}
+
+export interface AccessMapFactExtractor {
+  readonly extractorRef: string;
+  readonly sourceUnitOrder: number;
+  readonly factKey: string;
+  readonly pattern: string;
+  readonly valueType: "number";
+  readonly scopeRef: string;
+}
+
+export interface AccessMapCausalGate {
+  readonly gateRef: string;
+  readonly sourceUnitOrder: number;
+  readonly factPath: readonly string[];
+  readonly conditionKind: "number-gte";
+  readonly threshold: number;
+  readonly activeUnitOrders: readonly number[];
+  readonly fallbackUnitOrders: readonly number[];
+  readonly conditionScopeRef: string;
 }
 
 export interface ClassificationBinding {
@@ -41,6 +63,8 @@ export function readAccessMapProfile(value: FamJsonRecord): AccessMapProfile {
   const q = requiredObject(value.Q, "$.Q");
   const rulesValue = requiredArray(gradient.mapping_rules, "$.∇φ.mapping_rules");
   const rules = rulesValue.map((candidate, index) => readRule(candidate, `$.∇φ.mapping_rules[${index}]`));
+  const factExtractors = optionalArray(gradient.fact_extractors).map((candidate, index) => readFactExtractor(candidate, `$.∇φ.fact_extractors[${index}]`));
+  const causalGates = optionalArray(gradient.causal_gates).map((candidate, index) => readCausalGate(candidate, `$.∇φ.causal_gates[${index}]`));
   if (rules.length === 0) throw new TypeError("access-map-rules-required");
   const ids = new Set<string>();
   const claims = new Set<string>();
@@ -64,6 +88,8 @@ export function readAccessMapProfile(value: FamJsonRecord): AccessMapProfile {
     unknownPolicy: "retain",
     unmappedPolicy: "retain-unmapped",
     rules: Object.freeze(rules),
+    factExtractors: Object.freeze(factExtractors),
+    causalGates: Object.freeze(causalGates),
   });
 }
 
@@ -98,6 +124,35 @@ function readRule(value: unknown, path: string): AccessMapRule {
   });
 }
 
+function readFactExtractor(value: unknown, path: string): AccessMapFactExtractor {
+  const extractor = requiredObject(value, path);
+  if (extractor.value_type !== "number") throw new TypeError(`${path}.value_type:number-required`);
+  return Object.freeze({
+    extractorRef: requiredString(extractor.extractor_ref, `${path}.extractor_ref`),
+    sourceUnitOrder: requiredNonNegativeInteger(extractor.source_unit_order, `${path}.source_unit_order`),
+    factKey: requiredString(extractor.fact_key, `${path}.fact_key`),
+    pattern: requiredString(extractor.pattern, `${path}.pattern`),
+    valueType: "number",
+    scopeRef: requiredString(extractor.scope_ref, `${path}.scope_ref`),
+  });
+}
+
+function readCausalGate(value: unknown, path: string): AccessMapCausalGate {
+  const gate = requiredObject(value, path);
+  if (gate.condition_kind !== "number-gte") throw new TypeError(`${path}.condition_kind:number-gte-required`);
+  if (typeof gate.threshold !== "number" || !Number.isFinite(gate.threshold)) throw new TypeError(`${path}.threshold:number-required`);
+  return Object.freeze({
+    gateRef: requiredString(gate.gate_ref, `${path}.gate_ref`),
+    sourceUnitOrder: requiredNonNegativeInteger(gate.source_unit_order, `${path}.source_unit_order`),
+    factPath: freezeStrings(requiredArray(gate.fact_path, `${path}.fact_path`), `${path}.fact_path`),
+    conditionKind: "number-gte",
+    threshold: gate.threshold,
+    activeUnitOrders: freezeIntegers(requiredArray(gate.active_unit_orders, `${path}.active_unit_orders`), `${path}.active_unit_orders`),
+    fallbackUnitOrders: freezeIntegers(requiredArray(gate.fallback_unit_orders, `${path}.fallback_unit_orders`), `${path}.fallback_unit_orders`),
+    conditionScopeRef: requiredString(gate.condition_scope_ref, `${path}.condition_scope_ref`),
+  });
+}
+
 function requiredObject(value: unknown, path: string): JsonObject {
   if (!value || typeof value !== "object" || Array.isArray(value)) throw new TypeError(`${path}:object-required`);
   return value as JsonObject;
@@ -106,6 +161,19 @@ function requiredObject(value: unknown, path: string): JsonObject {
 function requiredArray(value: unknown, path: string): readonly unknown[] {
   if (!Array.isArray(value)) throw new TypeError(`${path}:array-required`);
   return value;
+}
+
+function optionalArray(value: unknown): readonly unknown[] {
+  return value === undefined ? [] : requiredArray(value, "$.∇φ.optional-array");
+}
+
+function requiredNonNegativeInteger(value: unknown, path: string): number {
+  if (!Number.isSafeInteger(value) || (value as number) < 0) throw new TypeError(`${path}:non-negative-integer-required`);
+  return value as number;
+}
+
+function freezeIntegers(value: readonly unknown[], path: string): readonly number[] {
+  return Object.freeze(value.map((entry, index) => requiredNonNegativeInteger(entry, `${path}[${index}]`)));
 }
 
 function requiredString(value: unknown, path: string): string {

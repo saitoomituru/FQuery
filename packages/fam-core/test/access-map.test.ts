@@ -15,6 +15,8 @@ describe("Basic Commons Access Mapper FAM", () => {
       unknownPolicy: "retain",
       unmappedPolicy: "retain-unmapped",
     });
+    expect(profile.factExtractors[0]).toMatchObject({ sourceUnitOrder: 0, factKey: "precipitationProbability", valueType: "number" });
+    expect(profile.causalGates[0]).toMatchObject({ threshold: 38, activeUnitOrders: [1, 2], fallbackUnitOrders: [] });
   });
 
   it("Astral factをactor/action-local scopeへ明示写像する", () => {

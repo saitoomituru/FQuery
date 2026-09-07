@@ -42,6 +42,28 @@
         "evidence_scope": ["unknown", "not-absence"]
       }
     ],
+    "fact_extractors": [
+      {
+        "extractor_ref": "extractor://fquery/test/issue-35/precipitation-percent",
+        "source_unit_order": 0,
+        "fact_key": "precipitationProbability",
+        "pattern": "降水確率は([0-9]+(?:\\.[0-9]+)?)%",
+        "value_type": "number",
+        "scope_ref": "scope://fixture/issue-35/tc2-text-adapter"
+      }
+    ],
+    "causal_gates": [
+      {
+        "gate_ref": "gate://fquery/test/issue-35/rain-anxiety",
+        "source_unit_order": 0,
+        "fact_path": ["precipitationProbability"],
+        "condition_kind": "number-gte",
+        "threshold": 38,
+        "active_unit_orders": [1, 2],
+        "fallback_unit_orders": [],
+        "condition_scope_ref": "scope://fixture/issue-35/author-defined-38"
+      }
+    ],
     "loss_declarations": [],
     "source_mutation": false
   },
