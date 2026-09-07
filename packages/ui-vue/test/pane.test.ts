@@ -51,6 +51,13 @@ describe("FQueryPane", () => {
     expect(remounted.emitted("update:open")?.[0]).toEqual([false]);
   });
 
+  it("activeTab propでHostがtabを切り替え、ユーザー操作はupdate:activeTabで返る", async () => {
+    const wrapper = mount(FQueryPane, { props: { side: "right", tabs: registry().resolve("right", context), components: {}, context, open: true, activeTab: "raw" } });
+    expect(wrapper.get('[data-pane-tab="raw"]').attributes("aria-selected")).toBe("true");
+    await wrapper.get('[data-pane-tab="node"]').trigger("click");
+    expect(wrapper.emitted("update:activeTab")?.[0]).toEqual(["node"]);
+  });
+
   it("tabが消えたらactive tabを先頭へ戻し、openがfalseならhidden", async () => {
     const wrapper = mount(FQueryPane, { props: { side: "left", tabs: registry().resolve("right", context), components: {}, context, open: true } });
     await wrapper.get('[data-pane-tab="raw"]').trigger("click");

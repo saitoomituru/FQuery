@@ -27,7 +27,11 @@ import AddNodeSection from "./panes/AddNodeSection.vue";
 import OutlinerSection from "./panes/OutlinerSection.vue";
 import RecordsSection from "./panes/RecordsSection.vue";
 import DecisionsSection from "./panes/DecisionsSection.vue";
-import NodePanelSection from "./panes/NodePanelSection.vue";
+import NodeSettingsSection from "./panes/NodeSettingsSection.vue";
+import NodeConnectionsSection from "./panes/NodeConnectionsSection.vue";
+import NodeQSection from "./panes/NodeQSection.vue";
+import NodeUnsupportedSection from "./panes/NodeUnsupportedSection.vue";
+import NodeRawSection from "./panes/NodeRawSection.vue";
 import DecomposerSection from "./panes/DecomposerSection.vue";
 
 type Route = PlaygroundRoute;
@@ -44,6 +48,8 @@ const canvas = ref<FQueryBaklavaViewHandle>();
 const leftOpen = ref(true);
 const rightOpen = ref(false);
 const inspectorTab = ref<"settings" | "connections" | "q" | "unsupported" | "raw" | undefined>();
+const inspectorJump = ref<string | null>(null);
+const rightTab = ref<string | undefined>();
 
 // GUIは判定を行わない。Playgroundではengine不在のためfixture portが構造判定だけを返す。
 const registry = new PluginPresentationRegistry();
@@ -94,7 +100,12 @@ paneRegistry.register({ side: "left", tab: { id: "add", title: "Add Node", icon:
 paneRegistry.register({ side: "left", tab: { id: "outline", title: "階層", icon: "☷", order: 10 }, section: { id: "outliner", title: "Nodes", order: 0 }, componentRef: "host:outliner", source: "host" });
 paneRegistry.register({ side: "left", tab: { id: "records", title: "Records", icon: "▤", order: 20 }, section: { id: "records", title: "FAM / projection / FAMLog / receipt / debug", order: 0 }, componentRef: "host:records", source: "host" });
 paneRegistry.register({ side: "left", tab: { id: "decisions", title: "Decisions", icon: "≡", order: 30 }, section: { id: "decisions", title: "Session decisions / FAM edit receipts", order: 0 }, componentRef: "host:decisions", source: "host" });
-paneRegistry.register({ side: "right", tab: { id: "node", title: "Node", icon: "◈", order: 0 }, section: { id: "node-panel", title: "Node panel", order: 10 }, componentRef: "core:node-panel", source: "core", applies: (context) => context.activeNode !== undefined });
+const withActive = (context: { activeNode?: unknown }) => context.activeNode !== undefined;
+paneRegistry.register({ side: "right", tab: { id: "node", title: "Node", icon: "◈", order: 0 }, section: { id: "settings", title: "設定", order: 10 }, componentRef: "core:node-settings", source: "core", applies: withActive });
+paneRegistry.register({ side: "right", tab: { id: "node", title: "Node", icon: "◈", order: 0 }, section: { id: "connections", title: "接続", order: 20 }, componentRef: "core:node-connections", source: "core", applies: withActive });
+paneRegistry.register({ side: "right", tab: { id: "q", title: "Q", icon: "Q", order: 10 }, section: { id: "q-schema", title: "Q schema", order: 0 }, componentRef: "core:node-q", source: "core", applies: withActive });
+paneRegistry.register({ side: "right", tab: { id: "unsupported", title: "Unsupported Data", icon: "?", order: 20 }, section: { id: "unsupported", title: "panel外のcanonical field", order: 0 }, componentRef: "core:node-unsupported", source: "core", applies: withActive });
+paneRegistry.register({ side: "right", tab: { id: "raw", title: "RAW FAM", icon: "{}", order: 30 }, section: { id: "famvim", title: "∇φ.FAMVIM", order: 0, collapsible: false }, componentRef: "core:node-raw", source: "core", applies: withActive });
 paneRegistry.register({ side: "right", tab: { id: "node", title: "Node", icon: "◈", order: 0 }, section: { id: "decomposer", title: "Ψ.NL decomposer route", order: 0 }, componentRef: "host:decomposer", source: "host", applies: (context) => context.famRole === "ψ" });
 for (const registration of registry.registrations()) paneRegistry.registerPlugin(registration);
 const paneComponents: PaneComponentMap = {
@@ -102,7 +113,11 @@ const paneComponents: PaneComponentMap = {
   "host:outliner": OutlinerSection,
   "host:records": RecordsSection,
   "host:decisions": DecisionsSection,
-  "core:node-panel": NodePanelSection,
+  "core:node-settings": NodeSettingsSection,
+  "core:node-connections": NodeConnectionsSection,
+  "core:node-q": NodeQSection,
+  "core:node-unsupported": NodeUnsupportedSection,
+  "core:node-raw": NodeRawSection,
   "host:decomposer": DecomposerSection,
 };
 
@@ -140,7 +155,7 @@ const providerReceipt = computed(() => resultRecord.value ? {
 } : undefined);
 const debugEvents = computed(() => isRecord(response.value) && Array.isArray(response.value.events) ? response.value.events : undefined);
 
-provide(playgroundPaneContextKey, { sessionState, registrations, fam, semanticProjection, providerReceipt, debugEvents, editReceipts, selectedRegistration, selectedProjection, inspectorTab, validate: validateFamJson, receive });
+provide(playgroundPaneContextKey, { sessionState, registrations, fam, semanticProjection, providerReceipt, debugEvents, editReceipts, selectedRegistration, selectedProjection, inspectorTab, inspectorJump, validate: validateFamJson, receive });
 
 /** Blender流: T=左Tool pane、N=右Inspector pane。入力中は無効。 */
 function onKeydown(event: KeyboardEvent) {
@@ -191,10 +206,17 @@ async function addCoreNode(capability: string, sequence: number): Promise<string
 function receive(event: FQueryUiEvent) {
   lastEvent.value = JSON.stringify(event);
   if (event.type === "focus") { canvas.value?.focusNode(event.nodeId); return; }
+  if (event.type === "jump") {
+    // Unsupported Data → RAW FAM。pane tabを切り替え、FAMVIMへpointerを渡す
+    inspectorJump.value = event.pointer;
+    rightTab.value = "raw";
+    rightOpen.value = true;
+    return;
+  }
   if (event.type === "inspect") {
     selectSequence += 1;
     void session.dispatch({ type: "node.select.requested", requestId: `playground:select:${selectSequence}`, nodeIds: [event.nodeId], activeNodeId: event.nodeId });
-    inspectorTab.value = event.nodeId === coreNodeIds.value.famvim ? "raw" : "settings";
+    rightTab.value = event.nodeId === coreNodeIds.value.famvim ? "raw" : "node";
     rightOpen.value = true;
     return;
   }
@@ -327,7 +349,7 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
         :selection="sessionState.selection"
         @event="receive"
       />
-      <FQueryPane v-model:open="rightOpen" class="overlay-right" side="right" storage-key="fquery.playground" :tabs="rightTabs" :components="paneComponents" :context="paneContext" @event="receive" />
+      <FQueryPane v-model:open="rightOpen" v-model:active-tab="rightTab" class="overlay-right" side="right" storage-key="fquery.playground" :tabs="rightTabs" :components="paneComponents" :context="paneContext" @event="receive" />
     </main>
   </div>
 </template>

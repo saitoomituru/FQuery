@@ -15,14 +15,18 @@ const props = defineProps<{
   context: PaneContext;
   open: boolean;
   storageKey?: string | undefined;
+  /** Hostからtabを指定する（例: Unsupported→RAWのjump）。指定後もユーザーは切り替えられる */
+  activeTab?: string | undefined;
 }>();
-const emit = defineEmits<{ event: [event: FQueryUiEvent]; "update:open": [open: boolean] }>();
+const emit = defineEmits<{ event: [event: FQueryUiEvent]; "update:open": [open: boolean]; "update:activeTab": [tabId: string] }>();
 
 const key = computed(() => `${props.storageKey ?? "fquery.pane"}.${props.side}`);
 const activeTabId = ref<string>(readStorage(`${key.value}.tab`) ?? "");
 const collapsed = ref<Set<string>>(new Set((readStorage(`${key.value}.collapsed`) ?? "").split("|").filter(Boolean)));
 
 const activeTab = computed(() => props.tabs.find((tab) => tab.tab.id === activeTabId.value) ?? props.tabs[0]);
+
+watch(() => props.activeTab, (tabId) => { if (tabId && props.tabs.some((tab) => tab.tab.id === tabId)) activeTabId.value = tabId; }, { immediate: true });
 
 watch(() => props.tabs.map((tab) => tab.tab.id).join("|"), () => {
   if (!props.tabs.some((tab) => tab.tab.id === activeTabId.value)) activeTabId.value = props.tabs[0]?.tab.id ?? "";
@@ -31,6 +35,7 @@ watch(() => props.tabs.map((tab) => tab.tab.id).join("|"), () => {
 function selectTab(tabId: string) {
   activeTabId.value = tabId;
   writeStorage(`${key.value}.tab`, tabId);
+  emit("update:activeTab", tabId);
 }
 
 function toggleSection(sectionId: string) {

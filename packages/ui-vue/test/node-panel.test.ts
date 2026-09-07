@@ -126,3 +126,16 @@ describe("FQueryNodePanel", () => {
     expect(wrapper.emitted("event")![0]![0]).toMatchObject({ type: "connection.remove.requested", connectionId: "c1" });
   });
 });
+
+describe("FQueryNodePanel only mode", () => {
+  it("only指定で1 tab分だけを描画し、Unsupported→RAWはjump eventとしてHostへ委ねる", async () => {
+    const wrapper = mount(FQueryNodePanel, { props: { node, registration: pluginA, only: "unsupported" } });
+    expect(wrapper.find('[role="tablist"]').exists()).toBe(false);
+    expect(wrapper.find("h3").exists()).toBe(false);
+    await wrapper.get('[data-jump="/x-plugin-extension/retained"]').trigger("click");
+    expect(wrapper.emitted("event")?.[0]?.[0]).toEqual({ type: "jump", nodeId: node.nodeId, pointer: "/x-plugin-extension/retained" });
+    const raw = mount(FQueryNodePanel, { attachTo: document.body, props: { node, registration: pluginA, only: "raw", jumpPointer: "/x-plugin-extension/retained" } });
+    expect(raw.get('[data-pointer="/x-plugin-extension/retained"]').attributes("aria-current")).toBe("true");
+    raw.unmount();
+  });
+});

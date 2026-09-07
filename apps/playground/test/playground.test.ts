@@ -101,9 +101,10 @@ describe("FQuery Playground FAMVIM", () => {
     await flushPromises();
     expect(wrapper.get('[aria-label="right pane"]').attributes("hidden")).toBeUndefined();
     expect(wrapper.get('[aria-label="right pane"]').find('[data-pane-section="decomposer"]').exists()).toBe(false);
+    expect(wrapper.get('[aria-label="right pane"] [data-pane-tab="raw"]').attributes("aria-selected")).toBe("true");
     const panel = wrapper.get('[aria-label="FQuery node panel"]');
     expect(panel.attributes("data-node-id")).toContain("q://playground/node/2");
-    expect(panel.get('[data-tab="raw"]').attributes("aria-selected")).toBe("true");
+    expect(panel.attributes("data-only")).toBe("raw");
     const famvim = wrapper.get('[aria-label="FAMVIM RAW FAM editor"]');
     expect(famvim.get('[data-pointer="/x-plugin-extension/retained"]').exists()).toBe(true);
     const textarea = famvim.get("textarea");
@@ -129,8 +130,16 @@ describe("FQuery Playground FAMVIM", () => {
     await flushPromises();
     expect(wrapper.get('[aria-label="FQuery node panel"]').attributes("data-node-id")).toContain("q://playground/node/1");
     expect(wrapper.get('[aria-label="FQuery node panel"]').text()).toContain("fquery.core@");
-    const rightSections = wrapper.get('[aria-label="right pane"]').findAll("[data-pane-section]").map((section) => section.attributes("data-pane-section"));
-    expect(rightSections).toEqual(["decomposer", "node-panel"]);
+    const rightPane = wrapper.get('[aria-label="right pane"]');
+    expect(rightPane.findAll('[role="tab"]').map((tab) => tab.attributes("data-pane-tab"))).toEqual(["node", "q", "unsupported", "raw"]);
+    expect(rightPane.findAll("[data-pane-section]").map((section) => section.attributes("data-pane-section"))).toEqual(["decomposer", "settings", "connections"]);
+
+    // Unsupported Data → RAWへjumpすると pane tab が切り替わり、FAMVIMで該当pathが選択される
+    await rightPane.get('[data-pane-tab="unsupported"]').trigger("click");
+    await rightPane.get("[data-jump]").trigger("click");
+    await flushPromises();
+    expect(wrapper.get('[aria-label="right pane"] [data-pane-tab="raw"]').attributes("aria-selected")).toBe("true");
+    expect(wrapper.get('[aria-label="right pane"] [aria-current="true"][data-pointer]').exists()).toBe(true);
 
     // T / N で左右paneを開閉。入力中は無効
     await wrapper.get(".shell").trigger("keydown", { key: "n" });

@@ -38,6 +38,7 @@ export interface PlaygroundPaneContext {
   readonly selectedRegistration: ComputedRef<PluginPresentationRegistration | undefined>;
   readonly selectedProjection: ComputedRef<PresentationProjection | undefined>;
   readonly inspectorTab: ShallowRef<"settings" | "connections" | "q" | "unsupported" | "raw" | undefined>;
+  readonly inspectorJump: ShallowRef<string | null>;
   readonly validate: FamValidator;
   readonly receive: (event: FQueryUiEvent) => void;
 }

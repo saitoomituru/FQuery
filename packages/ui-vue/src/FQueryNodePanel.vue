@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
-import { deriveKnownPointers, type ConnectionViewModel, type GuiEventAbi, type NodeViewModel, type PluginPresentationRegistration, type PresentationProjection, type QSchemaProperty } from "@fquery/ui-core";
+import { deriveKnownPointers, type ConnectionViewModel, type FQueryUiEvent, type NodeViewModel, type PluginPresentationRegistration, type PresentationProjection, type QSchemaProperty } from "@fquery/ui-core";
 import { createFamPatch, getAtPointer, openFamText, partitionPointers, serializeFamValue, type FamValidator, type JsonValue } from "@fquery/fam-edit";
 import FQueryFamvim from "./FQueryFamvim.vue";
 
@@ -18,8 +18,12 @@ const props = defineProps<{
   validate?: FamValidator | undefined;
   /** Hostからtabを指定する（例: canvas nodeの「RAW編集」からRAW FAMを開く） */
   tab?: "settings" | "connections" | "q" | "unsupported" | "raw" | undefined;
+  /** 1 tab分だけをsectionとして描画する（pane contribution用）。tab stripとheaderは出さない */
+  only?: "settings" | "connections" | "q" | "unsupported" | "raw" | undefined;
+  /** only="raw"のときにFAMVIMへ渡すjump先pointer */
+  jumpPointer?: string | null | undefined;
 }>();
-const emit = defineEmits<{ event: [event: GuiEventAbi] }>();
+const emit = defineEmits<{ event: [event: FQueryUiEvent] }>();
 
 type Tab = "settings" | "connections" | "q" | "unsupported" | "raw";
 const tabs: readonly { readonly id: Tab; readonly label: string }[] = [
@@ -29,13 +33,15 @@ const tabs: readonly { readonly id: Tab; readonly label: string }[] = [
   { id: "unsupported", label: "Unsupported Data" },
   { id: "raw", label: "RAW FAM" },
 ];
-const active = ref<Tab>("settings");
+const active = computed<Tab>({ get: () => props.only ?? activeState.value, set: (value) => { activeState.value = value; } });
+const activeState = ref<Tab>("settings");
 const jumpTo = ref<string | null>(null);
 let requestSequence = 0;
 
 // node またはpluginが切り替わったときだけtabを初期化する（valueの更新では維持する）
-watch(() => `${props.node.nodeId} ${props.registration?.presentation.presentationId ?? ""}`, () => { active.value = props.tab ?? "settings"; jumpTo.value = null; });
-watch(() => props.tab, (tab) => { if (tab) active.value = tab; }, { immediate: true });
+watch(() => `${props.node.nodeId} ${props.registration?.presentation.presentationId ?? ""}`, () => { activeState.value = props.tab ?? "settings"; jumpTo.value = null; });
+watch(() => props.tab, (tab) => { if (tab) activeState.value = tab; }, { immediate: true });
+watch(() => props.jumpPointer, (pointer) => { if (pointer !== undefined) jumpTo.value = pointer; }, { immediate: true });
 
 const editor = computed(() => props.registration?.editor);
 const knownPointers = computed(() => deriveKnownPointers(editor.value));
@@ -81,8 +87,13 @@ function requestDisconnect(connection: ConnectionViewModel) {
 }
 
 function jumpToRaw(pointer: string) {
+  if (props.only) {
+    // sectionとして分割されているときはHostへjumpを委ね、Hostがpane tabを切り替える
+    emit("event", { type: "jump", nodeId: props.node.nodeId, pointer });
+    return;
+  }
   jumpTo.value = pointer;
-  active.value = "raw";
+  activeState.value = "raw";
 }
 
 function inputValue(key: string): string {
@@ -95,13 +106,13 @@ function targetChecked(event: Event): boolean { return (event.target as HTMLInpu
 </script>
 
 <template>
-  <section class="fquery-node-panel" :data-node-id="node.nodeId" aria-label="FQuery node panel">
-    <header>
-      <h3>{{ node.label }}</h3>
+  <section class="fquery-node-panel" :data-node-id="node.nodeId" :data-only="only" aria-label="FQuery node panel">
+    <header v-if="!only || only === 'settings'">
+      <h3 v-if="!only">{{ node.label }}</h3>
       <p v-if="ghost" class="fquery-node-panel-ghost" role="status">ghost: plugin未ロード／消失。dataは保持され、RAW FAMで編集可能</p>
     </header>
 
-    <div class="fquery-node-panel-tabs" role="tablist" aria-label="node panel tabs">
+    <div v-if="!only" class="fquery-node-panel-tabs" role="tablist" aria-label="node panel tabs">
       <button
         v-for="tab in tabs"
         :key="tab.id"
