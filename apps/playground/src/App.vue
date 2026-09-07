@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, shallowRef, watch } from "vue";
+import { computed, onMounted, provide, ref, shallowRef, watch } from "vue";
 import { FQueryBaklavaView, FQueryNodePanel, FQueryPalette, FQueryRecordsPanel } from "@fquery/ui-vue";
 import {
   PluginPresentationRegistry,
@@ -14,14 +14,15 @@ import {
   statusTone,
   type FQueryUiEvent,
   type GuiEventAbi,
-  type NodeViewModel,
   type PresentationSessionState,
   type StatusBadgeViewModel,
 } from "@fquery/ui-core";
 import { isFamJsonRecord, validateFamJson } from "@fquery/fam-core";
 import { applyFamPatch, openFamText, replaceFamText, serializeFamValue, type FamPatch, type FamPatchResult, type JsonValue } from "@fquery/fam-edit";
+import { decomposerContextKey, type PlaygroundRoute } from "./context.js";
+import CoreNodeRenderer from "./nodes/CoreNodeRenderer.vue";
 
-interface Route { readonly provider: "fixture" | "gemini" | "ollama"; readonly label: string; readonly available: boolean; readonly models: readonly string[]; readonly credentialName?: string; readonly reason?: string }
+type Route = PlaygroundRoute;
 
 const routes = ref<readonly Route[]>([{ provider: "fixture", label: "Fixture", available: true, models: ["mock-fam-transformer"] }]);
 const provider = ref<Route["provider"]>("fixture");
@@ -31,6 +32,8 @@ const lastEvent = ref("未実行");
 const response = ref<unknown>();
 const running = ref(false);
 const routeError = ref("");
+const inspectorOpen = ref(false);
+const inspectorTab = ref<"settings" | "connections" | "q" | "unsupported" | "raw" | undefined>();
 
 // GUIは判定を行わない。Playgroundではengine不在のためfixture portが構造判定だけを返す。
 const registry = new PluginPresentationRegistry();
@@ -44,7 +47,7 @@ const session = new PresentationSession(createFixtureDecisionPort({
     if (!contract) throw new Error(`core-contract-not-found:${capability}`);
     return createCoreNodeViewModel(contract, nodeId);
   },
-  // Host責務: FAMVIMからのfam.patch / fam.textをcanonical valueへ適用する。GUIは適用しない。
+  // Host責務: FAMVIM／Node Panelからのfam.patch / fam.textをcanonical valueへ適用する。GUIは適用しない。
   resolveProperty: (node, property, value) => {
     if (property !== "fam.patch" && property !== "fam.text") return undefined;
     if (node.value === null || node.value === undefined) return { rejected: "fam-not-provided" };
@@ -60,11 +63,16 @@ const session = new PresentationSession(createFixtureDecisionPort({
   },
 }), { registry });
 const editReceipts = ref<readonly FamPatchResult["receipt"][]>([]);
-const selectedNodeId = ref<string | undefined>();
 const sessionState = shallowRef<PresentationSessionState>(session.state);
 session.subscribe((state) => { sessionState.value = state; });
 const registrations = computed(() => session.registry.registrations());
 const coreNodeIds = ref<{ psi?: string | undefined; famvim?: string | undefined; lambda?: string | undefined }>({});
+const selectedNodeId = ref<string | undefined>();
+
+/** rendererHint -> canvas renderer。Core 3 nodeは最初のrenderer。pluginは同じ経路で自分のrendererを登録する。 */
+const nodeRenderers = { [CORE_RENDERER_HINT]: CoreNodeRenderer };
+
+provide(decomposerContextKey, { routes, provider, model, source, running, execute });
 
 const selectedRoute = computed(() => routes.value.find((route) => route.provider === provider.value));
 const resultRecord = computed<Record<string, unknown> | undefined>(() => {
@@ -77,7 +85,6 @@ const famvimNode = computed(() => sessionState.value.nodes.find((node) => node.n
 const fam = computed<unknown>(() => famvimNode.value?.value ?? undefined);
 const psiNode = computed(() => sessionState.value.nodes.find((node) => node.nodeId === coreNodeIds.value.psi));
 const selectedNode = computed(() => sessionState.value.nodes.find((node) => node.nodeId === selectedNodeId.value) ?? psiNode.value);
-const selectedIsPsi = computed(() => selectedNode.value?.nodeId === coreNodeIds.value.psi);
 const selectedProjection = computed(() => selectedNode.value ? sessionState.value.presentations[selectedNode.value.nodeId] : undefined);
 const selectedRegistration = computed(() => findRegistrationByPresentation(session.registry, selectedProjection.value?.presentation?.presentationId));
 const semanticProjection = computed(() => {
@@ -93,6 +100,8 @@ const providerReceipt = computed(() => resultRecord.value ? {
 const debugEvents = computed(() => isRecord(response.value) && Array.isArray(response.value.events) ? response.value.events : undefined);
 
 watch(provider, () => { model.value = selectedRoute.value?.models[0] ?? ""; response.value = undefined; routeError.value = ""; });
+// Host責務: ∇φ.FAMVIMのcanonical FAMが変わったら、接続先λ.NLへmanifestationをfixture projectionとして投影する（λ判定はしない）
+watch(fam, (value) => projectLambdaNode(value));
 
 onMounted(async () => {
   await buildCoreGraph();
@@ -113,7 +122,7 @@ async function buildCoreGraph() {
   coreNodeIds.value = { psi, famvim, lambda };
   if (psi && famvim) await session.dispatch({ type: "connection.add.requested", requestId: "playground:connect:psi-famvim", fromPortId: corePortId(psi, "observation"), toPortId: corePortId(famvim, "psi") });
   if (famvim && lambda) await session.dispatch({ type: "connection.add.requested", requestId: "playground:connect:famvim-lambda", fromPortId: corePortId(famvim, "fam"), toPortId: corePortId(lambda, "fam") });
-  const positions = [psi, famvim, lambda].map((nodeId, index) => ({ nodeId, x: 60 + index * 320, y: 90 }));
+  const positions = [psi, famvim, lambda].map((nodeId, index) => ({ nodeId, x: 320 + index * 380, y: 120 }));
   for (const position of positions) {
     if (!position.nodeId) continue;
     await session.dispatch({ type: "node.move.requested", requestId: `playground:layout:${position.nodeId}`, nodeId: position.nodeId, layoutSlotRef: `layout://playground/${position.nodeId}`, x: position.x, y: position.y });
@@ -128,7 +137,12 @@ async function addCoreNode(capability: string, sequence: number): Promise<string
 
 function receive(event: FQueryUiEvent) {
   lastEvent.value = JSON.stringify(event);
-  if (event.type === "inspect") selectedNodeId.value = event.nodeId;
+  if (event.type === "inspect") {
+    selectedNodeId.value = event.nodeId;
+    inspectorTab.value = event.nodeId === coreNodeIds.value.famvim ? "raw" : "settings";
+    inspectorOpen.value = true;
+    return;
+  }
   if (isGuiRequest(event)) void session.dispatch(event).catch((error: unknown) => { routeError.value = error instanceof Error ? error.message : "session-dispatch-failed"; });
 }
 
@@ -155,8 +169,7 @@ async function execute() {
 
 /** engineが返したQueryResultをΨ.NL nodeへ投影する。GUIはstatusを再計算しない。 */
 function projectPsiNode(options: { running: boolean }) {
-  const nodeId = coreNodeIds.value.psi;
-  const node = nodeId ? session.state.nodes.find((entry) => entry.nodeId === nodeId) : undefined;
+  const node = psiNode.value;
   if (!node) return;
   const record = resultRecord.value;
   const badges: StatusBadgeViewModel[] = (["resolution", "connection", "transport", "plugin", "semantic", "lambda", "control"] as const).map((axis) => {
@@ -167,13 +180,32 @@ function projectPsiNode(options: { running: boolean }) {
   session.applyEngineEvent({ type: "fam.node.changed", node: { ...node, badges, value: { source_text: source.value, provider: provider.value, model: model.value }, canExecute: false } });
 }
 
-/** 分解結果FAMを∇φ.FAMVIM nodeのvalueへ投影する。正本はrecords paneのFAMであり、node valueは表示用複製。 */
+/** 分解結果FAMを∇φ.FAMVIM nodeのvalueへ投影する。正本はこのnodeのvalueであり、records paneは複製表示。 */
 function projectFamvimNode() {
-  const nodeId = coreNodeIds.value.famvim;
-  const node = nodeId ? session.state.nodes.find((entry) => entry.nodeId === nodeId) : undefined;
+  const node = famvimNode.value;
   if (!node) return;
   const semantic = responseFam.value ? "unknown" : "not-evaluated";
   session.applyEngineEvent({ type: "fam.node.changed", node: { ...node, badges: [{ axis: "semantic", value: semantic, tone: statusTone(semantic) }], value: responseFam.value ?? null } });
+}
+
+/** λ.NLへmanifestationを投影する。fixture projectionであり、λ satisfactionは`unknown`のまま。 */
+function projectLambdaNode(value: unknown) {
+  const nodeId = coreNodeIds.value.lambda;
+  const node = nodeId ? sessionState.value.nodes.find((entry) => entry.nodeId === nodeId) : undefined;
+  if (!node) return;
+  const connected = sessionState.value.connections.some((connection) => connection.toPortId === corePortId(node.nodeId, "fam"));
+  const lambda = isRecord(value) && isRecord(value.λ) ? value.λ : undefined;
+  const units = lambda && Array.isArray(lambda.output_units) ? lambda.output_units : [];
+  const manifestations = units.map((unit) => isRecord(unit) && isRecord(unit.λ) && typeof unit.λ.manifestation === "string" ? unit.λ.manifestation : "").filter(Boolean);
+  const projected = connected && manifestations.length > 0;
+  session.applyEngineEvent({
+    type: "fam.node.changed",
+    node: {
+      ...node,
+      badges: [{ axis: "lambda", value: "unknown", tone: statusTone("unknown") }],
+      value: projected ? { projection_kind: "fixture-projection", manifestations } : null,
+    },
+  });
 }
 
 function isGuiRequest(event: FQueryUiEvent): event is GuiEventAbi {
@@ -185,79 +217,73 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
 
 <template>
   <div class="shell">
-    <header class="hero">
+    <header class="topbar">
       <div>
-        <p class="eyebrow">FQUERY NODE EDITOR / LOCALHOST</p>
-        <h1>FQuery Playground</h1>
-        <p>Ψ.NL → ∇φ.FAMVIM → λ.NL。provider routeはΨ.NL nodeのinspectorから選択します。</p>
+        <p class="eyebrow">FQUERY NODE EDITOR</p>
+        <h1>FQuery Playground — Ψ.NL → ∇φ.FAMVIM → λ.NL</h1>
       </div>
+      <output aria-live="polite">last event: {{ lastEvent }}</output>
+      <span class="spacer" />
+      <p v-if="routeError" class="error" role="alert">{{ routeError }}</p>
+      <button type="button" :aria-pressed="inspectorOpen ? 'true' : 'false'" @click="inspectorOpen = !inspectorOpen">Inspector</button>
     </header>
 
-    <output aria-live="polite">last event: {{ lastEvent }}</output>
-    <p v-if="routeError" class="error" role="alert">{{ routeError }}</p>
-
-    <main class="editor-layout" aria-label="node editor">
-      <FQueryPalette :registrations="registrations" @event="receive" />
-      <FQueryBaklavaView :nodes="sessionState.nodes" :connections="sessionState.connections" :layout="sessionState.layout" @event="receive" />
-      <FQueryNodePanel
-        v-if="selectedNode"
-        :node="selectedNode"
-        :registration="selectedRegistration"
-        :projection="selectedProjection"
+    <main class="stage" aria-label="node editor">
+      <FQueryBaklavaView
+        fill
+        :nodes="sessionState.nodes"
         :connections="sessionState.connections"
-        :validate="validateFamJson"
+        :layout="sessionState.layout"
+        :presentations="sessionState.presentations"
+        :node-renderers="nodeRenderers"
         @event="receive"
-      >
-        <template #inspector>
-          <section v-if="selectedIsPsi" class="controls" aria-label="route controls">
-            <h4>Ψ.NL decomposer</h4>
-            <label>Provider
-              <select v-model="provider">
-                <option v-for="route in routes" :key="route.provider" :value="route.provider" :disabled="!route.available">{{ route.label }}{{ route.available ? "" : " — unavailable" }}</option>
-              </select>
-            </label>
-            <label>Model
-              <select v-model="model"><option v-for="candidate in selectedRoute?.models ?? []" :key="candidate" :value="candidate">{{ candidate }}</option></select>
-            </label>
-            <p class="route-note">route: {{ provider }} / {{ model }}<template v-if="selectedRoute?.credentialName"> / credential: {{ selectedRoute.credentialName }}</template></p>
-            <label class="source">Natural language source<textarea v-model="source" rows="5" /></label>
-            <button type="button" :disabled="running || !selectedRoute?.available || !model || !source.trim()" @click="execute">{{ running ? "推論中…" : "自然言語をFAMへ分解" }}</button>
-          </section>
-        </template>
-      </FQueryNodePanel>
+      />
+      <FQueryPalette class="overlay-palette" :registrations="registrations" @event="receive" />
+      <aside class="overlay-inspector" :hidden="!inspectorOpen">
+        <FQueryNodePanel
+          v-if="selectedNode"
+          :node="selectedNode"
+          :registration="selectedRegistration"
+          :projection="selectedProjection"
+          :connections="sessionState.connections"
+          :validate="validateFamJson"
+          :tab="inspectorTab"
+          @event="receive"
+        />
+      </aside>
     </main>
 
-    <nav class="node-switch" aria-label="node selection">
-      <button v-for="node in sessionState.nodes" :key="node.nodeId" type="button" :aria-pressed="selectedNode?.nodeId === node.nodeId ? 'true' : 'false'" @click="selectedNodeId = node.nodeId">{{ node.label }}</button>
-    </nav>
-
-    <details class="records" open>
-      <summary class="surface-heading">Records — FAM / projection / FAMLog / receipt / debug（補助表示）</summary>
-      <FQueryRecordsPanel
-        :fam="fam"
-        :semantic-projection="semanticProjection"
-        :provider-receipt="providerReceipt"
-        :debug-events="debugEvents"
-      />
+    <details class="drawer">
+      <summary>Records — FAM / projection / FAMLog / receipt / debug · Session decisions（補助表示）</summary>
+      <div class="drawer-grid">
+        <FQueryRecordsPanel
+          :fam="fam"
+          :semantic-projection="semanticProjection"
+          :provider-receipt="providerReceipt"
+          :debug-events="debugEvents"
+        />
+        <div>
+          <section v-if="editReceipts.length" class="session-receipt" aria-label="fam edit receipts">
+            <h2>FAM edit receipts</h2>
+            <ul>
+              <li v-for="(receipt, index) in editReceipts" :key="index" :data-edit-status="receipt.status">
+                <strong>{{ receipt.status }}</strong> ops={{ receipt.appliedOperations }} touched={{ receipt.touchedPaths.join(", ") || "-" }} retained={{ receipt.retainedUntouchedPaths }}
+                <span v-if="receipt.validation"> validator={{ receipt.validation.valid ? "valid" : `${receipt.validation.issueCount} issue(s)` }}</span>
+                <span v-if="receipt.rejectedOperation"> — {{ receipt.rejectedOperation.reason }}</span>
+                <span v-if="receipt.loss.length"> loss={{ receipt.loss.map((entry) => entry.kind).join(",") }}</span>
+              </li>
+            </ul>
+          </section>
+          <section class="session-receipt" aria-label="session decisions">
+            <h2>Session decisions</h2>
+            <ul>
+              <li v-for="decision in sessionState.decisions" :key="decision.requestId" :data-decision-status="decision.status">
+                <code>{{ decision.kind }}</code> {{ decision.requestId }} → <strong>{{ decision.status }}</strong><span v-if="decision.reason"> — {{ decision.reason }}</span>
+              </li>
+            </ul>
+          </section>
+        </div>
+      </div>
     </details>
-    <section v-if="editReceipts.length" class="session-receipt" aria-label="fam edit receipts">
-      <h2 class="surface-heading">FAM edit receipts</h2>
-      <ul>
-        <li v-for="(receipt, index) in editReceipts" :key="index" :data-edit-status="receipt.status">
-          <strong>{{ receipt.status }}</strong> ops={{ receipt.appliedOperations }} touched={{ receipt.touchedPaths.join(", ") || "-" }} retained={{ receipt.retainedUntouchedPaths }}
-          <span v-if="receipt.validation"> validator={{ receipt.validation.valid ? "valid" : `${receipt.validation.issueCount} issue(s)` }}</span>
-          <span v-if="receipt.rejectedOperation"> — {{ receipt.rejectedOperation.reason }}</span>
-          <span v-if="receipt.loss.length"> loss={{ receipt.loss.map((entry) => entry.kind).join(",") }}</span>
-        </li>
-      </ul>
-    </section>
-    <section class="session-receipt" aria-label="session decisions">
-      <h2 class="surface-heading">Session decisions</h2>
-      <ul>
-        <li v-for="decision in sessionState.decisions" :key="decision.requestId" :data-decision-status="decision.status">
-          <code>{{ decision.kind }}</code> {{ decision.requestId }} → <strong>{{ decision.status }}</strong><span v-if="decision.reason"> — {{ decision.reason }}</span>
-        </li>
-      </ul>
-    </section>
   </div>
 </template>

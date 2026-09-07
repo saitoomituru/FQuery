@@ -1,5 +1,8 @@
+import { markRaw } from "vue";
 import { Editor, NodeInterface, defineNode, type AbstractNode, type Connection } from "@baklavajs/core";
 import type { ConnectionViewModel, GuiEventAbi, NodeViewModel } from "@fquery/ui-core";
+import { CONTENT_INTERFACE_KEY } from "./canvas-context.js";
+import FQueryCanvasNodeContent from "./FQueryCanvasNodeContent.vue";
 
 export interface BaklavaLayoutValue {
   readonly nodeId: string;
@@ -14,15 +17,21 @@ interface ProjectedNode {
 }
 
 export class BaklavaPresentationAdapter {
-  readonly editor = new Editor();
+  /** 描画側（useBaklava）のreactive editorを受け取る。生のEditorへ追加するとmount後の変更が描画へ伝播しない。 */
+  readonly editor: Editor;
   readonly #nodes = new Map<string, ProjectedNode>();
   readonly #connections = new Map<string, Connection>();
   readonly #emit: (event: GuiEventAbi) => void;
+  readonly nodeWidth: number;
+  readonly inlineContent: boolean;
   #requestSequence = 0;
   #projecting = false;
 
-  constructor(emit: (event: GuiEventAbi) => void) {
+  constructor(emit: (event: GuiEventAbi) => void, options: { nodeWidth?: number; inlineContent?: boolean; editor?: Editor } = {}) {
     this.#emit = emit;
+    this.editor = options.editor ?? new Editor();
+    this.nodeWidth = options.nodeWidth ?? 320;
+    this.inlineContent = options.inlineContent ?? false;
     this.editor.graphEvents.beforeAddConnection.subscribe(this, (data, prevent) => {
       if (this.#projecting) return;
       prevent();
@@ -99,6 +108,10 @@ export class BaklavaPresentationAdapter {
       port.portId,
       () => new NodeInterface<unknown>(port.label, null),
     ]));
+    if (this.inlineContent) {
+      // node本体はportを持たない非接続interfaceとして描画する（Baklava公式の拡張経路）
+      inputs[CONTENT_INTERFACE_KEY] = () => new NodeInterface<unknown>("", null).setPort(false).setComponent(markRaw(FQueryCanvasNodeContent));
+    }
     const outputs = Object.fromEntries(model.ports.filter((port) => port.direction === "output").map((port) => [
       port.portId,
       () => new NodeInterface<unknown>(port.label, null),
@@ -115,7 +128,8 @@ export class BaklavaPresentationAdapter {
     });
     const node = new NodeType();
     node.id = model.nodeId;
-    for (const [portId, intf] of [...Object.entries(node.inputs), ...Object.entries(node.outputs)]) intf.id = portId;
+    (node as AbstractNode & { width?: number }).width = this.nodeWidth;
+    for (const [portId, intf] of [...Object.entries(node.inputs), ...Object.entries(node.outputs)]) intf.id = portId === CONTENT_INTERFACE_KEY ? `${model.nodeId}:${CONTENT_INTERFACE_KEY}` : portId;
     this.editor.graph.addNode(node);
     const projected = { node, portSignature: signature };
     this.#nodes.set(model.nodeId, projected);

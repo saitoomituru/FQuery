@@ -159,6 +159,25 @@ unknown field != drop target
 - Panel／FAMVIMはModelを書かない。requestの採否とloss receiptはHost／engine責務
 - GUI保存でcanonical FAMの未認識fieldが消えないことは`@fquery/fam-edit`のreceiptで検証する
 
+## canvas内node本体とplugin renderer
+
+Authority: FQuery Issue #23, #25, #27。概念の参考: `CREDITS.md`（ChatGraph、Blender）
+
+node editorは付録ではなく全画面の主題であり、node本体に入力・出力・状態が同居する。node本体の中身はGUI Coreが固定せず、Presentation FAMの`rendererHint`に対応する**plugin renderer**が供給する。
+
+```text
+PresentationProjection.mode
+  native   rendererHintに対応するrenderer componentをnode本体へ描画
+  generic  rendererが無い／renderer非対応 -> generic card（badges / value要約 / inspect）
+  ghost    plugin消失 -> generic cardにghost表示。dataは保持
+```
+
+- `FQueryBaklavaView`は`nodeRenderers: { [rendererHint]: Component }`を受け取り、`FQueryCanvasNodeContent`をBaklavaの非port interface（`setPort(false)`）として各nodeへ載せる。Baklavaの`node` slotは使わない（Baklava 2.8.1のdragMoves index不整合を避ける）
+- rendererは`{ model: NodeViewModel, projection }`を受け取り、`FQueryUiEvent`をemitするだけでModelを書かない
+- Core 3 node（`Ψ.NL` / `∇φ.FAMVIM` / `λ.NL`）は`fquery-core-node` hintの最初のrendererであり、pluginは同じ経路で自分のrendererを登録する
+- adapterは`useBaklava()`が返すreactive editorへgraphを変更する。生のEditorへ追加するとmount後の変更が描画へ伝播しない
+- Playgroundの構成: 全画面canvas、左上floating palette、右inspector drawer（Node Panel）、下端records drawer
+
 ## Engine event / VEU
 
 `fam.node.changed`、`source.diverged`、`q.changed`、`abi.mismatch`、`implementation.unavailable`等をnode/ref単位で投影する。変更対象外nodeのobject identityを保持し、全graph再構築を要求しない。

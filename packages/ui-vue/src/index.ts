@@ -6,3 +6,5 @@ export { default as FQueryBaklavaView } from "./FQueryBaklavaView.vue";
 export { BaklavaPresentationAdapter, type BaklavaLayoutValue } from "./baklava-adapter.js";
 export { default as FQueryFamvim } from "./FQueryFamvim.vue";
 export { default as FQueryNodePanel } from "./FQueryNodePanel.vue";
+export { default as FQueryCanvasNodeContent } from "./FQueryCanvasNodeContent.vue";
+export { canvasContextKey, CONTENT_INTERFACE_KEY, type CanvasContext } from "./canvas-context.js";

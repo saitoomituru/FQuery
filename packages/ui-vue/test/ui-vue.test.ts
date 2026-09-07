@@ -1,7 +1,8 @@
-import { mount } from "@vue/test-utils";
+import { flushPromises, mount } from "@vue/test-utils";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import { defineComponent } from "vue";
 import type { NodeViewModel, PluginPresentationRegistration } from "@fquery/ui-core";
 import FQueryNode from "../src/FQueryNode.vue";
 import FQueryBaklavaView from "../src/FQueryBaklavaView.vue";
@@ -121,5 +122,50 @@ describe("FQueryBaklavaView", () => {
     });
     expect(wrapper.get(".fquery-baklava")).toBeTruthy();
     expect(wrapper.get(".baklava-node").text()).toContain("Q test");
+  });
+});
+
+describe("FQueryBaklavaView reactivity", () => {
+  it("mount後に追加されたnodeもcanvasへ描画される", async () => {
+    const wrapper = mount(FQueryBaklavaView, { props: { nodes: [], nodeRenderers: {} } });
+    expect(wrapper.findAll(".baklava-node:not(.--palette)")).toHaveLength(0);
+    await wrapper.setProps({ nodes: [model] });
+    await flushPromises();
+    expect(wrapper.findAll(".baklava-node:not(.--palette)")).toHaveLength(1);
+    await wrapper.setProps({ nodes: [] });
+    await flushPromises();
+    expect(wrapper.findAll(".baklava-node:not(.--palette)")).toHaveLength(0);
+  });
+});
+
+describe("FQueryCanvasNodeContent via FQueryBaklavaView", () => {
+  const Custom = defineComponent({
+    props: { model: { type: Object, required: true } },
+    emits: ["event"],
+    template: '<div class="custom-renderer">custom:{{ model.label }}<button type="button" @click="$emit(\'event\', { type: \'preview\', nodeId: model.nodeId })">go</button></div>',
+  });
+  const native = { targetRef: model.nodeId, mode: "native" as const, rendererId: "vue", presentation: { schemaVersion: "fquery.presentation-fam/0.1.0-draft" as const, presentationId: "p", targetRef: model.nodeId, surfaces: ["node-editor" as const], visualRole: "x", interfaceRoles: [], visibility: "visible" as const, rendererHint: "custom-hint" } };
+
+  it("nativeなrendererHintに対応するplugin componentをnode本体へ描画しeventを転送する", async () => {
+    const wrapper = mount(FQueryBaklavaView, {
+      props: { nodes: [model], presentations: { [model.nodeId]: native }, nodeRenderers: { "custom-hint": Custom } },
+    });
+    const node = wrapper.get(".baklava-node:not(.--palette)");
+    expect(node.get(".custom-renderer").text()).toContain("custom:Q test");
+    expect(node.findAll(".baklava-node-interface.--input, .baklava-node-interface.--output").length).toBe(3);
+    expect(node.findAll(".__port").length).toBe(2);
+    await node.get(".custom-renderer button").trigger("click");
+    expect(wrapper.emitted("event")?.[0]?.[0]).toMatchObject({ type: "preview", nodeId: model.nodeId });
+  });
+
+  it("renderer未登録／ghostはgeneric cardへfallbackしdataを表示する", () => {
+    const wrapper = mount(FQueryBaklavaView, {
+      props: { nodes: [{ ...model, value: { kept: true } }], presentations: { [model.nodeId]: { ...native, mode: "ghost", reason: "plugin-unavailable" } }, nodeRenderers: {} },
+    });
+    const node = wrapper.get(".baklava-node:not(.--palette)");
+    expect(node.find(".custom-renderer").exists()).toBe(false);
+    expect(node.get('[role="status"]').text()).toContain("ghost");
+    expect(node.get(".fquery-canvas-node-value").text()).toContain("kept");
+    expect(node.get('[data-axis="semantic"]').attributes("data-tone")).toBe("unknown");
   });
 });

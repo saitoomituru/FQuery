@@ -8,5 +8,10 @@ declare module "@baklavajs/renderer-vue" {
   import type { Component } from "vue";
 
   export const BaklavaEditor: Component;
-  export function useBaklava(existingEditor?: Editor): unknown;
+  export interface FQueryBaklavaViewModel { readonly editor: Editor }
+  export function useBaklava(existingEditor?: Editor): FQueryBaklavaViewModel;
+  export const Components: {
+    readonly Node: Component;
+    readonly NodeInterface: Component;
+  };
 }

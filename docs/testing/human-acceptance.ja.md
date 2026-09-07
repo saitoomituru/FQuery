@@ -21,9 +21,19 @@
 
 automated testはSession判定往復、Core 3 node契約、fam-edit round-trip、component描画までを検証済み。以下は人間が実画面で判断する。
 
+### 全画面canvasとnode本体
+
+- `npm run dev`起動直後、画面全体がcanvasで、hero画像やdropdown主体の画面が無い
+- `Ψ.NL` node本体にsource textarea、decomposer（provider）／model select、「分解を実行」がある
+- `∇φ.FAMVIM` node本体に分解後のFAM要約（title / fam_id / units / unknowns）と「RAW編集 / Unsupported Data」がある
+- `λ.NL` node本体に分解後のmanifestation行が`fixture-projection`として出て、λ badgeは`unknown`のまま
+- 左上のpaletteと右のInspector drawer（topbarのInspectorボタン）がcanvasに重なり、canvasの操作を妨げない
+- node本体のtextarea／selectを操作してもnodeがdragされず、canvasがzoomしない
+- 下端の「Records」drawerを開くとFAM／provider receipt／debug／decisionsが補助表示として読める
+
 ### Core graph
 
-- `npm run dev`起動直後、pluginを一つも追加せずに`Ψ.NL → ∇φ.FAMVIM → λ.NL`の3 nodeがBaklava surfaceへ並び、2本の接続が見える
+- pluginを一つも追加せずに`Ψ.NL → ∇φ.FAMVIM → λ.NL`の3 nodeがcanvasへ並び、2本の接続が見える
 - `λ.NL`の`manifestation` portだけが`unconnected`として点線表示され、errorに見えない
 - Session decisions paneに`node.add` / `connection.add` / `node.move`が`accepted`として時系列で並ぶ
 - Paletteで「Core」「FAMVIM」「ψ」などを検索すると3 nodeが候補に出て、追加すると4 node目が現れる
