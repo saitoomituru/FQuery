@@ -140,7 +140,10 @@ export class BaklavaPresentationAdapter {
     const node = new NodeType();
     node.id = model.nodeId;
     (node as AbstractNode & { width?: number }).width = this.nodeWidth;
-    for (const [portId, intf] of [...Object.entries(node.inputs), ...Object.entries(node.outputs)]) intf.id = portId === CONTENT_INTERFACE_KEY ? `${model.nodeId}:${CONTENT_INTERFACE_KEY}` : portId;
+    for (const [portId, intf] of [...Object.entries(node.inputs), ...Object.entries(node.outputs)]) {
+      intf.nodeId = model.nodeId;
+      intf.id = portId === CONTENT_INTERFACE_KEY ? `${model.nodeId}:${CONTENT_INTERFACE_KEY}` : portId;
+    }
     this.editor.graph.addNode(node);
     // graph経由で取り直したreactive proxyを保持する。生のnodeへpositionを書くとrendererのdrag／描画へ伝播しない
     const reactiveNode = this.editor.graph.findNodeById(node.id) ?? node;

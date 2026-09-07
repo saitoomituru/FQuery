@@ -1,7 +1,7 @@
 import { flushPromises, mount } from "@vue/test-utils";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { defineComponent } from "vue";
 import type { NodeViewModel, PluginPresentationRegistration } from "@fquery/ui-core";
 import FQueryNode from "../src/FQueryNode.vue";
@@ -177,6 +177,57 @@ describe("FQueryBaklavaView layout", () => {
     const style = wrapper.get(".baklava-node:not(.--palette)").attributes("style") ?? "";
     expect(style).toContain("left: 250px");
     expect(style).toContain("top: 90px");
+  });
+
+  it("layout確定後にSVG connection端点をnodeのDOM座標へ追従させる", async () => {
+    const left: NodeViewModel = {
+      ...model,
+      nodeId: "q://test/layout-left",
+      ports: [{ portId: "layout-left:out", label: "out", direction: "output", connectionStatus: "connected" }],
+    };
+    const right: NodeViewModel = {
+      ...model,
+      nodeId: "q://test/layout-right",
+      ports: [{ portId: "layout-right:in", label: "in", direction: "input", connectionStatus: "connected" }],
+    };
+    const leftSpy = vi.spyOn(HTMLElement.prototype, "offsetLeft", "get").mockImplementation(function () {
+      return Number.parseFloat(this.style.left) || 0;
+    });
+    const topSpy = vi.spyOn(HTMLElement.prototype, "offsetTop", "get").mockImplementation(function () {
+      return Number.parseFloat(this.style.top) || 0;
+    });
+    vi.stubGlobal("ResizeObserver", class {
+      observe() {}
+      disconnect() {}
+    });
+    const wrapper = mount(FQueryBaklavaView, {
+      attachTo: document.body,
+      props: {
+        nodes: [left, right],
+        connections: [{ connectionId: "layout-connection", fromPortId: "layout-left:out", toPortId: "layout-right:in" }],
+        layout: [{ nodeId: left.nodeId, x: 10, y: 20 }, { nodeId: right.nodeId, x: 300, y: 20 }],
+        nodeRenderers: {},
+      },
+    });
+    try {
+      await flushPromises();
+      expect(wrapper.get(".baklava-connection").attributes("d")).toContain("M 10 20");
+
+      const moved = wrapper.findAll(".baklava-node:not(.--palette)").find((node) => node.element.id === left.nodeId)!;
+      expect((moved.element as HTMLElement).style.left).toBe("10px");
+      await moved.get(".__title").trigger("pointerdown", { button: 0, pageX: 10, pageY: 20, clientX: 10, clientY: 20 });
+      document.dispatchEvent(new MouseEvent("pointermove", { bubbles: true, clientX: 250, clientY: 90 }));
+      await flushPromises();
+
+      expect((moved.element as HTMLElement).style.left).toBe("250px");
+      expect(wrapper.get(".baklava-connection").attributes("d")).toContain("M 250 90");
+      document.dispatchEvent(new MouseEvent("pointerup", { bubbles: true }));
+    } finally {
+      wrapper.unmount();
+      leftSpy.mockRestore();
+      topSpy.mockRestore();
+      vi.unstubAllGlobals();
+    }
   });
 });
 

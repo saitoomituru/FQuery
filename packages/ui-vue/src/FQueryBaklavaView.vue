@@ -4,6 +4,7 @@ import { BaklavaEditor, ZOOM_TO_FIT_GRAPH_COMMAND, ZOOM_TO_FIT_NODES_COMMAND, us
 import { selectionEquals, type ConnectionViewModel, type FQueryUiEvent, type NodeSelection, type NodeViewModel, type PresentationProjection } from "@fquery/ui-core";
 import { BaklavaPresentationAdapter, type BaklavaLayoutValue } from "./baklava-adapter.js";
 import { canvasContextKey } from "./canvas-context.js";
+import FQueryBaklavaConnection from "./FQueryBaklavaConnection.vue";
 import "@baklavajs/themes/dist/syrup-dark.css";
 
 const props = defineProps<{
@@ -108,7 +109,11 @@ defineExpose({ viewportCenter, zoomToFit, focusNode });
 
 <template>
   <section ref="root" class="fquery-baklava syrup-dark" :data-fill="fill ? 'true' : undefined" aria-label="FQuery Baklava presentation" @pointerup="adapter.requestMovedNodes(nodes)">
-    <BaklavaEditor :view-model="viewModel" />
+    <BaklavaEditor :view-model="viewModel">
+      <template #connection="{ connection }">
+        <FQueryBaklavaConnection :connection="connection" :view-model="viewModel" />
+      </template>
+    </BaklavaEditor>
   </section>
 </template>
 

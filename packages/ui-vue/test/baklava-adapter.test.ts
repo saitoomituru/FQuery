@@ -45,6 +45,7 @@ describe("Baklava Presentation Adapter", () => {
     adapter.sync([source, sink], [{ connectionId: "connection://accepted", fromPortId: "sensor:out", toPortId: "output:in" }]);
 
     expect(adapter.editor.graph.nodes.map((node) => node.id)).toEqual(["fam://sensor", "fam://output"]);
+    expect(adapter.editor.graph.nodes.flatMap((node) => [...Object.values(node.inputs), ...Object.values(node.outputs)]).map((port) => port.nodeId)).toEqual(["fam://sensor", "fam://output"]);
     expect(adapter.editor.graph.connections).toHaveLength(1);
     expect(adapter.editor.graph.nodes.every((node) => node.calculate === undefined)).toBe(true);
   });
