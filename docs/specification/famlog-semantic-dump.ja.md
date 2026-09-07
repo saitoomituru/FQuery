@@ -2,6 +2,8 @@
 
 FAMLogはconversation transcriptではなく、Q/FAMの観測可能なappend-only execution traceである。
 
+PlaygroundのFold操作は`fold.log/0.1.0-alpha`として残し、各entryから`oae.record/0.1.0-alpha` profileのOAEレコードを生成できる。ただし保存状態は`volatile`であり、IBDのvector graph DB／RDB双方への永続化と取得receiptが実装されるまではOAE管理システムとは呼ばない。OAEレコード生成能力まで「未実装」と矮小化せず、生成・adapter受理・永続化を別statusで表す。
+
 ## Event taxonomy
 
 `query-received`、`bind`、`unbind`、`plugin-resolve`、`plugin-call-start`、`plugin-call-end`、`projection`、`semantic-check`、`bottom`、`unknown`、`last-order`、`result`を初期eventとする。
