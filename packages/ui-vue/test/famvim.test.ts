@@ -3,7 +3,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
 import { validateFamJson } from "@fquery/fam-core";
-import { applyFamPatch, openFamText, type FamPatch } from "@fquery/fam-edit";
+import { previewFamDraftPatch, openFamText, type FamDraftPatch } from "@fquery/fam-edit";
 import FQueryFamvim from "../src/FQueryFamvim.vue";
 
 const fixtureText = readFileSync(join(process.cwd(), "../../fixtures/valid/fam-decomposition.json"), "utf8");
@@ -28,10 +28,10 @@ describe("FQueryFamvim", () => {
     await wrapper.get('[aria-label="FAMVIM RAW FAM editor"] footer button').trigger("click");
     const events = wrapper.emitted("event");
     expect(events).toHaveLength(1);
-    const event = events![0]![0] as { type: string; property: string; value: FamPatch; targetRef: string };
+    const event = events![0]![0] as { type: string; property: string; value: FamDraftPatch; targetRef: string };
     expect(event).toMatchObject({ type: "property.change.requested", property: "fam.patch", targetRef: "q://test/famvim" });
     expect(event.value.operations).toEqual([{ op: "set", path: "/λ/purpose", value: "編集後" }]);
-    const applied = applyFamPatch(openFamText(JSON.stringify(withUnknown)), event.value, { validate: validateFamJson });
+    const applied = previewFamDraftPatch(openFamText(JSON.stringify(withUnknown)), event.value, { validate: validateFamJson });
     expect(applied.validation?.valid).toBe(true);
     expect(applied.document.parse === "parsed" && (applied.document.value as Record<string, unknown>)["x-plugin-extension"]).toEqual({ retained: true });
     expect((withUnknown as { λ: { purpose: string } }).λ.purpose).toBe("原文を意味単位へ分解する");

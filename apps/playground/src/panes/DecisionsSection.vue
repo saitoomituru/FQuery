@@ -11,10 +11,14 @@ const host = inject(playgroundPaneContextKey);
       <h2>FAM edit receipts</h2>
       <ul>
         <li v-for="(receipt, index) in host.editReceipts.value" :key="index" :data-edit-status="receipt.status">
-          <strong>{{ receipt.status }}</strong> ops={{ receipt.appliedOperations }} touched={{ receipt.touchedPaths.join(", ") || "-" }} retained={{ receipt.retainedUntouchedPaths }}
-          <span v-if="receipt.validation"> validator={{ receipt.validation.valid ? "valid" : `${receipt.validation.issueCount} issue(s)` }}</span>
-          <span v-if="receipt.rejectedOperation"> — {{ receipt.rejectedOperation.reason }}</span>
-          <span v-if="receipt.loss.length"> loss={{ receipt.loss.map((entry) => entry.kind).join(",") }}</span>
+          <strong>{{ receipt.status }}</strong>
+          <code>{{ receipt.operationId }}</code>
+          revision={{ receipt.baseRevisionId }} → {{ receipt.resultRevisionId ?? "-" }}
+          patches={{ receipt.patchCount }}
+          <span v-if="receipt.validationIssueCount"> validator={{ receipt.validationIssueCount }} issue(s)</span>
+          <span v-if="receipt.reason"> — {{ receipt.reason }}</span>
+          <span v-if="receipt.losses.length"> loss={{ receipt.losses.join(",") }}</span>
+          <small> sourceMutation={{ receipt.sourceMutation }} sha256={{ receipt.beforeSha256.slice(0, 8) }}→{{ receipt.afterSha256?.slice(0, 8) ?? "-" }}</small>
         </li>
       </ul>
     </section>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { QueryResult } from "@fquery/core";
-import { classifyResult, diffFamLogs, FamLog } from "../src/index.js";
+import { classifyResult, describeFailureClass, diffFamLogs, FamLog, normalizeLegacyFailureMode } from "../src/index.js";
 
 describe("FamLog", () => {
   it("append-only sequenceと時刻を付与する", () => {
@@ -38,5 +38,24 @@ describe("FamLog", () => {
       evidenceRefs: [],
     };
     expect(classifyResult(result)).toContain("plugin-resolution-failure");
+  });
+
+  it("原典failure_modeのunderscore表記をcanonical tokenへ接続する", () => {
+    expect(normalizeLegacyFailureMode("gradient_flattening")).toBe("gradient-flattening");
+    expect(normalizeLegacyFailureMode("unknown_passed_as_ok")).toBe("unknown-passed-as-ok");
+    expect(normalizeLegacyFailureMode("not_registered")).toBeUndefined();
+  });
+
+  it("原典系とちくわ砲系を同じtaxonomy内の別sourceとして保持する", () => {
+    expect(describeFailureClass("lambda-blur")).toEqual({
+      failureClass: "lambda-blur",
+      family: "semantic",
+      source: "fold-access-mapper",
+    });
+    expect(describeFailureClass("world-mismatch")).toEqual({
+      failureClass: "world-mismatch",
+      family: "world",
+      source: "chikuwa-negative-fixture",
+    });
   });
 });

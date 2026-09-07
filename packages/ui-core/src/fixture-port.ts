@@ -11,7 +11,12 @@ export interface FixtureDecisionPortOptions {
    * property.change.requestedをHost側で解決するhook。置換nodeを返せばaccepted、
    * undefinedならunresolved。fixture portはvalue以外のpropertyを自分で判断しない。
    */
-  readonly resolveProperty?: (node: NodeViewModel, property: string, value: unknown) => NodeViewModel | { readonly rejected: string } | undefined;
+  readonly resolveProperty?: (
+    node: NodeViewModel,
+    property: string,
+    value: unknown,
+    request: GuiRequest & { readonly type: "property.change.requested" },
+  ) => NodeViewModel | { readonly rejected: string } | undefined;
 }
 
 /**
@@ -75,7 +80,7 @@ export function createFixtureDecisionPort(options: FixtureDecisionPortOptions): 
           const node = state.nodes.find((candidate) => candidate.nodeId === request.targetRef);
           if (!node) return decision({ kind: "property.change", requestId: request.requestId, status: "rejected", targetRef: request.targetRef, reason: "node-not-found" });
           if (request.property === "value") return decision({ kind: "property.change", requestId: request.requestId, status: "accepted", targetRef: request.targetRef, node: Object.freeze({ ...node, value: request.value }) });
-          const resolved = options.resolveProperty?.(node, request.property, request.value);
+          const resolved = options.resolveProperty?.(node, request.property, request.value, request);
           if (!resolved) return decision({ kind: "property.change", requestId: request.requestId, status: "unresolved", targetRef: request.targetRef, reason: "fixture-port-no-semantic-engine" });
           if ("rejected" in resolved) return decision({ kind: "property.change", requestId: request.requestId, status: "rejected", targetRef: request.targetRef, reason: resolved.rejected });
           return decision({ kind: "property.change", requestId: request.requestId, status: "accepted", targetRef: request.targetRef, node: resolved });

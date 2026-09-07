@@ -1,410 +1,326 @@
-export const FAM_PATCH_SCHEMA_VERSION = "fquery.fam-patch/0.1.0-draft" as const;
-export const FAM_EDIT_RECEIPT_SCHEMA_VERSION = "fquery.fam-edit-receipt/0.1.0-draft" as const;
+import {
+  readFamJson,
+  serializeFamJson,
+  validateFamJson,
+  type FamDocument,
+  type FamJsonRecord,
+  type FamValidationIssue,
+  type FamValidationResult,
+  type JsonObject,
+  type JsonValue,
+} from "@fquery/fam-core";
+import { sha256Hex } from "./sha256.js";
 
-export type JsonPrimitive = string | number | boolean | null;
-export type JsonValue = JsonPrimitive | JsonObject | readonly JsonValue[];
-export interface JsonObject { readonly [key: string]: JsonValue }
+export const FAM_EDIT_RECEIPT_VERSION = "fquery.fam-edit-receipt/0.1.0-draft" as const;
 
-/** RFC 6901 JSON Pointer。`""`はdocument root。 */
-export type JsonPointer = string;
+export type FamPatch =
+  | { readonly op: "set"; readonly path: string; readonly value: JsonValue }
+  | { readonly op: "remove"; readonly path: string }
+  | { readonly op: "insert"; readonly path: string; readonly index: number; readonly value: JsonValue };
 
-export type FamPatchOperation =
-  | { readonly op: "set"; readonly path: JsonPointer; readonly value: JsonValue }
-  | { readonly op: "remove"; readonly path: JsonPointer }
-  | { readonly op: "insert"; readonly path: JsonPointer; readonly value: JsonValue };
-
-export interface FamPatch {
-  readonly schemaVersion: typeof FAM_PATCH_SCHEMA_VERSION;
-  readonly operations: readonly FamPatchOperation[];
-}
-
-/** 呼び出し側が注入するvalidatorの最小形。FAM Coreの型へ依存しない。 */
-export interface ValidationIssueLike { readonly path: string; readonly code: string; readonly message: string }
-export interface ValidationResultLike { readonly valid: boolean; readonly issues: readonly ValidationIssueLike[] }
-export type FamValidator = (value: unknown) => ValidationResultLike;
-
-export type EditableFamDocument =
-  | { readonly parse: "parsed"; readonly text: string; readonly value: JsonValue }
-  | { readonly parse: "unparsed"; readonly text: string; readonly parseError: string };
-
-export interface FamDiffEntry {
-  readonly path: JsonPointer;
-  readonly change: "added" | "removed" | "replaced";
-  readonly before?: JsonValue;
-  readonly after?: JsonValue;
+export interface FamPatchRequest {
+  readonly operationId: string;
+  readonly baseRevisionId: string;
+  readonly resultRevisionId: string;
+  readonly patches: readonly FamPatch[];
 }
 
 export interface FamEditReceipt {
-  readonly schemaVersion: typeof FAM_EDIT_RECEIPT_SCHEMA_VERSION;
-  readonly status: "applied" | "rejected" | "unchanged";
-  readonly appliedOperations: number;
-  readonly rejectedOperation?: { readonly index: number; readonly reason: string };
-  readonly touchedPaths: readonly JsonPointer[];
-  readonly retainedUntouchedPaths: number;
-  readonly validation?: { readonly valid: boolean; readonly issueCount: number };
-  readonly loss: readonly FamLossEntry[];
+  readonly schemaVersion: typeof FAM_EDIT_RECEIPT_VERSION;
+  readonly operationId: string;
+  readonly famId: string;
+  readonly baseRevisionId: string;
+  readonly resultRevisionId: string | null;
+  readonly status: "accepted" | "rejected";
+  readonly reason?: FamEditRejectionReason;
+  readonly beforeSha256: string;
+  readonly afterSha256: string | null;
+  readonly patches: readonly FamPatch[];
+  readonly validationIssues: readonly FamValidationIssue[];
+  readonly losses: readonly string[];
+  readonly sourceMutation: false;
+  readonly observedAt: string;
 }
 
-export interface FamLossEntry {
-  readonly kind: "manual-replacement" | "unparsed-source-discarded";
-  readonly detail: string;
+export type FamEditRejectionReason =
+  | "empty-operation-id"
+  | "stale-base-revision"
+  | "invalid-result-revision"
+  | "empty-patch-set"
+  | "invalid-json-pointer"
+  | "path-not-found"
+  | "path-type-mismatch"
+  | "array-index-out-of-range"
+  | "protected-field"
+  | "fam-validation-failed";
+
+export type FamPatchDecision =
+  | { readonly status: "accepted"; readonly document: FamDocument; readonly receipt: FamEditReceipt }
+  | { readonly status: "rejected"; readonly document: FamDocument; readonly receipt: FamEditReceipt };
+
+export interface FamEditOptions {
+  readonly validate?: (value: unknown) => FamValidationResult;
+  readonly clock?: () => Date;
 }
 
-export interface FamPatchResult {
-  readonly document: EditableFamDocument;
-  readonly diff: readonly FamDiffEntry[];
-  readonly receipt: FamEditReceipt;
-  readonly validation?: ValidationResultLike;
+export interface FamChildDependency {
+  readonly childRef: string;
+  readonly observedParentPaths: readonly string[];
 }
 
-/** textを開く。malformedでも例外を投げず`unparsed`として原文を保持する。 */
-export function openFamText(text: string): EditableFamDocument {
+export interface FamParentPatchProposal {
+  readonly proposalId: string;
+  readonly parentFamId: string;
+  readonly parentRevisionId: string;
+  readonly childResultRef: string;
+  readonly patches: readonly FamPatch[];
+  readonly childDependencies: readonly FamChildDependency[];
+}
+
+export type FamParentPatchAction =
+  | "accept-patch"
+  | "reject-patch"
+  | "fork-parent"
+  | "mark-exception"
+  | "escalate-to-grandparent"
+  | "requires-external-test";
+
+export interface FamParentPatchReview {
+  readonly reviewId: string;
+  readonly reviewerRef: string;
+  readonly action: FamParentPatchAction;
+  readonly reason: string;
+  readonly resultRevisionId?: string;
+}
+
+export interface FamParentPatchReviewResult {
+  readonly status: "applied" | "not-applied" | "rejected";
+  readonly action: FamParentPatchAction;
+  readonly proposalId: string;
+  readonly reviewId: string;
+  readonly parentDocument: FamDocument;
+  readonly editDecision?: FamPatchDecision;
+  readonly revalidateChildRefs: readonly string[];
+  readonly sourceMutation: false;
+  readonly reason: string;
+}
+
+const PROTECTED_ROOT_FIELDS = new Set(["schema_version", "fam_id", "revision_id"]);
+
+export function applyFamPatch(
+  document: FamDocument,
+  request: FamPatchRequest,
+  options: FamEditOptions = {},
+): FamPatchDecision {
+  const beforeSha256 = sha256Hex(document.originalText);
+  const observedAt = (options.clock ?? (() => new Date()))().toISOString();
+  const baseReceipt = {
+    schemaVersion: FAM_EDIT_RECEIPT_VERSION,
+    operationId: request.operationId,
+    famId: document.value.fam_id,
+    baseRevisionId: request.baseRevisionId,
+    patches: freezePatches(request.patches),
+    beforeSha256,
+    losses: Object.freeze([]) as readonly string[],
+    sourceMutation: false as const,
+    observedAt,
+  };
+
+  const preconditionFailure = validateRequest(document, request);
+  if (preconditionFailure) {
+    return reject(document, baseReceipt, request.resultRevisionId, preconditionFailure, []);
+  }
+
+  const candidate = structuredClone(document.value) as unknown as Record<string, unknown>;
   try {
-    const value: unknown = JSON.parse(text);
-    return Object.freeze({ parse: "parsed", text, value: deepFreeze(value as JsonValue) });
+    for (const patch of request.patches) applyOperation(candidate, patch);
   } catch (error) {
-    return Object.freeze({ parse: "unparsed", text, parseError: error instanceof Error ? error.message : String(error) });
+    const failure = error instanceof PatchError ? error.reason : "path-type-mismatch";
+    return reject(document, baseReceipt, request.resultRevisionId, failure, []);
   }
+  candidate.revision_id = request.resultRevisionId;
+
+  const validation = (options.validate ?? validateFamJson)(candidate);
+  if (!validation.valid) {
+    return reject(document, baseReceipt, request.resultRevisionId, "fam-validation-failed", validation.issues);
+  }
+
+  const serialized = serializeFamJson(candidate as unknown as FamJsonRecord);
+  const nextDocument = readFamJson(serialized);
+  const receipt: FamEditReceipt = Object.freeze({
+    ...baseReceipt,
+    resultRevisionId: request.resultRevisionId,
+    status: "accepted",
+    afterSha256: sha256Hex(serialized),
+    validationIssues: Object.freeze([]),
+  });
+  return Object.freeze({ status: "accepted", document: nextDocument, receipt });
 }
 
-export function createFamPatch(operations: readonly FamPatchOperation[]): FamPatch {
-  return Object.freeze({ schemaVersion: FAM_PATCH_SCHEMA_VERSION, operations: Object.freeze([...operations]) });
-}
-
-export interface ApplyFamPatchOptions {
-  readonly validate?: FamValidator;
-  readonly indent?: number;
-}
-
-/**
- * patchを適用し、編集対象path以外を一切変更しないdocumentを返す。
- * 操作が空なら原文byteをそのまま返す。1操作でも失敗すれば全体をrejectedにする。
- */
-export function applyFamPatch(document: EditableFamDocument, patch: FamPatch, options: ApplyFamPatchOptions = {}): FamPatchResult {
-  if (patch.schemaVersion !== FAM_PATCH_SCHEMA_VERSION) return rejected(document, 0, "unsupported-patch-schema-version", options);
-  if (document.parse === "unparsed") return rejected(document, 0, "document-unparsed", options);
-  if (patch.operations.length === 0) {
-    const validation = options.validate?.(document.value);
-    return Object.freeze({ document, diff: Object.freeze([]), receipt: receipt("unchanged", 0, [], countPaths(document.value), validation, []), ...(validation ? { validation } : {}) });
+export function reviewParentPatchProposal(
+  parent: FamDocument,
+  proposal: FamParentPatchProposal,
+  review: FamParentPatchReview,
+  options: FamEditOptions = {},
+): FamParentPatchReviewResult {
+  const base = {
+    action: review.action,
+    proposalId: proposal.proposalId,
+    reviewId: review.reviewId,
+    parentDocument: parent,
+    revalidateChildRefs: affectedChildrenForPatches(proposal.patches, proposal.childDependencies),
+    sourceMutation: false as const,
+    reason: review.reason,
+  };
+  if (proposal.parentFamId !== parent.value.fam_id || proposal.parentRevisionId !== parent.value.revision_id) {
+    return Object.freeze({ ...base, status: "rejected", reason: "parent-precondition-mismatch" });
   }
-  let working: JsonValue = document.value;
-  const touched: JsonPointer[] = [];
-  for (const [index, operation] of patch.operations.entries()) {
-    const outcome = applyOperation(working, operation);
-    if (!outcome.ok) return rejected(document, index, outcome.reason, options);
-    working = outcome.value;
-    touched.push(operation.path);
+  if (review.action !== "accept-patch") {
+    return Object.freeze({ ...base, status: "not-applied" });
   }
-  const frozen = deepFreeze(working);
-  const diff = diffJson(document.value, frozen);
-  const validation = options.validate?.(frozen);
-  const text = serializeFamValue(frozen, options.indent ?? 2);
-  const untouched = countPaths(document.value) - new Set(diff.map((entry) => entry.path)).size;
+  if (!review.resultRevisionId) {
+    return Object.freeze({ ...base, status: "rejected", reason: "result-revision-required" });
+  }
+  const editDecision = applyFamPatch(parent, {
+    operationId: proposal.proposalId,
+    baseRevisionId: proposal.parentRevisionId,
+    resultRevisionId: review.resultRevisionId,
+    patches: proposal.patches,
+  }, options);
   return Object.freeze({
-    document: Object.freeze({ parse: "parsed", text, value: frozen }),
-    diff,
-    receipt: receipt("applied", patch.operations.length, touched, Math.max(0, untouched), validation, []),
-    ...(validation ? { validation } : {}),
+    ...base,
+    status: editDecision.status === "accepted" ? "applied" : "rejected",
+    parentDocument: editDecision.document,
+    editDecision,
+    reason: editDecision.status === "accepted" ? review.reason : editDecision.receipt.reason ?? "edit-rejected",
   });
 }
 
-/** RAW editorでtext全体を置換する。unparsedからの復帰も含め、必ずloss receiptを残す。 */
-export function replaceFamText(document: EditableFamDocument, text: string, options: ApplyFamPatchOptions = {}): FamPatchResult {
-  const next = openFamText(text);
-  const loss: FamLossEntry[] = [{ kind: "manual-replacement", detail: document.parse === "parsed" ? "parsed document replaced by raw text" : "unparsed source replaced by raw text" }];
-  if (document.parse === "unparsed" && next.parse === "parsed") loss.push({ kind: "unparsed-source-discarded", detail: document.parseError });
-  const diff = document.parse === "parsed" && next.parse === "parsed" ? diffJson(document.value, next.value) : Object.freeze([]);
-  const validation = next.parse === "parsed" ? options.validate?.(next.value) : undefined;
-  const status = document.text === text ? "unchanged" : "applied";
-  return Object.freeze({
-    document: next,
-    diff,
-    receipt: receipt(status, status === "applied" ? 1 : 0, diff.map((entry) => entry.path), next.parse === "parsed" ? countPaths(next.value) - diff.length : 0, validation, loss),
-    ...(validation ? { validation } : {}),
-  });
+export function affectedChildrenForPatches(
+  patches: readonly FamPatch[],
+  dependencies: readonly FamChildDependency[],
+): readonly string[] {
+  const changedPaths = patches.map((patch) => canonicalPointer(patch.path));
+  return Object.freeze(dependencies.flatMap((dependency) =>
+    dependency.observedParentPaths.some((path) => changedPaths.some((changed) => pointersOverlap(changed, canonicalPointer(path))))
+      ? [dependency.childRef]
+      : [],
+  ));
 }
 
-export function serializeFamValue(value: JsonValue, indent = 2): string {
-  return `${JSON.stringify(value, null, indent)}\n`;
-}
-
-export function getAtPointer(value: JsonValue, pointer: JsonPointer): JsonValue | undefined {
-  let current: JsonValue | undefined = value;
-  for (const token of parsePointer(pointer)) {
-    if (current === undefined || current === null || typeof current !== "object") return undefined;
-    if (Array.isArray(current)) {
-      const index = arrayIndex(token, current.length);
-      current = index === undefined ? undefined : current[index];
-    } else {
-      current = Object.prototype.hasOwnProperty.call(current, token) ? (current as JsonObject)[token] : undefined;
+function validateRequest(document: FamDocument, request: FamPatchRequest): FamEditRejectionReason | undefined {
+  if (request.operationId.length === 0) return "empty-operation-id";
+  if (request.baseRevisionId !== document.value.revision_id) return "stale-base-revision";
+  if (request.resultRevisionId.length === 0 || request.resultRevisionId === request.baseRevisionId) return "invalid-result-revision";
+  if (request.patches.length === 0) return "empty-patch-set";
+  for (const patch of request.patches) {
+    let segments: readonly string[];
+    try {
+      segments = parsePointer(patch.path);
+    } catch {
+      return "invalid-json-pointer";
     }
+    if (segments.length === 0) return "protected-field";
+    if (PROTECTED_ROOT_FIELDS.has(segments[0]!)) return "protected-field";
+    if (patch.op === "insert" && (!Number.isSafeInteger(patch.index) || patch.index < 0)) return "array-index-out-of-range";
+  }
+  return undefined;
+}
+
+function applyOperation(root: Record<string, unknown>, patch: FamPatch): void {
+  const segments = parsePointer(patch.path);
+  if (patch.op === "insert") {
+    const target = valueAt(root, segments);
+    if (!Array.isArray(target)) throw new PatchError("path-type-mismatch");
+    if (patch.index > target.length) throw new PatchError("array-index-out-of-range");
+    target.splice(patch.index, 0, structuredClone(patch.value));
+    return;
+  }
+
+  const { parent, key } = parentAt(root, segments);
+  if (Array.isArray(parent)) {
+    const index = arrayIndex(key, parent.length, false);
+    if (patch.op === "remove") parent.splice(index, 1);
+    else parent[index] = structuredClone(patch.value);
+    return;
+  }
+  if (!isMutableRecord(parent)) throw new PatchError("path-type-mismatch");
+  if (patch.op === "remove") {
+    if (!(key in parent)) throw new PatchError("path-not-found");
+    delete parent[key];
+  } else {
+    parent[key] = structuredClone(patch.value);
+  }
+}
+
+function valueAt(root: unknown, segments: readonly string[]): unknown {
+  let current = root;
+  for (const segment of segments) {
+    if (Array.isArray(current)) current = current[arrayIndex(segment, current.length, false)];
+    else if (isMutableRecord(current) && segment in current) current = current[segment];
+    else throw new PatchError(isMutableRecord(current) ? "path-not-found" : "path-type-mismatch");
   }
   return current;
 }
 
-/** documentに存在する全pathをJSON Pointerで列挙する（rootを除く、container含む）。 */
-export function listPointers(value: JsonValue, prefix: JsonPointer = ""): readonly JsonPointer[] {
-  const pointers: JsonPointer[] = [];
-  walk(value, prefix, (pointer) => { if (pointer !== "") pointers.push(pointer); });
-  return Object.freeze(pointers);
+function parentAt(root: unknown, segments: readonly string[]): { parent: unknown; key: string } {
+  if (segments.length === 0) throw new PatchError("protected-field");
+  const key = segments[segments.length - 1]!;
+  return { parent: valueAt(root, segments.slice(0, -1)), key };
 }
 
-export interface PointerPartition {
-  readonly known: readonly JsonPointer[];
-  readonly unsupported: readonly JsonPointer[];
+function parsePointer(pointer: string): readonly string[] {
+  if (!pointer.startsWith("/") || pointer.includes("~") && /~(?:[^01]|$)/.test(pointer)) throw new PatchError("invalid-json-pointer");
+  return pointer.slice(1).split("/").map((segment) => segment.replaceAll("~1", "/").replaceAll("~0", "~"));
 }
 
-/**
- * plugin／panelが認識するpath集合に対して、canonical documentの各leaf pathを
- * known / unsupportedへ分割する。`unsupported != invalid`。
- * knownPrefixesはJSON Pointer prefixで、配下全体をknownとして扱う。
- */
-export function partitionPointers(value: JsonValue, knownPrefixes: readonly JsonPointer[]): PointerPartition {
-  const known: JsonPointer[] = [];
-  const unsupported: JsonPointer[] = [];
-  for (const pointer of leafPointers(value)) {
-    (knownPrefixes.some((prefix) => pointer === prefix || pointer.startsWith(`${prefix}/`)) ? known : unsupported).push(pointer);
-  }
-  return Object.freeze({ known: Object.freeze(known), unsupported: Object.freeze(unsupported) });
+function canonicalPointer(pointer: string): string {
+  return `/${parsePointer(pointer).map((segment) => segment.replaceAll("~", "~0").replaceAll("/", "~1")).join("/")}`;
 }
 
-export function leafPointers(value: JsonValue): readonly JsonPointer[] {
-  const pointers: JsonPointer[] = [];
-  walk(value, "", (pointer, node) => {
-    const isContainer = node !== null && typeof node === "object" && (Array.isArray(node) ? node.length > 0 : Object.keys(node).length > 0);
-    if (!isContainer) pointers.push(pointer);
+function pointersOverlap(left: string, right: string): boolean {
+  return left === right || left.startsWith(`${right}/`) || right.startsWith(`${left}/`);
+}
+
+function arrayIndex(segment: string, length: number, allowEnd: boolean): number {
+  if (!/^(0|[1-9][0-9]*)$/.test(segment)) throw new PatchError("path-type-mismatch");
+  const index = Number(segment);
+  if (!Number.isSafeInteger(index) || index < 0 || index >= length + (allowEnd ? 1 : 0)) throw new PatchError("array-index-out-of-range");
+  return index;
+}
+
+function reject(
+  document: FamDocument,
+  base: Omit<FamEditReceipt, "resultRevisionId" | "status" | "reason" | "afterSha256" | "validationIssues">,
+  resultRevisionId: string,
+  reason: FamEditRejectionReason,
+  issues: readonly FamValidationIssue[],
+): FamPatchDecision {
+  const receipt: FamEditReceipt = Object.freeze({
+    ...base,
+    resultRevisionId: resultRevisionId.length > 0 ? resultRevisionId : null,
+    status: "rejected",
+    reason,
+    afterSha256: null,
+    validationIssues: Object.freeze([...issues]),
   });
-  return Object.freeze(pointers.filter((pointer) => pointer !== "" || pointers.length === 1));
+  return Object.freeze({ status: "rejected", document, receipt });
 }
 
-export function diffJson(before: JsonValue, after: JsonValue, prefix: JsonPointer = ""): readonly FamDiffEntry[] {
-  if (deepEqual(before, after)) return Object.freeze([]);
-  const entries: FamDiffEntry[] = [];
-  if (isObject(before) && isObject(after)) {
-    for (const key of new Set([...Object.keys(before), ...Object.keys(after)])) {
-      const path = `${prefix}/${escapeToken(key)}`;
-      if (!(key in before)) entries.push(Object.freeze({ path, change: "added", after: after[key]! }));
-      else if (!(key in after)) entries.push(Object.freeze({ path, change: "removed", before: before[key]! }));
-      else entries.push(...diffJson(before[key]!, after[key]!, path));
-    }
-    return Object.freeze(entries);
-  }
-  if (Array.isArray(before) && Array.isArray(after)) {
-    const length = Math.max(before.length, after.length);
-    for (let index = 0; index < length; index += 1) {
-      const path = `${prefix}/${index}`;
-      if (index >= before.length) entries.push(Object.freeze({ path, change: "added", after: after[index]! }));
-      else if (index >= after.length) entries.push(Object.freeze({ path, change: "removed", before: before[index]! }));
-      else entries.push(...diffJson(before[index]!, after[index]!, path));
-    }
-    return Object.freeze(entries);
-  }
-  return Object.freeze([Object.freeze({ path: prefix, change: "replaced", before, after })]);
+function freezePatches(patches: readonly FamPatch[]): readonly FamPatch[] {
+  return Object.freeze(patches.map((patch) => Object.freeze(structuredClone(patch))));
 }
 
-export function parsePointer(pointer: JsonPointer): readonly string[] {
-  if (pointer === "") return [];
-  if (!pointer.startsWith("/")) throw new TypeError(`invalid-json-pointer:${pointer}`);
-  return pointer.slice(1).split("/").map((token) => token.replace(/~1/g, "/").replace(/~0/g, "~"));
-}
-
-export function escapeToken(token: string): string {
-  return token.replace(/~/g, "~0").replace(/\//g, "~1");
-}
-
-type OperationOutcome = { readonly ok: true; readonly value: JsonValue } | { readonly ok: false; readonly reason: string };
-
-function applyOperation(root: JsonValue, operation: FamPatchOperation): OperationOutcome {
-  let tokens: readonly string[];
-  try {
-    tokens = parsePointer(operation.path);
-  } catch {
-    return { ok: false, reason: `invalid-json-pointer:${operation.path}` };
-  }
-  if (tokens.length === 0) {
-    if (operation.op === "remove") return { ok: false, reason: "root-remove-not-allowed" };
-    return { ok: true, value: operation.value };
-  }
-  return mutate(root, tokens, operation);
-}
-
-function mutate(node: JsonValue, tokens: readonly string[], operation: FamPatchOperation): OperationOutcome {
-  const [token, ...rest] = tokens;
-  if (token === undefined) return { ok: true, value: node };
-  if (node === null || typeof node !== "object") return { ok: false, reason: `path-not-traversable:${escapeToken(token)}` };
-  if (Array.isArray(node)) {
-    const isLast = rest.length === 0;
-    const index = arrayIndex(token, node.length, isLast && operation.op === "insert");
-    if (index === undefined) return { ok: false, reason: `array-index-invalid:${token}` };
-    const copy = [...node];
-    if (!isLast) {
-      if (index >= node.length) return { ok: false, reason: `path-not-found:${token}` };
-      const child = mutate(node[index]!, rest, operation);
-      if (!child.ok) return child;
-      copy[index] = child.value;
-      return { ok: true, value: copy };
-    }
-    if (operation.op === "insert") copy.splice(index, 0, operation.value);
-    else if (operation.op === "set") { if (index >= node.length) return { ok: false, reason: `array-index-out-of-range:${token}` }; copy[index] = operation.value; }
-    else { if (index >= node.length) return { ok: false, reason: `path-not-found:${token}` }; copy.splice(index, 1); }
-    return { ok: true, value: copy };
-  }
-  const object = node as JsonObject;
-  const exists = Object.prototype.hasOwnProperty.call(object, token);
-  if (rest.length > 0) {
-    if (!exists) return { ok: false, reason: `path-not-found:${escapeToken(token)}` };
-    const child = mutate(object[token]!, rest, operation);
-    if (!child.ok) return child;
-    return { ok: true, value: withKey(object, token, child.value) };
-  }
-  if (operation.op === "remove") {
-    if (!exists) return { ok: false, reason: `path-not-found:${escapeToken(token)}` };
-    const { [token]: _removed, ...remaining } = object;
-    return { ok: true, value: remaining };
-  }
-  if (operation.op === "insert" && exists) return { ok: false, reason: `key-already-exists:${escapeToken(token)}` };
-  if (operation.op === "set" && !exists) return { ok: false, reason: `path-not-found:${escapeToken(token)}` };
-  return { ok: true, value: withKey(object, token, operation.value) };
-}
-
-/** key順を保持したまま1 keyだけ置換／追加する。 */
-function withKey(object: JsonObject, key: string, value: JsonValue): JsonObject {
-  const next: Record<string, JsonValue> = {};
-  let placed = false;
-  for (const [existingKey, existingValue] of Object.entries(object)) {
-    if (existingKey === key) { next[key] = value; placed = true; } else next[existingKey] = existingValue;
-  }
-  if (!placed) next[key] = value;
-  return next;
-}
-
-function arrayIndex(token: string, length: number, allowEnd = false): number | undefined {
-  if (token === "-") return allowEnd ? length : undefined;
-  if (!/^(0|[1-9]\d*)$/.test(token)) return undefined;
-  const index = Number(token);
-  return index <= length ? index : undefined;
-}
-
-function walk(value: JsonValue, pointer: JsonPointer, visit: (pointer: JsonPointer, node: JsonValue) => void): void {
-  visit(pointer, value);
-  if (Array.isArray(value)) value.forEach((child, index) => walk(child, `${pointer}/${index}`, visit));
-  else if (isObject(value)) for (const [key, child] of Object.entries(value)) walk(child, `${pointer}/${escapeToken(key)}`, visit);
-}
-
-function countPaths(value: JsonValue): number {
-  return listPointers(value).length;
-}
-
-function rejected(document: EditableFamDocument, index: number, reason: string, options: ApplyFamPatchOptions): FamPatchResult {
-  const validation = document.parse === "parsed" ? options.validate?.(document.value) : undefined;
-  return Object.freeze({
-    document,
-    diff: Object.freeze([]),
-    receipt: Object.freeze({ ...receipt("rejected", 0, [], document.parse === "parsed" ? countPaths(document.value) : 0, validation, []), rejectedOperation: Object.freeze({ index, reason }) }),
-    ...(validation ? { validation } : {}),
-  });
-}
-
-function receipt(
-  status: FamEditReceipt["status"],
-  appliedOperations: number,
-  touchedPaths: readonly JsonPointer[],
-  retainedUntouchedPaths: number,
-  validation: ValidationResultLike | undefined,
-  loss: readonly FamLossEntry[],
-): FamEditReceipt {
-  return Object.freeze({
-    schemaVersion: FAM_EDIT_RECEIPT_SCHEMA_VERSION,
-    status,
-    appliedOperations,
-    touchedPaths: Object.freeze([...touchedPaths]),
-    retainedUntouchedPaths,
-    ...(validation ? { validation: Object.freeze({ valid: validation.valid, issueCount: validation.issues.length }) } : {}),
-    loss: Object.freeze([...loss]),
-  });
-}
-
-function deepEqual(left: JsonValue, right: JsonValue): boolean {
-  if (left === right) return true;
-  if (Array.isArray(left) && Array.isArray(right)) return left.length === right.length && left.every((item, index) => deepEqual(item, right[index]!));
-  if (isObject(left) && isObject(right)) {
-    const leftKeys = Object.keys(left);
-    return leftKeys.length === Object.keys(right).length && leftKeys.every((key) => key in right && deepEqual(left[key]!, right[key]!));
-  }
-  return false;
-}
-
-function isObject(value: unknown): value is JsonObject {
+function isMutableRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
 
-function deepFreeze<T extends JsonValue>(value: T): T {
-  if (Array.isArray(value)) { for (const child of value) deepFreeze(child); return Object.freeze(value) as T; }
-  if (isObject(value)) { for (const child of Object.values(value)) deepFreeze(child); return Object.freeze(value) as T; }
-  return value;
-}
-
-/**
- * diffからpatchを合成する。replaced→set、added→insert、removed→remove。
- * 配列indexのずれを避けるため、removeはpath降順で最後に適用する。
- */
-export function patchFromDiff(diff: readonly FamDiffEntry[]): FamPatch {
-  const sets = diff.filter((entry) => entry.change === "replaced").map((entry): FamPatchOperation => ({ op: "set", path: entry.path, value: entry.after ?? null }));
-  const inserts = diff.filter((entry) => entry.change === "added").map((entry): FamPatchOperation => ({ op: "insert", path: entry.path, value: entry.after ?? null }));
-  const removes = [...diff.filter((entry) => entry.change === "removed")]
-    .sort((left, right) => comparePointerDescending(left.path, right.path))
-    .map((entry): FamPatchOperation => ({ op: "remove", path: entry.path }));
-  return createFamPatch([...sets, ...inserts, ...removes]);
-}
-
-function comparePointerDescending(left: JsonPointer, right: JsonPointer): number {
-  const leftTokens = parsePointer(left);
-  const rightTokens = parsePointer(right);
-  const length = Math.max(leftTokens.length, rightTokens.length);
-  for (let index = 0; index < length; index += 1) {
-    const l = leftTokens[index];
-    const r = rightTokens[index];
-    if (l === r) continue;
-    if (l === undefined) return 1;
-    if (r === undefined) return -1;
-    const ln = /^\d+$/.test(l) ? Number(l) : undefined;
-    const rn = /^\d+$/.test(r) ? Number(r) : undefined;
-    if (ln !== undefined && rn !== undefined) return rn - ln;
-    return r.localeCompare(l);
+class PatchError extends Error {
+  constructor(readonly reason: FamEditRejectionReason) {
+    super(reason);
   }
-  return 0;
 }
 
-export interface PointerLine { readonly pointer: JsonPointer; readonly line: number }
-export interface PointerLineRender { readonly text: string; readonly lines: readonly PointerLine[] }
+export type { FamDocument, FamJsonRecord, FamValidationIssue, FamValidationResult, JsonObject, JsonValue };
 
-/**
- * JSONを整形しつつ各pointerの開始行（0始まり）を記録する。
- * RAW editorのpath navigationとunsupported field jumpに使う。
- */
-export function renderPointerLines(value: JsonValue, indent = 2): PointerLineRender {
-  const out: string[] = [];
-  const lines: PointerLine[] = [];
-  const pad = (depth: number) => " ".repeat(indent * depth);
-  const emit = (node: JsonValue, pointer: JsonPointer, depth: number, prefix: string, suffix: string) => {
-    lines.push({ pointer, line: out.length });
-    if (Array.isArray(node)) {
-      if (node.length === 0) { out.push(`${pad(depth)}${prefix}[]${suffix}`); return; }
-      out.push(`${pad(depth)}${prefix}[`);
-      node.forEach((child, index) => emit(child, `${pointer}/${index}`, depth + 1, "", index < node.length - 1 ? "," : ""));
-      out.push(`${pad(depth)}]${suffix}`);
-      return;
-    }
-    if (isObject(node)) {
-      const keys = Object.keys(node);
-      if (keys.length === 0) { out.push(`${pad(depth)}${prefix}{}${suffix}`); return; }
-      out.push(`${pad(depth)}${prefix}{`);
-      keys.forEach((key, index) => emit(node[key]!, `${pointer}/${escapeToken(key)}`, depth + 1, `${JSON.stringify(key)}: `, index < keys.length - 1 ? "," : ""));
-      out.push(`${pad(depth)}}${suffix}`);
-      return;
-    }
-    out.push(`${pad(depth)}${prefix}${JSON.stringify(node)}${suffix}`);
-  };
-  emit(value, "", 0, "", "");
-  return Object.freeze({ text: `${out.join("\n")}\n`, lines: Object.freeze(lines) });
-}
+export * from "./draft.js";

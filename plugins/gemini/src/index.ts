@@ -1,7 +1,14 @@
 import { GoogleGenAI } from "@google/genai";
 import { resolveCredential, type CredentialSource } from "@fquery/config";
 import type { CapabilityInvocation, CapabilityResult, PluginResolver } from "@fquery/core";
-import type { PluginManifest } from "@fquery/plugin-sdk";
+import {
+  createUnresolvedDecomposition,
+  validateDecomposerCandidate,
+  type Decomposer,
+  type DecompositionOutcome,
+  type DecompositionRequest,
+  type PluginManifest,
+} from "@fquery/plugin-sdk";
 import { FAM_JSON_RESPONSE_SCHEMA, inferSourceLanguage, validateFamDecomposition } from "@fquery/fam-core";
 
 export type GeminiFamCapability = "fam.decompose" | "fam.integrate" | "fam.compare" | "fam.project";
@@ -54,6 +61,30 @@ export class GeminiFamPlugin implements PluginResolver {
     } catch (error) {
       return { pluginId: geminiPluginManifest.pluginId, transportStatus: "failed", reason: error instanceof Error ? error.message : "gemini-call-failed", execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name } };
     }
+  }
+}
+
+export class GeminiNlDecomposer implements Decomposer {
+  readonly implementationRef = "decomposer://fquery/gemini-nl";
+  readonly implementationRevision = geminiPluginManifest.pluginVersion;
+  readonly profiles = Object.freeze(["nl"] as const);
+  readonly #plugin: GeminiFamPlugin;
+  readonly #model: string;
+
+  constructor(options: GeminiPluginOptions) {
+    this.#plugin = new GeminiFamPlugin(options);
+    this.#model = options.model;
+  }
+
+  async decompose(request: DecompositionRequest): Promise<DecompositionOutcome> {
+    if (request.profile !== "nl" || request.observation.mediaType !== "text/plain" || typeof request.observation.payload !== "string") {
+      return createUnresolvedDecomposition(request, this, "unsupported-observation-profile", "select-compatible-decomposer", "compatible-decomposer-available");
+    }
+    const result = await this.#plugin.invoke({ queryRef: request.queryRef, capability: "fam.decompose", input: request.observation.payload, sideEffect: "network" });
+    if (!result || result.transportStatus !== "succeeded") {
+      return createUnresolvedDecomposition(request, { ...this, provider: "google", model: this.#model }, result?.reason ?? "provider-route-unavailable", "inspect-provider-or-select-another-route", "provider-route-available");
+    }
+    return validateDecomposerCandidate(request, result.value, { ...this, provider: "google", model: this.#model });
   }
 }
 

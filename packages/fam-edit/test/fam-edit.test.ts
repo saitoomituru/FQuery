@@ -1,151 +1,190 @@
-import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { validateFamJson } from "@fquery/fam-core";
-import {
-  applyFamPatch,
-  createFamPatch,
-  diffJson,
-  getAtPointer,
-  leafPointers,
-  listPointers,
-  openFamText,
-  partitionPointers,
-  replaceFamText,
-  type JsonObject,
-} from "../src/index.js";
+import { readFamJson, validateFamDecomposition, writeUnmodifiedFamJson } from "@fquery/fam-core";
+import { affectedChildrenForPatches, applyFamPatch, reviewParentPatchProposal } from "../src/index.js";
+import { sha256Hex } from "../src/sha256.js";
 
-const fixtureText = readFileSync(new URL("../../../fixtures/valid/fam-decomposition.json", import.meta.url), "utf8");
+const source = `{
+  "schema_version": "fam.json/0.1.0-draft",
+  "fam_id": "fam://test/edit",
+  "revision_id": "rev://test/edit/1",
+  "kind": "wisdom",
+  "title": "編集試験",
+  "index_subjects": [],
+  "ψ": {"source": "原文"},
+  "∇φ": [],
+  "λ": {"output_units": []},
+  "Q": {"unknown_is_absence": false},
+  "pointers": [],
+  "provenance": {},
+  "future_field": {"retained": true}
+}`;
 
-/** validatorが知らないunknown fieldを混ぜた原文 */
-const withUnknownText = JSON.stringify({
-  ...(JSON.parse(fixtureText) as JsonObject),
-  "x-plugin-extension": { retained: true, nested: [1, { deep: "yes" }] },
-  Q: { ...(JSON.parse(fixtureText) as { Q: JsonObject }).Q, sin_measure_rule: "future-extension" },
-}, null, 2);
+const clock = () => new Date("2026-09-07T06:00:00.000Z");
 
-describe("fam-edit lossless partial editing", () => {
-  it("操作が空なら原文byteをそのまま返しunchangedを記録する", () => {
-    const document = openFamText(fixtureText);
-    const result = applyFamPatch(document, createFamPatch([]), { validate: validateFamJson });
-    expect(result.document.text).toBe(fixtureText);
-    expect(result.receipt.status).toBe("unchanged");
-    expect(result.validation?.valid).toBe(true);
-  });
-
-  it("known pathだけを変更しunknown field／subtreeを保持する", () => {
-    const document = openFamText(withUnknownText);
-    const result = applyFamPatch(document, createFamPatch([{ op: "set", path: "/λ/purpose", value: "編集後のpurpose" }]), { validate: validateFamJson });
-    expect(result.receipt.status).toBe("applied");
-    expect(result.diff).toEqual([{ path: "/λ/purpose", change: "replaced", before: "原文を意味単位へ分解する", after: "編集後のpurpose" }]);
-    expect(result.document.parse).toBe("parsed");
-    const value = result.document.parse === "parsed" ? result.document.value : undefined;
-    expect(getAtPointer(value!, "/x-plugin-extension/nested/1/deep")).toBe("yes");
-    expect(getAtPointer(value!, "/Q/sin_measure_rule")).toBe("future-extension");
-    expect(Object.keys(value as JsonObject)).toEqual(Object.keys(JSON.parse(withUnknownText) as JsonObject));
-    expect(result.validation?.valid).toBe(true);
-    expect(result.receipt.retainedUntouchedPaths).toBe(listPointers(document.parse === "parsed" ? document.value : null).length - 1);
-  });
-
-  it("insert / removeがarrayとobjectの両方でkey順を保つ", () => {
-    const document = openFamText(withUnknownText);
-    const result = applyFamPatch(document, createFamPatch([
-      { op: "insert", path: "/index_subjects/-", value: "降水量" },
-      { op: "insert", path: "/index_subjects/0", value: "天気" },
-      { op: "remove", path: "/x-plugin-extension/nested/0" },
-      { op: "insert", path: "/Q/new_key", value: 1 },
-    ]));
-    const value = result.document.parse === "parsed" ? result.document.value : undefined;
-    expect(getAtPointer(value!, "/index_subjects")).toEqual(["天気", "雨", "傘", "降水量"]);
-    expect(getAtPointer(value!, "/x-plugin-extension/nested")).toEqual([{ deep: "yes" }]);
-    expect(Object.keys(getAtPointer(value!, "/Q") as JsonObject).at(-1)).toBe("new_key");
-  });
-
-  it("1操作でも失敗すればpatch全体をrejectedにしdocumentを変えない", () => {
-    const document = openFamText(withUnknownText);
-    const result = applyFamPatch(document, createFamPatch([
-      { op: "set", path: "/title", value: "変更" },
-      { op: "set", path: "/does/not/exist", value: 1 },
-    ]));
-    expect(result.receipt.status).toBe("rejected");
-    expect(result.receipt.rejectedOperation).toEqual({ index: 1, reason: "path-not-found:does" });
-    expect(result.document).toBe(document);
-    expect(result.diff).toHaveLength(0);
-  });
-
-  it("validation失敗とapplied成功を別軸で返す", () => {
-    const document = openFamText(fixtureText);
-    const result = applyFamPatch(document, createFamPatch([{ op: "remove", path: "/ψ" }]), { validate: validateFamJson });
-    expect(result.receipt.status).toBe("applied");
-    expect(result.validation?.valid).toBe(false);
-    expect(result.validation?.issues.some((issue) => issue.code === "axis-required")).toBe(true);
-    expect(result.receipt.validation).toEqual({ valid: false, issueCount: result.validation?.issues.length });
-  });
-
-  it("malformed textをunparsedとして保持しpatchを拒否する", () => {
-    const document = openFamText("{ \"ψ\": ");
-    expect(document.parse).toBe("unparsed");
-    expect(document.text).toBe("{ \"ψ\": ");
-    const result = applyFamPatch(document, createFamPatch([{ op: "set", path: "", value: {} }]));
-    expect(result.receipt.status).toBe("rejected");
-    expect(result.receipt.rejectedOperation?.reason).toBe("document-unparsed");
-  });
-
-  it("RAW置換はloss receiptを伴いunparsedからの復帰も記録する", () => {
-    const broken = openFamText("not json");
-    const result = replaceFamText(broken, fixtureText, { validate: validateFamJson });
-    expect(result.document.parse).toBe("parsed");
-    expect(result.receipt.loss.map((entry) => entry.kind)).toEqual(["manual-replacement", "unparsed-source-discarded"]);
-    expect(result.validation?.valid).toBe(true);
-    const same = replaceFamText(result.document, fixtureText);
-    expect(same.receipt.status).toBe("unchanged");
-  });
-
-  it("partitionPointersはknown prefix外のleafをunsupportedとして列挙し無効扱いしない", () => {
-    const document = openFamText(withUnknownText);
-    const value = document.parse === "parsed" ? document.value : null;
-    const partition = partitionPointers(value!, ["/ψ", "/λ/purpose", "/Q/observer_ref"]);
-    expect(partition.known).toContain("/ψ/source_text");
-    expect(partition.known).toContain("/λ/purpose");
-    expect(partition.unsupported).toContain("/x-plugin-extension/retained");
-    expect(partition.unsupported).toContain("/Q/sin_measure_rule");
-    expect(partition.unsupported).toContain("/λ/output_units/0/ψ/source_text");
-    expect(leafPointers(value!)).toContain("/pointers");
-  });
-
-  it("diffJsonはpath単位でadded / removed / replacedを返す", () => {
-    expect(diffJson({ a: 1, b: [1, 2] }, { a: 2, b: [1], c: "x" })).toEqual([
-      { path: "/a", change: "replaced", before: 1, after: 2 },
-      { path: "/b/1", change: "removed", before: 2 },
-      { path: "/c", change: "added", after: "x" },
-    ]);
-  });
-
-  it("~ と / を含むkeyをJSON Pointerでescapeして扱う", () => {
-    const document = openFamText(JSON.stringify({ "a/b": { "c~d": 1 } }));
-    const result = applyFamPatch(document, createFamPatch([{ op: "set", path: "/a~1b/c~0d", value: 2 }]));
-    expect(getAtPointer(result.document.parse === "parsed" ? result.document.value : null, "/a~1b/c~0d")).toBe(2);
+describe("browser-safe SHA-256", () => {
+  it("既知ベクトルをNode専用APIなしで再現する", () => {
+    expect(sha256Hex("")).toBe("e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855");
+    expect(sha256Hex("abc")).toBe("ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad");
+    expect(sha256Hex("巫女")).toBe("ee952592b9e3dd6d53e9e45bc6da5c50d2d1ad77d1aeebc29a7c7ae52126b32b");
   });
 });
 
-describe("fam-edit diff → patch / pointer lines", () => {
-  it("patchFromDiffは配列removeを降順に並べ、適用結果がafterと一致する", async () => {
-    const { patchFromDiff } = await import("../src/index.js");
-    const before = { a: [1, 2, 3, 4], b: { x: 1 }, keep: "same" };
-    const after = { a: [1, 4], b: { x: 2, y: 3 }, keep: "same" };
-    const patch = patchFromDiff(diffJson(before, after));
-    const result = applyFamPatch(openFamText(JSON.stringify(before)), patch);
-    expect(result.receipt.status).toBe("applied");
-    expect(result.document.parse === "parsed" ? result.document.value : null).toEqual(after);
+describe("FAM edit engine", () => {
+  it("元revisionを変更せず未知fieldを保持した新revisionを生成する", () => {
+    const original = readFamJson(source);
+    const decision = applyFamPatch(original, {
+      operationId: "edit://test/set",
+      baseRevisionId: "rev://test/edit/1",
+      resultRevisionId: "rev://test/edit/2",
+      patches: [{ op: "set", path: "/Q/review_status", value: "draft" }],
+    }, { clock });
+
+    expect(decision.status).toBe("accepted");
+    expect(decision.document.value).toMatchObject({
+      revision_id: "rev://test/edit/2",
+      Q: { review_status: "draft" },
+      future_field: { retained: true },
+    });
+    expect(original.value.revision_id).toBe("rev://test/edit/1");
+    expect(writeUnmodifiedFamJson(original)).toBe(source);
+    expect(decision.receipt).toMatchObject({ status: "accepted", sourceMutation: false, losses: [] });
+    expect(decision.receipt.beforeSha256).toMatch(/^[0-9a-f]{64}$/);
+    expect(decision.receipt.afterSha256).toMatch(/^[0-9a-f]{64}$/);
   });
 
-  it("renderPointerLinesはJSON.stringify(2)と同じtextを返し各pointerの行を記録する", async () => {
-    const { renderPointerLines } = await import("../src/index.js");
-    const value = JSON.parse(withUnknownText) as JsonObject;
-    const render = renderPointerLines(value);
-    expect(render.text).toBe(`${JSON.stringify(value, null, 2)}\n`);
-    const line = render.lines.find((entry) => entry.pointer === "/Q/sin_measure_rule")?.line;
-    expect(line).toBeDefined();
-    expect(render.text.split("\n")[line!]).toContain("\"sin_measure_rule\"");
-    expect(render.lines.find((entry) => entry.pointer === "/pointers")).toBeDefined();
+  it("arrayへのinsertとremoveを順序どおり適用する", () => {
+    const decision = applyFamPatch(readFamJson(source), {
+      operationId: "edit://test/array",
+      baseRevisionId: "rev://test/edit/1",
+      resultRevisionId: "rev://test/edit/2",
+      patches: [
+        { op: "insert", path: "/index_subjects", index: 0, value: "FAM" },
+        { op: "insert", path: "/index_subjects", index: 1, value: "編集" },
+        { op: "remove", path: "/index_subjects/0" },
+      ],
+    }, { clock });
+    expect(decision.status).toBe("accepted");
+    expect(decision.document.value.index_subjects).toEqual(["編集"]);
+  });
+
+  it("stale revisionをrejectし元documentを返す", () => {
+    const original = readFamJson(source);
+    const decision = applyFamPatch(original, {
+      operationId: "edit://test/stale",
+      baseRevisionId: "rev://test/edit/0",
+      resultRevisionId: "rev://test/edit/2",
+      patches: [{ op: "set", path: "/title", value: "変更" }],
+    }, { clock });
+    expect(decision).toMatchObject({ status: "rejected", document: original, receipt: { reason: "stale-base-revision", afterSha256: null } });
+  });
+
+  it("identity fieldの直接patchをrejectする", () => {
+    const decision = applyFamPatch(readFamJson(source), {
+      operationId: "edit://test/protected",
+      baseRevisionId: "rev://test/edit/1",
+      resultRevisionId: "rev://test/edit/2",
+      patches: [{ op: "set", path: "/fam_id", value: "fam://other" }],
+    }, { clock });
+    expect(decision.receipt.reason).toBe("protected-field");
+  });
+
+  it("必須4軸を壊すpatchをvalidator findings付きでrejectする", () => {
+    const decision = applyFamPatch(readFamJson(source), {
+      operationId: "edit://test/invalid",
+      baseRevisionId: "rev://test/edit/1",
+      resultRevisionId: "rev://test/edit/2",
+      patches: [{ op: "remove", path: "/Q" }],
+    }, { clock });
+    expect(decision.status).toBe("rejected");
+    expect(decision.receipt.reason).toBe("fam-validation-failed");
+    expect(decision.receipt.validationIssues).toContainEqual(expect.objectContaining({ path: "$.Q", code: "axis-required" }));
+  });
+
+  it("profile validatorを注入しCore以上の制約を保持する", () => {
+    const decomposition = `{
+      "schema_version":"fam.json/0.1.0-draft","fam_id":"fam://test/decomposition","revision_id":"rev://test/decomposition/1","kind":"decomposition","title":"雨。","title_language":"ja","index_subjects":[],
+      "ψ":{"source_text":"雨。","source_ref":"input://source","source_language":"ja","observation_status":"provided"},
+      "∇φ":[{"gradient_type":"decomposition","source_expression":"雨。","source_language":"ja"}],
+      "λ":{"purpose":"source-decomposition","purpose_expression":"雨。","purpose_language":"ja","output_units":[{"ψ":{"source_text":"雨。","source_ref":"input://source","source_language":"ja","observation_status":"provided"},"∇φ":[{"gradient_type":"source-segmentation","source_expression":"雨。","source_language":"ja"}],"λ":{"manifestation":"雨。","manifestation_language":"ja","sub_splitters":[]},"Q":{"observer_ref":"observer://test","registry_ref":"registry://test","fact_scope_ref":"world://test","unknowns":[],"unknown_is_absence":false}}],"satisfaction_status":"not-evaluated"},
+      "Q":{"observer_ref":"observer://test","registry_ref":"registry://test","fact_scope_ref":"world://test","unknowns":[],"unknown_is_absence":false,"semantic_status":"not-evaluated"},"pointers":[],"provenance":{}
+    }`;
+    const decision = applyFamPatch(readFamJson(decomposition), {
+      operationId: "edit://test/profile",
+      baseRevisionId: "rev://test/decomposition/1",
+      resultRevisionId: "rev://test/decomposition/2",
+      patches: [{ op: "set", path: "/λ/output_units/0/λ/manifestation", value: "Rain." }],
+    }, { clock, validate: validateFamDecomposition });
+    expect(decision.receipt.reason).toBe("fam-validation-failed");
+    expect(decision.receipt.validationIssues).toContainEqual(expect.objectContaining({ code: "canonical-manifestation-required" }));
+  });
+
+  it("不正なpointerと存在しないremoveを区別する", () => {
+    const original = readFamJson(source);
+    const invalidPointer = applyFamPatch(original, {
+      operationId: "edit://test/pointer",
+      baseRevisionId: "rev://test/edit/1",
+      resultRevisionId: "rev://test/edit/2",
+      patches: [{ op: "set", path: "Q/value", value: true }],
+    }, { clock });
+    const missing = applyFamPatch(original, {
+      operationId: "edit://test/missing",
+      baseRevisionId: "rev://test/edit/1",
+      resultRevisionId: "rev://test/edit/2",
+      patches: [{ op: "remove", path: "/Q/missing" }],
+    }, { clock });
+    expect(invalidPointer.receipt.reason).toBe("invalid-json-pointer");
+    expect(missing.receipt.reason).toBe("path-not-found");
+  });
+
+  it("parent patchはreview後だけ適用し影響childを再検証へ返す", () => {
+    const parent = readFamJson(source);
+    const proposal = {
+      proposalId: "patch://test/parent/1",
+      parentFamId: "fam://test/edit",
+      parentRevisionId: "rev://test/edit/1",
+      childResultRef: "fam://test/child-result",
+      patches: [{ op: "set" as const, path: "/Q/review_status", value: "accepted" }],
+      childDependencies: [
+        { childRef: "fam://test/child/q", observedParentPaths: ["/Q"] },
+        { childRef: "fam://test/child/psi", observedParentPaths: ["/ψ"] },
+      ],
+    };
+    const result = reviewParentPatchProposal(parent, proposal, {
+      reviewId: "review://test/1",
+      reviewerRef: "observer://test/reviewer",
+      action: "accept-patch",
+      reason: "fixture-review-accepted",
+      resultRevisionId: "rev://test/edit/2",
+    }, { clock });
+    expect(result.status).toBe("applied");
+    expect(result.parentDocument.value.revision_id).toBe("rev://test/edit/2");
+    expect(result.revalidateChildRefs).toEqual(["fam://test/child/q"]);
+    expect(parent.value.revision_id).toBe("rev://test/edit/1");
+  });
+
+  it("forkやexternal test要求は元parentへ適用しない", () => {
+    const parent = readFamJson(source);
+    const result = reviewParentPatchProposal(parent, {
+      proposalId: "patch://test/parent/fork",
+      parentFamId: "fam://test/edit",
+      parentRevisionId: "rev://test/edit/1",
+      childResultRef: "fam://test/child-result",
+      patches: [{ op: "set", path: "/title", value: "分岐候補" }],
+      childDependencies: [],
+    }, {
+      reviewId: "review://test/fork",
+      reviewerRef: "observer://test/reviewer",
+      action: "fork-parent",
+      reason: "source parentを維持する",
+    }, { clock });
+    expect(result).toMatchObject({ status: "not-applied", action: "fork-parent", sourceMutation: false, parentDocument: parent });
+    expect(result).not.toHaveProperty("editDecision");
+  });
+
+  it("変更pathと依存pathをsegment境界で比較する", () => {
+    expect(affectedChildrenForPatches(
+      [{ op: "set", path: "/Q/a", value: true }],
+      [{ childRef: "q", observedParentPaths: ["/Q"] }, { childRef: "similar", observedParentPaths: ["/QQ"] }],
+    )).toEqual(["q"]);
   });
 });

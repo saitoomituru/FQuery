@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from "vue";
 import { deriveKnownPointers, type ConnectionViewModel, type FQueryUiEvent, type NodeViewModel, type PluginPresentationRegistration, type PresentationProjection, type QSchemaProperty } from "@fquery/ui-core";
-import { createFamPatch, getAtPointer, openFamText, partitionPointers, serializeFamValue, type FamValidator, type JsonValue } from "@fquery/fam-edit";
+import { createFamDraftPatch, getAtPointer, openFamText, partitionPointers, serializeFamValue, type FamValidator, type JsonValue } from "@fquery/fam-edit";
 import FQueryFamvim from "./FQueryFamvim.vue";
 
 /**
@@ -77,7 +77,7 @@ function requestQChange(key: string, property: QSchemaProperty, raw: string | bo
     requestId: `ui:node-panel:${requestSequence}`,
     targetRef: props.node.nodeId,
     property: "fam.patch",
-    value: createFamPatch([exists ? { op: "set", path, value } : { op: "insert", path, value }]),
+    value: createFamDraftPatch([exists ? { op: "set", path, value } : { op: "insert", path, value }]),
   });
 }
 

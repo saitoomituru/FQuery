@@ -115,12 +115,27 @@ describe("FQuery Playground FAMVIM", () => {
     expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("edited-purpose");
     expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("x-plugin-extension");
     await openLeftTab(wrapper, "decisions");
-    expect(wrapper.get('[aria-label="fam edit receipts"]').text()).toContain("applied");
+    expect(wrapper.get('[aria-label="fam edit receipts"]').text()).toContain("accepted");
+    expect(wrapper.get('[aria-label="fam edit receipts"]').text()).toContain("rev://playground/fam-edit/1");
+
+    // GUIはinvalid draftもrequestできるが、Coreがrejectしcanonical revisionを変更しない
+    const invalidEditor = wrapper.get('[aria-label="FAMVIM RAW FAM editor"] textarea');
+    const invalidFam = JSON.parse(invalidEditor.element.value) as Record<string, unknown>;
+    delete invalidFam.Q;
+    await invalidEditor.setValue(JSON.stringify(invalidFam, null, 2));
+    await wrapper.get('[aria-label="FAMVIM RAW FAM editor"] footer button').trigger("click");
+    await flushPromises();
+    await openLeftTab(wrapper, "decisions");
+    expect(wrapper.get('[aria-label="fam edit receipts"]').text()).toContain("rejected");
+    expect(wrapper.get('[aria-label="fam edit receipts"]').text()).toContain("fam-validation-failed");
+    await openLeftTab(wrapper, "records");
+    expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("edited-purpose");
 
     const famvimAfter = wrapper.get('[aria-label="FAMVIM RAW FAM editor"]');
     await famvimAfter.get("textarea").setValue("{ broken");
     await famvimAfter.get("footer button").trigger("click");
     await flushPromises();
+    await openLeftTab(wrapper, "decisions");
     expect(wrapper.get('[aria-label="session decisions"]').text()).toContain("fam-text-unparsed");
     await openLeftTab(wrapper, "records");
     expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("edited-purpose");

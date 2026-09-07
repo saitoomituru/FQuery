@@ -1,6 +1,11 @@
 import { evaluateQ, type EvaluationContext, type QueryNode, type QueryResult, type StatusAxes } from "@fquery/core";
 import { diffFamLogs, FamLog, type FamLogDifference, type FamLogEntry } from "@fquery/famlog";
 
+export { assessNegativeFixture, validateNegativeFixture } from "./negative-fixture.js";
+export type * from "./negative-fixture.js";
+export { classifyEffectiveOneLiner, observePsiInterfaces } from "./psi-observability.js";
+export type * from "./psi-observability.js";
+
 export interface BenchmarkTarget {
   readonly targetId: string;
   readonly context: Omit<EvaluationContext, "emit">;

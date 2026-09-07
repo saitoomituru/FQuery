@@ -19,9 +19,23 @@ import {
   type PresentationSessionState,
   type StatusBadgeViewModel,
 } from "@fquery/ui-core";
-import { isFamJsonRecord, validateFamJson } from "@fquery/fam-core";
-import { applyFamPatch, openFamText, replaceFamText, serializeFamValue, type FamPatch, type FamPatchResult, type JsonValue } from "@fquery/fam-edit";
-import { decomposerContextKey, playgroundPaneContextKey, type PaneComponentMap, type PlaygroundRoute } from "./context.js";
+import { isFamJsonRecord, readFamJson, validateFamJson } from "@fquery/fam-core";
+import {
+  FAM_DRAFT_PATCH_SCHEMA_VERSION,
+  applyFamPatch,
+  diffJson,
+  escapeToken,
+  getAtPointer,
+  openFamText,
+  parsePointer,
+  patchFromDiff,
+  serializeFamValue,
+  type FamDraftPatch,
+  type FamEditReceipt,
+  type FamPatch,
+  type JsonValue,
+} from "@fquery/fam-edit";
+import { decomposerContextKey, playgroundPaneContextKey, type PaneComponentMap, type PlaygroundEditReceiptView, type PlaygroundRoute } from "./context.js";
 import CoreNodeRenderer from "./nodes/CoreNodeRenderer.vue";
 import AddNodeSection from "./panes/AddNodeSection.vue";
 import OutlinerSection from "./panes/OutlinerSection.vue";
@@ -64,21 +78,67 @@ const session = new PresentationSession(createFixtureDecisionPort({
     return createCoreNodeViewModel(contract, nodeId);
   },
   // Host責務: FAMVIM／Node Panelからのfam.patch / fam.textをcanonical valueへ適用する。GUIは適用しない。
-  resolveProperty: (node, property, value) => {
+  resolveProperty: (node, property, value, request) => {
     if (property !== "fam.patch" && property !== "fam.text") return undefined;
     if (node.value === null || node.value === undefined) return { rejected: "fam-not-provided" };
-    const document = openFamText(serializeFamValue(node.value as JsonValue));
-    const result: FamPatchResult = property === "fam.patch"
-      ? applyFamPatch(document, value as FamPatch, { validate: validateFamJson })
-      : replaceFamText(document, String(value), { validate: validateFamJson });
-    editReceipts.value = [...editReceipts.value, result.receipt];
-    if (result.receipt.status === "rejected") return { rejected: result.receipt.rejectedOperation?.reason ?? "fam-edit-rejected" };
-    if (result.document.parse === "unparsed") return { rejected: `fam-text-unparsed:${result.document.parseError}` };
-    const semantic = result.validation?.valid === false ? "semantic-unsatisfied" : "unknown";
-    return { ...node, value: result.document.value, badges: [{ axis: "semantic", value: semantic, tone: statusTone(semantic) }], evidenceRefs: [...node.evidenceRefs, `fam-edit://${result.receipt.status}/${result.receipt.appliedOperations}`] };
+    let document;
+    try {
+      document = readFamJson(serializeFamValue(node.value as JsonValue));
+    } catch (error) {
+      return { rejected: error instanceof Error ? `canonical-fam-invalid:${error.message}` : "canonical-fam-invalid" };
+    }
+
+    let draftPatch: FamDraftPatch;
+    if (property === "fam.patch") {
+      draftPatch = value as FamDraftPatch;
+      if (draftPatch.schemaVersion !== FAM_DRAFT_PATCH_SCHEMA_VERSION) return { rejected: "unsupported-draft-patch-schema-version" };
+    } else {
+      const draft = openFamText(String(value));
+      if (draft.parse === "unparsed") return { rejected: `fam-text-unparsed:${draft.parseError}` };
+      draftPatch = patchFromDiff(diffJson(document.value, draft.value));
+    }
+
+    let patches: readonly FamPatch[];
+    try {
+      patches = toEnginePatches(document.value, draftPatch);
+    } catch (error) {
+      return { rejected: error instanceof Error ? error.message : "draft-patch-adapter-failed" };
+    }
+    if (patches.length === 0) return node;
+
+    editSequence += 1;
+    const decision = applyFamPatch(document, {
+      operationId: request.requestId,
+      baseRevisionId: document.value.revision_id,
+      resultRevisionId: `rev://playground/fam-edit/${editSequence}`,
+      patches,
+    }, { validate: validateFamJson });
+    editReceiptRecords.value = [...editReceiptRecords.value, decision.receipt];
+    if (decision.status === "rejected") return { rejected: decision.receipt.reason ?? "fam-edit-rejected" };
+    const semantic = "unknown";
+    return {
+      ...node,
+      value: decision.document.value,
+      badges: [{ axis: "semantic", value: semantic, tone: statusTone(semantic) }],
+      evidenceRefs: [...node.evidenceRefs, `fam-edit://${decision.receipt.operationId}/${decision.receipt.resultRevisionId}`],
+    };
   },
 }), { registry });
-const editReceipts = ref<readonly FamPatchResult["receipt"][]>([]);
+let editSequence = 0;
+const editReceiptRecords = shallowRef<readonly FamEditReceipt[]>([]);
+const editReceipts = computed<readonly PlaygroundEditReceiptView[]>(() => editReceiptRecords.value.map((receipt) => ({
+  status: receipt.status,
+  operationId: receipt.operationId,
+  baseRevisionId: receipt.baseRevisionId,
+  resultRevisionId: receipt.resultRevisionId,
+  patchCount: receipt.patches.length,
+  validationIssueCount: receipt.validationIssues.length,
+  ...(receipt.reason ? { reason: receipt.reason } : {}),
+  losses: receipt.losses,
+  sourceMutation: receipt.sourceMutation,
+  beforeSha256: receipt.beforeSha256,
+  afterSha256: receipt.afterSha256,
+})));
 const sessionState = shallowRef<PresentationSessionState>(session.state);
 session.subscribe((state) => { sessionState.value = state; });
 const registrations = computed(() => session.registry.registrations());
@@ -312,6 +372,28 @@ function projectLambdaNode(value: unknown) {
       value: projected ? { projection_kind: "fixture-projection", manifestations } : null,
     },
   });
+}
+
+/**
+ * GUIのlossless draft patchをCore engineのoperationへ写像する。
+ * object fieldのinsertはCoreのset（新規keyを許可）へ、array要素のinsertは
+ * 親array path + indexへ変換する。採否とrevision更新はCoreだけが行う。
+ */
+function toEnginePatches(sourceValue: JsonValue, draft: FamDraftPatch): readonly FamPatch[] {
+  return Object.freeze(draft.operations.map((operation): FamPatch => {
+    if (operation.op !== "insert") return operation;
+    const tokens = parsePointer(operation.path);
+    if (tokens.length === 0) return { op: "set", path: "", value: operation.value };
+    const finalToken = tokens[tokens.length - 1]!;
+    const parentPath = tokens.length === 1
+      ? ""
+      : `/${tokens.slice(0, -1).map(escapeToken).join("/")}`;
+    const parent = getAtPointer(sourceValue, parentPath);
+    if (!Array.isArray(parent)) return { op: "set", path: operation.path, value: operation.value };
+    const index = finalToken === "-" ? parent.length : Number(finalToken);
+    if (!Number.isSafeInteger(index) || index < 0) throw new TypeError(`draft-array-index-invalid:${finalToken}`);
+    return { op: "insert", path: parentPath, index, value: operation.value };
+  }));
 }
 
 function isGuiRequest(event: FQueryUiEvent): event is GuiEventAbi {

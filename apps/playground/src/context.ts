@@ -1,6 +1,6 @@
 import type { Component, ComputedRef, InjectionKey, Ref, ShallowRef } from "vue";
 import type { FQueryUiEvent, PluginPresentationRegistration, PresentationProjection, PresentationSessionState } from "@fquery/ui-core";
-import type { FamPatchResult, FamValidator } from "@fquery/fam-edit";
+import type { FamValidator } from "@fquery/fam-edit";
 
 export interface PlaygroundRoute {
   readonly provider: "fixture" | "gemini" | "ollama";
@@ -34,13 +34,28 @@ export interface PlaygroundPaneContext {
   readonly semanticProjection: ComputedRef<unknown>;
   readonly providerReceipt: ComputedRef<unknown>;
   readonly debugEvents: ComputedRef<unknown>;
-  readonly editReceipts: ShallowRef<readonly FamPatchResult["receipt"][]>;
+  readonly editReceipts: ComputedRef<readonly PlaygroundEditReceiptView[]>;
   readonly selectedRegistration: ComputedRef<PluginPresentationRegistration | undefined>;
   readonly selectedProjection: ComputedRef<PresentationProjection | undefined>;
   readonly inspectorTab: ShallowRef<"settings" | "connections" | "q" | "unsupported" | "raw" | undefined>;
   readonly inspectorJump: ShallowRef<string | null>;
   readonly validate: FamValidator;
   readonly receive: (event: FQueryUiEvent) => void;
+}
+
+/** Core receiptをGUIへ投影する非再帰のread-only view。canonical receipt自体はHostが保持する。 */
+export interface PlaygroundEditReceiptView {
+  readonly status: "accepted" | "rejected";
+  readonly operationId: string;
+  readonly baseRevisionId: string;
+  readonly resultRevisionId: string | null;
+  readonly patchCount: number;
+  readonly validationIssueCount: number;
+  readonly reason?: string;
+  readonly losses: readonly string[];
+  readonly sourceMutation: false;
+  readonly beforeSha256: string;
+  readonly afterSha256: string | null;
 }
 
 export const playgroundPaneContextKey: InjectionKey<PlaygroundPaneContext> = Symbol("fquery.playground.pane");
