@@ -1,12 +1,13 @@
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 
-const roots = ["fixtures/valid", "fixtures/negative", "fixtures/benchmark", "fixtures/famlog", "fixtures/ui"];
+const roots = ["fixtures/valid", "fixtures/negative", "fixtures/benchmark", "fixtures/famlog", "fixtures/ui", "fixtures/test-cases"];
 const knownSchemas = new Set([
   "fquery.result/0.1.0-draft",
   "fquery.benchmark/0.1.0-draft",
   "fquery.famlog/0.1.0-draft",
   "fquery.famlog-diff/0.1.0-draft",
+  "fquery.negative-fixture/0.1.0-draft",
   "fquery.ui/0.1.0-draft",
   "fquery.ui.core-nodes/0.1.0-draft",
   "fam.json/0.1.0-draft",
@@ -23,9 +24,7 @@ const statusAxes = {
 
 let count = 0;
 for (const root of roots) {
-  for (const name of await readdir(root)) {
-    if (!name.endsWith(".json")) continue;
-    const path = join(root, name);
+  for (const path of await jsonFiles(root)) {
     const value = JSON.parse(await readFile(path, "utf8"));
     if (!value.schema_version) throw new Error(`${path}: schema_versionがありません`);
     if (!knownSchemas.has(value.schema_version)) throw new Error(`${path}: 未対応schema_version ${value.schema_version}です`);
@@ -95,6 +94,11 @@ function validateFam(path, value) {
   }
   if (!Array.isArray(value.index_subjects) || !Array.isArray(value.pointers) || !isRecord(value.provenance)) throw new Error(`${path}: FAM top-level metadataが不正です`);
   validateFamNode(path, "$", value);
+  if (value.kind === "decomposition") validateDecompositionFam(path, value);
+  if (value.kind === "access-map") validateAccessMapFam(path, value);
+}
+
+function validateDecompositionFam(path, value) {
   if (!isRecord(value.ψ) || typeof value.ψ.source_text !== "string") throw new Error(`${path}: ψ.source_textがありません`);
   if (typeof value.ψ.source_language !== "string" || value.title_language !== value.ψ.source_language) throw new Error(`${path}: 入力言語とtitle_languageが一致しません`);
   if (!isRecord(value.λ) || !Array.isArray(value.λ.output_units) || value.λ.output_units.length === 0) throw new Error(`${path}: λ.output_unitsがありません`);
@@ -103,6 +107,13 @@ function validateFam(path, value) {
     if (!isRecord(unit.λ) || unit.λ.manifestation !== unit.ψ.source_text || unit.λ.manifestation_language !== value.ψ.source_language || !Array.isArray(unit.λ.sub_splitters)) throw new Error(`${path}: output_units[${index}]の正本またはsub_splitters境界が不正です`);
   });
   if (!isRecord(value.Q) || !Array.isArray(value.Q.unknowns) || value.Q.unknown_is_absence !== false) throw new Error(`${path}: Qのunknown境界が不正です`);
+}
+
+function validateAccessMapFam(path, value) {
+  if (!isRecord(value.ψ) || typeof value.ψ.source_fold_ref !== "string" || typeof value.ψ.source_registry_ref !== "string") throw new Error(`${path}: Access Mapのsource境界が不正です`);
+  if (!isRecord(value["∇φ"]) || !Array.isArray(value["∇φ"].mapping_rules) || value["∇φ"].mapping_rules.length === 0) throw new Error(`${path}: Access Mapのmapping_rulesがありません`);
+  if (!isRecord(value.λ) || typeof value.λ.target_fold_ref !== "string" || !Array.isArray(value.λ.target_dimension_refs)) throw new Error(`${path}: Access Mapのtarget境界が不正です`);
+  if (!isRecord(value.Q) || value.Q.unknown_policy !== "retain" || value.Q.unmapped_policy !== "retain-unmapped" || value.Q.source_mutation !== false) throw new Error(`${path}: Access MapのQ境界が不正です`);
 }
 
 function validateFamNode(path, pointer, value) {
@@ -121,3 +132,13 @@ function inspectFamChild(path, pointer, value) {
 }
 
 function isRecord(value) { return typeof value === "object" && value !== null && !Array.isArray(value); }
+
+async function jsonFiles(root) {
+  const files = [];
+  for (const entry of await readdir(root, { withFileTypes: true })) {
+    const path = join(root, entry.name);
+    if (entry.isDirectory()) files.push(...await jsonFiles(path));
+    else if (entry.isFile() && entry.name.endsWith(".json")) files.push(path);
+  }
+  return files.sort();
+}
