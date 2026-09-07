@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, shallowRef, watch } from "vue";
-import { FQueryBaklavaView, FQueryNodePanel, FQueryPalette, FQueryPanel, FQueryRecordsPanel } from "@fquery/ui-vue";
+import { FQueryBaklavaView, FQueryNodePanel, FQueryPalette, FQueryRecordsPanel } from "@fquery/ui-vue";
 import {
   PluginPresentationRegistry,
   PresentationSession,
@@ -75,7 +75,9 @@ const responseFam = computed(() => isFamJsonRecord(resultRecord.value?.value) ? 
 const famvimNode = computed(() => sessionState.value.nodes.find((node) => node.nodeId === coreNodeIds.value.famvim));
 /** canonical FAMは∇φ.FAMVIM nodeが保持するvalue。provider responseはその初期投影に過ぎない。 */
 const fam = computed<unknown>(() => famvimNode.value?.value ?? undefined);
-const selectedNode = computed(() => sessionState.value.nodes.find((node) => node.nodeId === selectedNodeId.value) ?? famvimNode.value);
+const psiNode = computed(() => sessionState.value.nodes.find((node) => node.nodeId === coreNodeIds.value.psi));
+const selectedNode = computed(() => sessionState.value.nodes.find((node) => node.nodeId === selectedNodeId.value) ?? psiNode.value);
+const selectedIsPsi = computed(() => selectedNode.value?.nodeId === coreNodeIds.value.psi);
 const selectedProjection = computed(() => selectedNode.value ? sessionState.value.presentations[selectedNode.value.nodeId] : undefined);
 const selectedRegistration = computed(() => findRegistrationByPresentation(session.registry, selectedProjection.value?.presentation?.presentationId));
 const semanticProjection = computed(() => {
@@ -185,49 +187,59 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
   <div class="shell">
     <header class="hero">
       <div>
-        <p class="eyebrow">LOCALHOST / PROVIDER ROUTES</p>
+        <p class="eyebrow">FQUERY NODE EDITOR / LOCALHOST</p>
         <h1>FQuery Playground</h1>
-        <p>同じfam.decomposeをfixture、Gemini、Ollamaへ交換可能に接続します。</p>
+        <p>Ψ.NL → ∇φ.FAMVIM → λ.NL。provider routeはΨ.NL nodeのinspectorから選択します。</p>
       </div>
     </header>
 
-    <section class="controls" aria-label="route controls">
-      <label>Provider
-        <select v-model="provider">
-          <option v-for="route in routes" :key="route.provider" :value="route.provider" :disabled="!route.available">{{ route.label }}{{ route.available ? "" : " — unavailable" }}</option>
-        </select>
-      </label>
-      <label>Model
-        <select v-model="model"><option v-for="candidate in selectedRoute?.models ?? []" :key="candidate" :value="candidate">{{ candidate }}</option></select>
-      </label>
-      <p class="route-note">route: {{ provider }} / {{ model }}<template v-if="selectedRoute?.credentialName"> / credential: {{ selectedRoute.credentialName }}</template></p>
-      <label class="source">Natural language source<textarea v-model="source" rows="6" /></label>
-      <button type="button" :disabled="running || !selectedRoute?.available || !model || !source.trim()" @click="execute">{{ running ? "推論中…" : "自然言語をFAMへ分解" }}</button>
-      <p v-if="routeError" class="error" role="alert">{{ routeError }}</p>
-    </section>
-
     <output aria-live="polite">last event: {{ lastEvent }}</output>
-    <FQueryRecordsPanel
-      :fam="fam"
-      :semantic-projection="semanticProjection"
-      :provider-receipt="providerReceipt"
-      :debug-events="debugEvents"
-    />
-    <h2 class="surface-heading">Node editor projection</h2>
-    <div class="editor-grid">
+    <p v-if="routeError" class="error" role="alert">{{ routeError }}</p>
+
+    <main class="editor-layout" aria-label="node editor">
       <FQueryPalette :registrations="registrations" @event="receive" />
       <FQueryBaklavaView :nodes="sessionState.nodes" :connections="sessionState.connections" :layout="sessionState.layout" @event="receive" />
-    </div>
-    <h2 class="surface-heading">Node panel</h2>
-    <FQueryNodePanel
-      v-if="selectedNode"
-      :node="selectedNode"
-      :registration="selectedRegistration"
-      :projection="selectedProjection"
-      :connections="sessionState.connections"
-      :validate="validateFamJson"
-      @event="receive"
-    />
+      <FQueryNodePanel
+        v-if="selectedNode"
+        :node="selectedNode"
+        :registration="selectedRegistration"
+        :projection="selectedProjection"
+        :connections="sessionState.connections"
+        :validate="validateFamJson"
+        @event="receive"
+      >
+        <template #inspector>
+          <section v-if="selectedIsPsi" class="controls" aria-label="route controls">
+            <h4>Ψ.NL decomposer</h4>
+            <label>Provider
+              <select v-model="provider">
+                <option v-for="route in routes" :key="route.provider" :value="route.provider" :disabled="!route.available">{{ route.label }}{{ route.available ? "" : " — unavailable" }}</option>
+              </select>
+            </label>
+            <label>Model
+              <select v-model="model"><option v-for="candidate in selectedRoute?.models ?? []" :key="candidate" :value="candidate">{{ candidate }}</option></select>
+            </label>
+            <p class="route-note">route: {{ provider }} / {{ model }}<template v-if="selectedRoute?.credentialName"> / credential: {{ selectedRoute.credentialName }}</template></p>
+            <label class="source">Natural language source<textarea v-model="source" rows="5" /></label>
+            <button type="button" :disabled="running || !selectedRoute?.available || !model || !source.trim()" @click="execute">{{ running ? "推論中…" : "自然言語をFAMへ分解" }}</button>
+          </section>
+        </template>
+      </FQueryNodePanel>
+    </main>
+
+    <nav class="node-switch" aria-label="node selection">
+      <button v-for="node in sessionState.nodes" :key="node.nodeId" type="button" :aria-pressed="selectedNode?.nodeId === node.nodeId ? 'true' : 'false'" @click="selectedNodeId = node.nodeId">{{ node.label }}</button>
+    </nav>
+
+    <details class="records" open>
+      <summary class="surface-heading">Records — FAM / projection / FAMLog / receipt / debug（補助表示）</summary>
+      <FQueryRecordsPanel
+        :fam="fam"
+        :semantic-projection="semanticProjection"
+        :provider-receipt="providerReceipt"
+        :debug-events="debugEvents"
+      />
+    </details>
     <section v-if="editReceipts.length" class="session-receipt" aria-label="fam edit receipts">
       <h2 class="surface-heading">FAM edit receipts</h2>
       <ul>
@@ -247,6 +259,5 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
         </li>
       </ul>
     </section>
-    <FQueryPanel :nodes="sessionState.nodes" @event="receive" />
   </div>
 </template>

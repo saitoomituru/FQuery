@@ -17,20 +17,22 @@ describe("FQuery Playground", () => {
     vi.stubGlobal("fetch", fetcher);
     const wrapper = mount(App);
     await flushPromises();
-    expect(wrapper.text()).toContain("LOCALHOST / PROVIDER ROUTES");
+    expect(wrapper.text()).toContain("FQUERY NODE EDITOR");
+    expect(wrapper.get('[aria-label="FQuery node panel"]').attributes("data-node-id")).toContain("q://playground/node/1");
     expect(wrapper.findAll("select")[0]?.findAll("option")).toHaveLength(3);
     await wrapper.findAll("select")[0]!.setValue("ollama");
     expect(wrapper.findAll("select")[1]!.element.value).toBe("qwen3:8b");
-    await wrapper.get("button").trigger("click");
+    await wrapper.get('[aria-label="route controls"] button').trigger("click");
     await flushPromises();
     expect(fetcher).toHaveBeenLastCalledWith("/api/decompose", expect.objectContaining({ method: "POST" }));
     expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("fam.json/0.1.0-draft");
     expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("ψ");
     expect(wrapper.get('[data-record-kind="semantic-projection"]').text()).toContain("未生成");
     expect(wrapper.get('[data-record-kind="debug-event"]').text()).toContain("result");
+    // Node editorが主表示、recordsは補助表示として後段に置く
     const records = wrapper.get('[aria-label="FQuery records"]').element;
     const editor = wrapper.get('[aria-label="FQuery Baklava presentation"]').element;
-    expect(records.compareDocumentPosition(editor) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(editor.compareDocumentPosition(records) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
 
   it("pluginなしでCore 3 nodeをΨ→∇φ→λへ接続し、分解結果を∇φ.FAMVIMへ投影する", async () => {
@@ -40,25 +42,26 @@ describe("FQuery Playground", () => {
     vi.stubGlobal("fetch", fetcher);
     const wrapper = mount(App);
     await flushPromises();
-    const nodes = wrapper.findAll(".fquery-node");
-    expect(nodes.map((node) => node.attributes("aria-label"))).toEqual(["Ψ.NL", "∇φ.FAMVIM", "λ.NL"]);
+    const switches = wrapper.findAll('[aria-label="node selection"] button');
+    expect(switches.map((button) => button.text())).toEqual(["Ψ.NL", "∇φ.FAMVIM", "λ.NL"]);
     expect(wrapper.findAll('[data-decision-status="accepted"]')).toHaveLength(8);
-    expect(nodes[1]!.findAll('[data-connection="connected"]')).toHaveLength(2);
-    expect(nodes[2]!.find('[data-direction="output"]').attributes("data-connection")).toBe("unconnected");
     const palette = wrapper.get('[aria-label="Plugin node palette"]');
     expect(palette.findAll("li")).toHaveLength(3);
 
     await wrapper.get('[aria-label="route controls"] button').trigger("click");
     await flushPromises();
-    const psi = wrapper.findAll(".fquery-node")[0]!;
-    expect(psi.get('[data-axis="transport"]').text()).toContain("succeeded");
-    expect(psi.get('[data-axis="semantic"]').text()).toContain("unknown");
-    const famvim = wrapper.findAll(".fquery-node")[1]!;
-    expect(famvim.get('[data-axis="semantic"]').attributes("data-tone")).toBe("unknown");
+    expect(wrapper.get('[data-record-kind="provider-receipt"]').text()).toContain("succeeded");
+
+    await switches[1]!.trigger("click");
+    await wrapper.get('[data-tab="connections"]').trigger("click");
+    expect(wrapper.findAll('.fquery-node-panel-ports li[data-connection="connected"]')).toHaveLength(2);
+    await switches[2]!.trigger("click");
+    await wrapper.get('[data-tab="connections"]').trigger("click");
+    expect(wrapper.get('.fquery-node-panel-ports li[data-direction="output"]').attributes("data-connection")).toBe("unconnected");
 
     await palette.get("button").trigger("click");
     await flushPromises();
-    expect(wrapper.findAll(".fquery-node")).toHaveLength(4);
+    expect(wrapper.findAll('[aria-label="node selection"] button')).toHaveLength(4);
   });
 });
 
@@ -73,6 +76,7 @@ describe("FQuery Playground FAMVIM", () => {
     await flushPromises();
     await wrapper.get('[aria-label="route controls"] button').trigger("click");
     await flushPromises();
+    await wrapper.findAll('[aria-label="node selection"] button')[1]!.trigger("click");
     const panel = wrapper.get('[aria-label="FQuery node panel"]');
     expect(panel.attributes("data-node-id")).toContain("q://playground/node/2");
     await panel.get('[data-tab="unsupported"]').trigger("click");
@@ -95,10 +99,11 @@ describe("FQuery Playground FAMVIM", () => {
     expect(wrapper.get('[aria-label="session decisions"]').text()).toContain("fam-text-unparsed");
     expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("edited-purpose");
 
-    // inspectで別nodeを選択するとpanelが切り替わり、ghost判定はprojectionから読む
-    await wrapper.findAll(".fquery-node")[0]!.get("header button").trigger("click");
+    // Ψ.NLへ戻すとdecomposer inspectorが設定tabに現れる
+    await wrapper.findAll('[aria-label="node selection"] button')[0]!.trigger("click");
     await flushPromises();
     expect(wrapper.get('[aria-label="FQuery node panel"]').attributes("data-node-id")).toContain("q://playground/node/1");
     expect(wrapper.get('[aria-label="FQuery node panel"]').text()).toContain("fquery.core@");
+    expect(wrapper.get('[aria-label="FQuery node panel"] [aria-label="route controls"]').exists()).toBe(true);
   });
 });
