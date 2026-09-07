@@ -40,15 +40,31 @@ let placementSequence = 0;
 export async function placeUnplacedNodes(session: PresentationSession, state: PresentationSessionState, center: { x: number; y: number }): Promise<void> {
   const placed = new Set(state.layout.map((entry) => entry.nodeId));
   const unplaced = state.nodes.filter((node) => !placed.has(node.nodeId));
-  for (const [index, node] of unplaced.entries()) {
+  const occupied = state.layout.map((entry) => ({ x: entry.x, y: entry.y }));
+  for (const node of unplaced) {
+    const position = nextFreeSlot(occupied, { x: Math.round(center.x - NODE_WIDTH / 2), y: Math.round(center.y - 60) });
+    occupied.push(position);
     placementSequence += 1;
     await session.dispatch({
       type: "node.move.requested",
       requestId: `playground:place:${placementSequence}`,
       nodeId: node.nodeId,
       layoutSlotRef: layoutSlotRef(node.nodeId),
-      x: Math.round(center.x - 160),
-      y: Math.round(center.y - 60 + index * 140),
+      x: position.x,
+      y: position.y,
     });
   }
+}
+
+const NODE_WIDTH = 320;
+const NODE_HEIGHT = 260;
+const PLACEMENT_STEP = 180;
+
+/** 既存nodeの矩形と重なる間は下へずらす。Host側の便宜であり、canonical layoutではない。 */
+export function nextFreeSlot(occupied: readonly { x: number; y: number }[], start: { x: number; y: number }): { x: number; y: number } {
+  const candidate = { ...start };
+  const overlaps = () => occupied.some((slot) => Math.abs(slot.x - candidate.x) < NODE_WIDTH && Math.abs(slot.y - candidate.y) < NODE_HEIGHT);
+  let guard = 0;
+  while (overlaps() && guard < 50) { candidate.y += PLACEMENT_STEP; guard += 1; }
+  return candidate;
 }

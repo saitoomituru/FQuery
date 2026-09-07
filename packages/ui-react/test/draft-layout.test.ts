@@ -35,3 +35,14 @@ describe("draft layout", () => {
     expect(reconcileDraft(state, [], [{ nodeId: "n1", x: 11, y: 20 }]).positions.size).toBe(1);
   });
 });
+
+describe("GuiRequestFactory.move", () => {
+  it("layoutSlotRefはsessionのpresentations側から解決する", async () => {
+    const { GuiRequestFactory } = await import("../src/model/gui-requests.js");
+    const factory = new GuiRequestFactory("t");
+    const node = { nodeId: "n1", label: "n1", badges: [], ports: [], value: null, evidenceRefs: [], canExecute: false, canCancel: false } as const;
+    expect(factory.move(node, 1, 2)).toBeUndefined();
+    const projection = { targetRef: "n1", mode: "native" as const, rendererId: "react-flow", presentation: { schemaVersion: "fquery.presentation-fam/0.1.0-draft" as const, presentationId: "p", targetRef: "n1", surfaces: ["node-editor" as const], visualRole: "v", interfaceRoles: [], visibility: "visible" as const, layoutSlotRef: "layout://fixture/1" } };
+    expect(factory.move(node, 1, 2, projection)).toMatchObject({ type: "node.move.requested", nodeId: "n1", layoutSlotRef: "layout://fixture/1", x: 1, y: 2 });
+  });
+});

@@ -1,4 +1,4 @@
-import type { GuiEventAbi, NodeSelection, NodeViewModel } from "@fquery/ui-core";
+import type { GuiEventAbi, NodeSelection, NodeViewModel, PresentationProjection } from "@fquery/ui-core";
 
 /** GUI gestureを`*.requested`へ変換する。判定はしない。requestIdだけを採番する。 */
 export class GuiRequestFactory {
@@ -14,9 +14,12 @@ export class GuiRequestFactory {
     return `${this.#prefix}:${kind}:${this.#sequence}`;
   }
 
-  /** layoutSlotRefを持たないnodeは移動をwrite-backできないので`undefined`を返す。 */
-  move(node: NodeViewModel, x: number, y: number): (GuiEventAbi & { type: "node.move.requested" }) | undefined {
-    const layoutSlotRef = node.presentation?.presentation?.layoutSlotRef;
+  /**
+   * layoutSlotRefはsessionの`presentations[nodeId]`（engine／Hostが確定したprojection）を優先し、
+   * 無ければnode自身のprojectionを見る。どちらにも無いnodeは移動をwrite-backできないので`undefined`を返す。
+   */
+  move(node: NodeViewModel, x: number, y: number, projection?: PresentationProjection): (GuiEventAbi & { type: "node.move.requested" }) | undefined {
+    const layoutSlotRef = projection?.presentation?.layoutSlotRef ?? node.presentation?.presentation?.layoutSlotRef;
     if (!layoutSlotRef) return undefined;
     return { type: "node.move.requested", requestId: this.#next("move"), nodeId: node.nodeId, layoutSlotRef, x, y };
   }

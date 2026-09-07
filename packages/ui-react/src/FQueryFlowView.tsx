@@ -104,7 +104,7 @@ function FlowSurface({ nodes, connections, layout, decisions, presentations, nod
 
   const onNodeDragStop = useCallback((_event: unknown, node: Node) => {
     const model = nodes.find((candidate) => candidate.nodeId === node.id);
-    const request = model ? factory.move(model, Math.round(node.position.x), Math.round(node.position.y)) : undefined;
+    const request = model ? factory.move(model, Math.round(node.position.x), Math.round(node.position.y), presentations?.[node.id]) : undefined;
     if (!request) {
       // layoutSlotRefが無いnodeはwrite-backできないので、暫定座標を捨ててaccepted位置へ戻す
       setDraft((state) => clearDraft(state, node.id));
@@ -112,7 +112,7 @@ function FlowSurface({ nodes, connections, layout, decisions, presentations, nod
     }
     setDraft((state) => markDraftRequested(state, node.id, request.requestId));
     onEvent(request);
-  }, [nodes, factory, onEvent]);
+  }, [nodes, presentations, factory, onEvent]);
 
   const onConnect = useCallback((connection: Connection) => {
     if (!connection.sourceHandle || !connection.targetHandle) return;

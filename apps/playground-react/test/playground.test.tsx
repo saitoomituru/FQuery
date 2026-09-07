@@ -25,3 +25,11 @@ describe("Playground (React)", () => {
     expect(container.querySelector(".psi-node textarea")).not.toBeNull();
   });
 });
+
+describe("nextFreeSlot", () => {
+  it("既存nodeと重なる位置は下へずらす", async () => {
+    const { nextFreeSlot } = await import("../src/host/core-graph.js");
+    expect(nextFreeSlot([{ x: 420, y: 80 }], { x: 400, y: 100 })).toEqual({ x: 400, y: 460 });
+    expect(nextFreeSlot([{ x: 0, y: 0 }], { x: 800, y: 100 })).toEqual({ x: 800, y: 100 });
+  });
+});
