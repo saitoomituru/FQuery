@@ -75,6 +75,30 @@ automated testはSession判定往復、Core 3 node契約、fam-edit round-trip�
 - `unresolved`のdecisionがある場合、portが`unconnected`のまま残り、errorとして描画されない
 - 縦型FAM（`ψ / ∇φ / λ / Q`）がFAM paneの主表示で、provider receiptとdebug eventが補助paneに分かれている
 
+## React Flow renderer比較（Issue #36）
+
+状態: `HUMAN-TEST-WAIT`。branch `agent/gui-react`。Vue版（`npm run dev`、3000）とReact版（`npm run dev:react`、3001）を同時に開き、同じ操作で比べる。結果から「Vue削除」「Issue #36をクライム失敗として閉じる」「別案」を決める。
+
+### renderer責務の吸収
+
+- nodeをdragしている最中も接続線が両端へ追従する。React版のFQuery側codeにはDOM測定（`getElementById`／`offsetLeft`／`ResizeObserver`）が無い状態で成立している
+- dragを離すと`node.move.requested`がDecisionsへ`accepted`として並び、位置が保持される
+- `λ.NL:manifestation`から`Ψ.NL`側へ逆向きにdragすると接続が確定せず、Decisionsに`rejected — port-direction-mismatch`が残る。nodeとportは消えない
+- 同じinput portへ2本目を繋ぐと`rejected — input-already-connected`になり、既存の接続線は残る
+- node本体のtextarea／select／buttonを操作してもnodeがdragされず、canvas内のscrollでzoomしない
+- `Frame all`でgraph全体がviewportへ収まる。Add Nodeで追加したnodeはviewport中央に置かれる
+- 選択枠がclickとbox selectで付き、Decisionsに`node.select`が並ぶ
+
+### Vue版と比べて劣化していないこと
+
+- Core 3 nodeの本体（source textarea、decomposer／model select、FAM要約、manifestation行）が同じ情報量で読める
+- 分解実行後、`∇φ.FAMVIM`のsemantic badgeが`unknown`、`λ.NL`のλ badgeが`unknown`のまま昇格しない
+- `unconnected`が点線で表示され、errorに見えない
+
+### 未移植のため比較対象外
+
+左Tool pane／右Inspector pane、Outliner、Node Panel、FAMVIM RAW編集、Records、`T`／`N`／`Home` key。これらはPhase 2で移植してから再比較する。
+
 ## Host
 
 - VS Code Webviewの実APIでeventがextension側へ一度だけ届く
@@ -83,6 +107,6 @@ automated testはSession判定往復、Core 3 node契約、fam-edit round-trip�
 
 ## 記録
 
-実施時はOS、runtime、Host version、commit、スクリーンショットまたは操作記録、合否、残課題をIssue #5へ記録する。provider交換と自然言語FAM分解はIssue #19にも結果を反映する。Node Editor／FAMVIM／Node Panelの結果はIssue #23 / #25 / #27 / #28へ反映する。
+実施時はOS、runtime、Host version、commit、スクリーンショットまたは操作記録、合否、残課題をIssue #5へ記録する。provider交換と自然言語FAM分解はIssue #19にも結果を反映する。Node Editor／FAMVIM／Node Panelの結果はIssue #23 / #25 / #27 / #28へ反映する。React Flow renderer比較の結果はIssue #36へ反映する。
 
 自動snapshotはhuman visual reviewの代用にしない。
