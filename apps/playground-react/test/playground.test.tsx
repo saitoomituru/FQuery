@@ -33,3 +33,13 @@ describe("nextFreeSlot", () => {
     expect(nextFreeSlot([{ x: 0, y: 0 }], { x: 800, y: 100 })).toEqual({ x: 800, y: 100 });
   });
 });
+
+describe("Core graph構築の冪等性", () => {
+  it("StrictModeの二重effectでもCore 3 nodeが二重に構築されない", async () => {
+    const { StrictMode } = await import("react");
+    const { container } = render(<StrictMode><App /></StrictMode>);
+    await waitFor(() => expect(container.querySelectorAll(".fquery-flow-node").length).toBeGreaterThanOrEqual(3));
+    await waitFor(() => expect(container.querySelectorAll(".decision-list li[data-status='accepted']").length).toBeGreaterThanOrEqual(8));
+    expect(container.querySelectorAll(".fquery-flow-node")).toHaveLength(3);
+  });
+});

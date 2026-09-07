@@ -21,6 +21,8 @@ export function App() {
   const state = useSessionState(session);
   const canvas = useRef<PresentationCanvasHandle>(null);
   const coreIds = useRef<CoreNodeIds>({});
+  // dev modeのStrictMode二重effectとFast Refreshのeffect再実行でCore graphを二重構築しないための同期guard
+  const coreGraphBuilt = useRef(false);
   const [routes, setRoutes] = useState<readonly PlaygroundRoute[]>([FIXTURE_ROUTE]);
   const [provider, setProvider] = useState<PlaygroundRoute["provider"]>("fixture");
   const [model, setModel] = useState(FIXTURE_ROUTE.models[0] ?? "");
@@ -33,7 +35,10 @@ export function App() {
 
   useEffect(() => {
     let cancelled = false;
-    void buildCoreGraph(session).then((ids) => { if (!cancelled) coreIds.current = ids; });
+    if (!coreGraphBuilt.current) {
+      coreGraphBuilt.current = true;
+      void buildCoreGraph(session).then((ids) => { coreIds.current = ids; });
+    }
     void fetch("/api/routes")
       .then(async (fetched) => { if (!fetched.ok) throw new Error(`routes-http-${fetched.status}`); return await fetched.json() as readonly PlaygroundRoute[]; })
       .then((fetchedRoutes) => { if (!cancelled) setRoutes(fetchedRoutes); })
