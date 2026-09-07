@@ -1,0 +1,33 @@
+{
+  "name": "@fquery/ui-react",
+  "version": "0.1.0-draft.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/fquery-ui-react.js"
+    },
+    "./style.css": "./dist/fquery-ui-react.css"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@fquery/ui-core": "0.1.0-draft.0",
+    "@xyflow/react": "^12.11.6",
+    "@fquery/fam-edit": "0.1.0-draft.0"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "scripts": {
+    "build": "vite build && tsc -p tsconfig.json --emitDeclarationOnly",
+    "test": "vitest run",
+    "typecheck": "tsc -p tsconfig.json --noEmit"
+  },
+  "devDependencies": {
+    "@fquery/fam-core": "0.1.0-draft.0"
+  }
+}

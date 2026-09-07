@@ -11,13 +11,14 @@
     "@fquery/plugin-gemini": "0.1.0-draft.0",
     "@fquery/plugin-ollama": "0.1.0-draft.0",
     "@fquery/ui-core": "0.1.0-draft.0",
-    "@fquery/ui-vue": "0.1.0-draft.0",
-    "vue": "^3.5.42"
+    "@fquery/ui-react": "0.1.0-draft.0",
+    "react": "^19.2.8",
+    "react-dom": "^19.2.8"
   },
   "scripts": {
     "dev": "vite --host 127.0.0.1 --port 3000 --strictPort",
-    "build": "vite build && vue-tsc -p tsconfig.json --noEmit",
+    "build": "vite build && tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
-    "typecheck": "vue-tsc -p tsconfig.json --noEmit"
+    "typecheck": "tsc -p tsconfig.json --noEmit"
   }
 }

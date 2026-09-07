@@ -1,20 +1,20 @@
 # Third-party notices
 
-## BaklavaJS
+## BaklavaJS（historical）
 
-FQueryのVue node-editor Presentation adapterは次のBaklavaJS 2.8.1 packagesを利用します。
+`7f22e4c`以前の`@fquery/ui-vue`はBaklavaJS 2.8.1（MIT、https://github.com/newcat/baklavajs 、Copyright (c) 2019 Freddy Wagner）をnode-editor surfaceとして利用していた。Issue #36でReact Flowへ交換し、現在のpackage依存には含まれない。
 
-- `@baklavajs/core`
-- `@baklavajs/renderer-vue`
-- `@baklavajs/themes`
+## React Flow
 
-Project: https://github.com/newcat/baklavajs  
+FQueryのnode-editor Presentation adapter（`@fquery/ui-react`）は`@xyflow/react` 12系を利用します。
+
+Project: https://github.com/xyflow/xyflow  
 License: MIT
 
 ```text
 MIT License
 
-Copyright (c) 2019 Freddy Wagner
+Copyright (c) 2019-2025 webkid GmbH
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal

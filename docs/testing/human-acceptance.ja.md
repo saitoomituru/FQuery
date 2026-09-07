@@ -4,7 +4,7 @@
 
 自動検証は型、状態軸、イベント配送、fixture描画、buildまでを対象にする。以下は人間が実画面と実Hostで判断するまで完了扱いにしない。
 
-## Vue component
+## GUI component
 
 - `unknown`、`bottom`、`last-order`、`plugin-not-found`、`semantic-unsatisfied`が色だけに依存せず識別できる
 - `unconnected`がerrorに見えず、`plugin-not-found`と混同しない
@@ -49,7 +49,7 @@ automated testはSession判定往復、Core 3 node契約、fam-edit round-trip�
 - Session decisions paneに`node.add` / `connection.add` / `node.move`が`accepted`として時系列で並ぶ
 - Paletteで「Core」「FAMVIM」「ψ」などを検索すると3 nodeが候補に出て、追加すると4 node目が現れる
 
-### Baklava操作
+### canvas操作
 
 - nodeをdragすると`node.move.requested`がSession decisionsへ`accepted`として記録され、位置が保持される
 - `λ.NL:fam`から`Ψ.NL:observation`へ逆向きにdragすると接続が確定せず、decisionが`rejected — port-direction-mismatch`と読める
@@ -75,6 +75,30 @@ automated testはSession判定往復、Core 3 node契約、fam-edit round-trip�
 - `unresolved`のdecisionがある場合、portが`unconnected`のまま残り、errorとして描画されない
 - 縦型FAM（`ψ / ∇φ / λ / Q`）がFAM paneの主表示で、provider receiptとdebug eventが補助paneに分かれている
 
+## React Flow renderer比較（Issue #36）
+
+状態: `HUMAN-TEST-PASS`（2026-09-08、User確認）。Vue版（3000）とReact版（3001）を同時に開いて比較し、drag追従・reject後の復帰・操作感・機能取りこぼしをUserが確認した。結果として案「Vue削除」を採用し、`packages/ui-vue`と旧`apps/playground`を撤去した。以下は再検証時の観点として残す。
+
+### renderer責務の吸収
+
+- nodeをdragしている最中も接続線が両端へ追従する。React版のFQuery側codeにはDOM測定（`getElementById`／`offsetLeft`／`ResizeObserver`）が無い状態で成立している
+- dragを離すと`node.move.requested`がDecisionsへ`accepted`として並び、位置が保持される
+- `λ.NL:manifestation`から`Ψ.NL`側へ逆向きにdragすると接続が確定せず、Decisionsに`rejected — port-direction-mismatch`が残る。nodeとportは消えない
+- 同じinput portへ2本目を繋ぐと`rejected — input-already-connected`になり、既存の接続線は残る
+- node本体のtextarea／select／buttonを操作してもnodeがdragされず、canvas内のscrollでzoomしない
+- `Frame all`でgraph全体がviewportへ収まる。Add Nodeで追加したnodeはviewport中央に置かれる
+- 選択枠がclickとbox selectで付き、Decisionsに`node.select`が並ぶ
+
+### Vue版と比べて劣化していないこと
+
+- Core 3 nodeの本体（source textarea、decomposer／model select、FAM要約、manifestation行）が同じ情報量で読める
+- 分解実行後、`∇φ.FAMVIM`のsemantic badgeが`unknown`、`λ.NL`のλ badgeが`unknown`のまま昇格しない
+- `unconnected`が点線で表示され、errorに見えない
+
+### 機能取りこぼしの確認
+
+Vue版の全機能を移植済み。上の「Node Editor」節の各項目をReact版でも同じ手順で実施し、取りこぼしゼロをUserが確認した。
+
 ## Host
 
 - VS Code Webviewの実APIでeventがextension側へ一度だけ届く
@@ -83,6 +107,6 @@ automated testはSession判定往復、Core 3 node契約、fam-edit round-trip�
 
 ## 記録
 
-実施時はOS、runtime、Host version、commit、スクリーンショットまたは操作記録、合否、残課題をIssue #5へ記録する。provider交換と自然言語FAM分解はIssue #19にも結果を反映する。Node Editor／FAMVIM／Node Panelの結果はIssue #23 / #25 / #27 / #28へ反映する。
+実施時はOS、runtime、Host version、commit、スクリーンショットまたは操作記録、合否、残課題をIssue #5へ記録する。provider交換と自然言語FAM分解はIssue #19にも結果を反映する。Node Editor／FAMVIM／Node Panelの結果はIssue #23 / #25 / #27 / #28へ反映する。React Flow renderer比較の結果はIssue #36へ反映する。
 
 自動snapshotはhuman visual reviewの代用にしない。

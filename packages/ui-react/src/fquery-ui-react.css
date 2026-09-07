@@ -1,0 +1,159 @@
+.fquery-flow { position: relative; width: 100%; height: 100%; min-height: 18rem; background: #080b13; color: #eef2ff; }
+.fquery-flow .react-flow__background { background: #080b13; }
+.fquery-flow .react-flow__edge-path { stroke: #79c0ff; stroke-width: 2; }
+.fquery-flow .react-flow__connection-path { stroke: #e3b341; stroke-width: 2; }
+
+.fquery-flow-node { width: 320px; display: grid; gap: 0.35rem; border: 1px solid #34405a; border-radius: 0.6rem; background: #0f1524; box-shadow: 0 0.4rem 1.2rem rgba(0, 0, 0, 0.45); font-size: 0.8rem; }
+.fquery-flow-node[data-selected="true"] { border-color: #79c0ff; box-shadow: 0 0 0 2px rgba(121, 192, 255, 0.35); }
+.fquery-flow-node-unplaced .fquery-flow-node { border-style: dashed; }
+.fquery-flow-node-title { padding: 0.4rem 0.6rem; border-bottom: 1px solid #34405a; font-weight: 700; cursor: grab; }
+.fquery-flow-node-ports { display: grid; grid-template-columns: 1fr 1fr; padding: 0 0.3rem; }
+.fquery-flow-node-ports-column { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.2rem; }
+.fquery-flow-node-ports-column[data-direction="output"] { justify-items: end; }
+.fquery-flow-port { position: relative; display: flex; align-items: center; gap: 0.4rem; padding: 0.1rem 0.5rem; color: #aeb8cc; }
+.fquery-flow-port[data-connection-status="unconnected"] { color: #79c0ff; }
+.fquery-flow-port[data-connection-status="unconnected"] .react-flow__handle { border-style: dotted; background: transparent; }
+.fquery-flow-node .react-flow__handle { position: absolute; width: 0.7rem; height: 0.7rem; border: 2px solid #79c0ff; background: #79c0ff; }
+.fquery-flow-node .react-flow__handle-left { left: -0.35rem; }
+.fquery-flow-node .react-flow__handle-right { right: -0.35rem; }
+
+.fquery-canvas-node { display: grid; gap: 0.4rem; padding: 0.2rem 0.6rem 0.5rem; cursor: default; }
+.fquery-canvas-node-generic { display: grid; gap: 0.35rem; font-size: 0.75rem; }
+.fquery-canvas-node-badges { display: flex; gap: 0.3rem; flex-wrap: wrap; }
+.fquery-canvas-node .fquery-badge { border: 1px solid currentColor; border-radius: 999px; padding: 0.1rem 0.4rem; font: 0.68rem/1.2 ui-monospace, monospace; }
+.fquery-canvas-node .fquery-badge small { opacity: 0.68; margin-right: 0.3rem; }
+.fquery-canvas-node .fquery-badge[data-tone="success"] { color: #7ee787; }
+.fquery-canvas-node .fquery-badge[data-tone="notice"] { color: #79c0ff; }
+.fquery-canvas-node .fquery-badge[data-tone="warning"] { color: #e3b341; }
+.fquery-canvas-node .fquery-badge[data-tone="danger"] { color: #ff7b72; }
+.fquery-canvas-node .fquery-badge[data-tone="unknown"] { color: #d2a8ff; }
+.fquery-canvas-node-value { margin: 0; max-height: 6rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.7rem; color: #aeb8cc; }
+.fquery-canvas-node-ghost { margin: 0; color: #d2a8ff; border-left: 0.3rem dotted currentColor; padding-left: 0.4rem; }
+.fquery-canvas-node-muted { margin: 0; color: #8b98b4; }
+.fquery-canvas-node button { color: inherit; background: #252d40; border: 1px solid #59647a; border-radius: 0.35rem; padding: 0.25rem 0.5rem; font-size: 0.75rem; }
+.fquery-canvas-node textarea, .fquery-canvas-node select, .fquery-canvas-node input { width: 100%; color: #eef2ff; background: #0d1117; border: 1px solid #59647a; border-radius: 0.35rem; padding: 0.35rem; font: 0.75rem/1.35 ui-monospace, monospace; }
+
+/* ---- Pane ---- */
+.fquery-pane { display: grid; grid-template-rows: auto minmax(0, 1fr); height: 100%; color: #eef2ff; background: #111724; border: 1px solid #34405a; border-radius: 0.6rem; overflow: hidden; }
+.fquery-pane[hidden] { display: none; }
+.fquery-pane-tabs { display: flex; gap: 0.15rem; align-items: stretch; border-bottom: 1px solid #34405a; background: #0d1117; overflow-x: auto; }
+.fquery-pane-tabs button { color: #aeb8cc; background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 0.45rem 0.6rem; white-space: nowrap; font-size: 0.8rem; cursor: pointer; }
+.fquery-pane-tabs button[aria-selected="true"] { color: #79c0ff; border-bottom-color: #79c0ff; }
+.fquery-pane-tabs button:focus-visible { outline: 3px solid #79c0ff; outline-offset: -3px; }
+.fquery-pane-icon { margin-right: 0.3rem; }
+.fquery-pane-tabs-spacer { flex: 1; }
+.fquery-pane-close { font-size: 1rem; }
+.fquery-pane-body { overflow: auto; padding: 0.5rem; display: grid; gap: 0.5rem; align-content: start; }
+.fquery-pane-section { border: 1px solid #34405a; border-radius: 0.5rem; background: #161b27; }
+.fquery-pane-section header { display: flex; align-items: center; gap: 0.5rem; padding: 0.3rem 0.5rem; border-bottom: 1px solid #252d40; }
+.fquery-pane-section[data-collapsed="true"] header { border-bottom: 0; }
+.fquery-pane-section header h4 { margin: 0; font-size: 0.8rem; }
+.fquery-pane-section header small { margin-left: auto; color: #8b98b4; font: 0.65rem ui-monospace, monospace; }
+.fquery-pane-section-toggle { color: #c9d5ed; background: transparent; border: 0; padding: 0; font-size: 0.8rem; font-weight: 600; text-align: left; cursor: pointer; }
+.fquery-pane-section-toggle:focus-visible { outline: 3px solid #79c0ff; outline-offset: 2px; }
+.fquery-pane-section-body { padding: 0.5rem; }
+.fquery-pane-muted { margin: 0; color: #8b98b4; font-size: 0.8rem; }
+.fquery-pane-empty { padding: 0.75rem; }
+
+/* ---- Outliner ---- */
+.fquery-outliner ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.2rem; }
+.fquery-outliner li { display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 0.4rem; border: 1px solid transparent; border-radius: 0.4rem; padding: 0.15rem 0.3rem; }
+.fquery-outliner li[aria-selected="true"] { border-color: #59647a; background: #1b2231; }
+.fquery-outliner li[data-active="true"] { border-color: #79c0ff; }
+.fquery-outliner-select { display: grid; text-align: left; color: #eef2ff; background: transparent; border: 0; padding: 0.2rem 0.3rem; overflow: hidden; cursor: pointer; }
+.fquery-outliner-select small { color: #8b98b4; font: 0.65rem ui-monospace, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fquery-outliner-meta { display: flex; gap: 0.3rem; align-items: center; font-size: 0.7rem; color: #aeb8cc; }
+.fquery-outliner-ghost { color: #d2a8ff; }
+.fquery-outliner-focus { color: #c9d5ed; background: #252d40; border: 1px solid #59647a; border-radius: 0.35rem; padding: 0.15rem 0.4rem; cursor: pointer; }
+.fquery-outliner-muted { margin: 0; color: #8b98b4; font-size: 0.8rem; }
+.fquery-outliner .fquery-badge, .fquery-node .fquery-badge { border: 1px solid currentColor; border-radius: 999px; padding: 0.05rem 0.35rem; font: 0.62rem/1.2 ui-monospace, monospace; }
+.fquery-outliner .fquery-badge small, .fquery-node .fquery-badge small { opacity: 0.68; margin-right: 0.25rem; }
+.fquery-outliner .fquery-badge[data-tone="success"], .fquery-node .fquery-badge[data-tone="success"] { color: #7ee787; }
+.fquery-outliner .fquery-badge[data-tone="notice"], .fquery-node .fquery-badge[data-tone="notice"] { color: #79c0ff; }
+.fquery-outliner .fquery-badge[data-tone="warning"], .fquery-node .fquery-badge[data-tone="warning"] { color: #e3b341; }
+.fquery-outliner .fquery-badge[data-tone="danger"], .fquery-node .fquery-badge[data-tone="danger"] { color: #ff7b72; }
+.fquery-outliner .fquery-badge[data-tone="unknown"], .fquery-node .fquery-badge[data-tone="unknown"] { color: #d2a8ff; }
+
+/* ---- Palette ---- */
+.fquery-palette { display: grid; gap: 0.6rem; color: #eef2ff; }
+.fquery-palette label { display: grid; gap: 0.35rem; color: #aeb8cc; font-size: 0.8rem; }
+.fquery-palette input { color: inherit; background: #161b27; border: 1px solid #59647a; border-radius: 0.4rem; padding: 0.45rem; }
+.fquery-palette-group { display: grid; gap: 0.3rem; }
+.fquery-palette-group-toggle { color: #c9d5ed; background: transparent; border: 0; padding: 0.15rem 0; text-align: left; font-size: 0.8rem; font-weight: 600; cursor: pointer; }
+.fquery-palette-group-toggle small { color: #8b98b4; font-weight: 400; }
+.fquery-palette ul { display: grid; gap: 0.3rem; padding: 0 0 0 0.6rem; margin: 0; list-style: none; }
+.fquery-palette li button { width: 100%; display: flex; justify-content: space-between; gap: 0.6rem; color: inherit; text-align: left; background: #252d40; border: 1px solid #59647a; border-radius: 0.4rem; padding: 0.45rem 0.55rem; cursor: pointer; }
+.fquery-palette span { color: #aeb8cc; font: 0.7rem ui-monospace, monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.fquery-palette-muted { margin: 0; color: #8b98b4; font-size: 0.8rem; }
+
+/* ---- Node Panel ---- */
+.fquery-node-panel { display: grid; gap: 0.75rem; padding: 1rem; color: #eef2ff; background: #111724; border: 1px solid #34405a; border-radius: 0.75rem; }
+.fquery-node-panel[data-only] { padding: 0.25rem; border: 0; background: transparent; }
+.fquery-node-panel header h3 { margin: 0; font-size: 1rem; }
+.fquery-node-panel-ghost { margin: 0.25rem 0 0; color: #d2a8ff; border-left: 0.35rem dotted currentColor; padding-left: 0.5rem; }
+.fquery-node-panel-tabs { display: flex; gap: 0.25rem; flex-wrap: wrap; border-bottom: 1px solid #34405a; }
+.fquery-node-panel-tabs button { color: #aeb8cc; background: transparent; border: 0; border-bottom: 2px solid transparent; padding: 0.4rem 0.6rem; cursor: pointer; }
+.fquery-node-panel-tabs button[aria-selected="true"] { color: #79c0ff; border-bottom-color: #79c0ff; }
+.fquery-node-panel dl { display: grid; grid-template-columns: max-content 1fr; gap: 0.3rem 1rem; margin: 0; font: 0.8rem/1.4 ui-monospace, monospace; }
+.fquery-node-panel dd { margin: 0; overflow-wrap: anywhere; }
+.fquery-node-panel-ports, .fquery-node-panel-connections, .fquery-node-panel-unsupported { margin: 0; padding: 0; list-style: none; display: grid; gap: 0.35rem; font: 0.8rem/1.4 ui-monospace, monospace; }
+.fquery-node-panel-ports li { border-left: 0.35rem solid #79c0ff; padding-left: 0.4rem; }
+.fquery-node-panel-ports li[data-connection="unconnected"] { border-left-style: dotted; }
+.fquery-node-panel-connections li, .fquery-node-panel-unsupported li { display: flex; gap: 0.5rem; align-items: center; justify-content: space-between; }
+.fquery-node-panel-q { display: grid; gap: 0.6rem; }
+.fquery-node-panel-q label { display: grid; gap: 0.25rem; color: #aeb8cc; }
+.fquery-node-panel-q input[type="text"], .fquery-node-panel-q input[type="number"], .fquery-node-panel-q select { color: #eef2ff; background: #161b27; border: 1px solid #59647a; border-radius: 0.4rem; padding: 0.4rem; }
+.fquery-node-panel-muted { margin: 0; color: #8b98b4; }
+.fquery-node-panel button { color: inherit; background: #252d40; border: 1px solid #59647a; border-radius: 0.35rem; padding: 0.3rem 0.55rem; cursor: pointer; }
+
+/* ---- FAMVIM ---- */
+.fquery-famvim { display: grid; gap: 0.75rem; padding: 1rem; color: #eef2ff; background: #111724; border: 1px solid #34405a; border-radius: 0.75rem; }
+.fquery-node-panel[data-only] .fquery-famvim { padding: 0.25rem; border: 0; background: transparent; }
+.fquery-famvim-header { display: flex; gap: 1rem; align-items: baseline; flex-wrap: wrap; }
+.fquery-famvim-header h3 { margin: 0; font-size: 1rem; }
+.fquery-famvim-authority { display: flex; gap: 0.5rem 1rem; flex-wrap: wrap; margin: 0; font: 0.75rem/1.3 ui-monospace, monospace; color: #aeb8cc; }
+.fquery-famvim-authority dt { opacity: 0.7; }
+.fquery-famvim-authority dd { margin: 0; overflow-wrap: anywhere; }
+.fquery-famvim-body { display: grid; grid-template-columns: minmax(12rem, 1fr) 2fr; gap: 0.75rem; }
+.fquery-famvim-paths { max-height: 24rem; overflow: auto; border: 1px solid #34405a; border-radius: 0.5rem; }
+.fquery-famvim-paths ul { margin: 0; padding: 0; list-style: none; }
+.fquery-famvim-paths button { width: 100%; text-align: left; color: #c9d5ed; background: transparent; border: 0; padding: 0.25rem 0.5rem; font: 0.75rem/1.3 ui-monospace, monospace; overflow-wrap: anywhere; cursor: pointer; }
+.fquery-famvim-paths button[aria-current="true"] { background: #252d40; }
+.fquery-famvim-paths button[data-unsupported="true"] { color: #d2a8ff; }
+.fquery-famvim-editor { display: grid; gap: 0.35rem; color: #aeb8cc; }
+.fquery-famvim-editor textarea { width: 100%; color: #eef2ff; background: #080b13; border: 1px solid #59647a; border-radius: 0.5rem; padding: 0.6rem; font: 0.8rem/1.4 ui-monospace, monospace; }
+.fquery-famvim-status ul, .fquery-famvim-diff ul { margin: 0.25rem 0 0; padding-left: 1.2rem; font: 0.75rem/1.4 ui-monospace, monospace; }
+.fquery-famvim-status p[data-valid="false"] { color: #e3b341; }
+.fquery-famvim-status p[data-valid="true"] { color: #7ee787; }
+.fquery-famvim-diff li[data-change="removed"] { color: #ff7b72; }
+.fquery-famvim-diff li[data-change="added"] { color: #7ee787; }
+.fquery-famvim-diff li[data-change="replaced"] { color: #e3b341; }
+.fquery-famvim-warning { margin: 0; color: #e3b341; }
+.fquery-famvim-muted { margin: 0; color: #8b98b4; }
+.fquery-famvim-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; }
+.fquery-famvim-actions button { color: inherit; background: #252d40; border: 1px solid #59647a; border-radius: 0.35rem; padding: 0.3rem 0.55rem; cursor: pointer; }
+.fquery-famvim-actions button:disabled { opacity: 0.45; cursor: default; }
+.fquery-famvim-provenance pre { max-height: 12rem; overflow: auto; font-size: 0.75rem; white-space: pre-wrap; overflow-wrap: anywhere; }
+@media (max-width: 720px) { .fquery-famvim-body { grid-template-columns: 1fr; } }
+
+/* ---- Records ---- */
+.fquery-records { display: grid; grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 0.75rem; }
+.fquery-record { min-width: 0; padding: 0.8rem; color: #c9d5ed; background: #111724; border: 1px solid #34405a; border-radius: 0.6rem; }
+.fquery-record h2 { margin: 0 0 0.6rem; font-size: 0.9rem; color: #79c0ff; }
+.fquery-record p { color: #aeb8cc; }
+.fquery-record pre { max-height: 24rem; overflow: auto; white-space: pre-wrap; overflow-wrap: anywhere; font-size: 0.75rem; }
+
+/* ---- Node card (canvas外) ---- */
+.fquery-node { border: 1px solid #59647a; border-radius: 0.75rem; color: #eef2ff; background: #161b27; padding: 1rem; display: grid; gap: 0.75rem; }
+.fquery-node header, .fquery-node footer, .fquery-ports { display: flex; gap: 0.5rem; align-items: center; flex-wrap: wrap; }
+.fquery-node h3 { margin: 0 auto 0 0; font-size: 1rem; }
+.fquery-presentation-state { margin: 0; color: #aeb8cc; font: 0.75rem/1.3 ui-monospace, monospace; }
+.fquery-presentation-state[data-presentation-mode="ghost"] { color: #d2a8ff; border-left: 0.35rem dotted currentColor; padding-left: 0.5rem; }
+.fquery-presentation-state[data-presentation-mode="generic"] { color: #e3b341; }
+.fquery-badges { display: flex; gap: 0.35rem; flex-wrap: wrap; }
+.fquery-port { border-left: 0.35rem solid #79c0ff; padding-left: 0.4rem; }
+.fquery-port[data-connection="unconnected"] { border-left-style: dotted; }
+.fquery-last-order { border-left: 0.35rem solid #e3b341; padding-left: 0.75rem; }
+.fquery-node button { color: inherit; background: #252d40; border: 1px solid #59647a; border-radius: 0.35rem; padding: 0.3rem 0.55rem; }
+.fquery-node button:disabled { opacity: 0.45; }
+.fquery-panel { display: grid; gap: 1rem; padding: 1rem; background: #0d1117; }
