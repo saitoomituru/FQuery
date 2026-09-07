@@ -23,6 +23,7 @@ export interface CoreNodePort {
   readonly direction: "input" | "output";
   /** portが運ぶ意味役割。接続可否の判定はengineへ委譲し、GUIはこの値で判断しない。 */
   readonly carries: FamRole | "observation" | "manifestation";
+  readonly cardinality?: "one" | "many";
 }
 
 export interface CoreNodeContract {
@@ -77,7 +78,7 @@ export const CORE_NODE_CONTRACTS: readonly CoreNodeContract[] = Object.freeze([
     famRole: "λ",
     capability: "core.lambda.nl-output",
     ports: Object.freeze([
-      Object.freeze({ portKey: "fam", label: "FAM", direction: "input", carries: "∇φ" }),
+      Object.freeze({ portKey: "fam", label: "FAM", direction: "input", carries: "∇φ", cardinality: "many" }),
       Object.freeze({ portKey: "manifestation", label: "manifestation", direction: "output", carries: "manifestation" }),
     ] as const),
     presentation: presentation("λ.NL", "core.lambda.nl-output", "lambda-output", ["fam", "manifestation"], ["natural language", "output", "λ"]),
@@ -121,6 +122,7 @@ export function createCoreNodeViewModel(contract: CoreNodeContract, nodeId: stri
     label: port.label,
     direction: port.direction,
     connectionStatus: "unconnected" as const,
+    cardinality: port.cardinality ?? "one",
   })));
   return Object.freeze({
     nodeId,

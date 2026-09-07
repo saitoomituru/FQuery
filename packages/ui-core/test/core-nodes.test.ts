@@ -33,6 +33,7 @@ describe("Core nodes", () => {
       ["λ.NL", "λ"],
     ]);
     expect(findCoreNodeContract("∇φ.FAMVIM")?.capability).toBe("core.gradient.famvim");
+    expect(findCoreNodeContract("λ.NL")?.ports.find((port) => port.portKey === "fam")?.cardinality).toBe("many");
   });
 
   it("Core registrationはpixel layoutを持たずQ拡張をnode objectへ複製しない", () => {

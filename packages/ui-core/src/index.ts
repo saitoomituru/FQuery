@@ -14,12 +14,16 @@ export interface PortViewModel {
   readonly label: string;
   readonly direction: "input" | "output";
   readonly connectionStatus: QueryResult["connectionStatus"];
+  readonly cardinality?: "one" | "many";
 }
 
 export interface ConnectionViewModel {
   readonly connectionId: string;
   readonly fromPortId: string;
   readonly toPortId: string;
+  readonly relationKind?: "dependency" | "causal" | "conditional" | "parent-child";
+  readonly relationStatus?: "active" | "cancelled" | "unknown";
+  readonly gateRef?: string;
 }
 
 export interface LastOrderViewModel {
@@ -39,6 +43,12 @@ export interface NodeViewModel {
   readonly lastOrder?: LastOrderViewModel;
   readonly canExecute: boolean;
   readonly canCancel: boolean;
+  readonly foldRef?: string;
+  readonly parentFoldRef?: string;
+  readonly depth?: number;
+  readonly collapsed?: boolean;
+  readonly revisionRef?: string;
+  readonly projectionFreshness?: "fresh" | "stale" | "unknown";
   readonly presentation?: PresentationProjection;
 }
 

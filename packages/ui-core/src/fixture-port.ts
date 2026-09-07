@@ -64,7 +64,7 @@ export function createFixtureDecisionPort(options: FixtureDecisionPortOptions): 
           if (!from || !to) return decision({ kind: "connection.add", requestId: request.requestId, status: "rejected", reason: "port-not-found" });
           if (from.direction !== "output" || to.direction !== "input") return decision({ kind: "connection.add", requestId: request.requestId, status: "rejected", reason: "port-direction-mismatch" });
           if (from.nodeId === to.nodeId) return decision({ kind: "connection.add", requestId: request.requestId, status: "rejected", reason: "self-connection" });
-          if (state.connections.some((connection) => connection.toPortId === request.toPortId)) return decision({ kind: "connection.add", requestId: request.requestId, status: "rejected", reason: "input-already-connected" });
+          if (to.cardinality !== "many" && state.connections.some((connection) => connection.toPortId === request.toPortId)) return decision({ kind: "connection.add", requestId: request.requestId, status: "rejected", reason: "input-already-connected" });
           return decision({
             kind: "connection.add",
             requestId: request.requestId,
@@ -92,10 +92,10 @@ export function createFixtureDecisionPort(options: FixtureDecisionPortOptions): 
   };
 }
 
-function findPort(state: PresentationSessionState, portId: string): { nodeId: string; direction: "input" | "output" } | undefined {
+function findPort(state: PresentationSessionState, portId: string): { nodeId: string; direction: "input" | "output"; cardinality: "one" | "many" } | undefined {
   for (const node of state.nodes) {
     const port = node.ports.find((candidate) => candidate.portId === portId);
-    if (port) return { nodeId: node.nodeId, direction: port.direction };
+    if (port) return { nodeId: node.nodeId, direction: port.direction, cardinality: port.cardinality ?? "one" };
   }
   return undefined;
 }
