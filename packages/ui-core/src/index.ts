@@ -1,4 +1,5 @@
 import type { ControlStatus, QueryResult } from "@fquery/core";
+import type { PluginEditorContract } from "./editor-contract.js";
 
 export type StatusTone = "neutral" | "active" | "success" | "notice" | "warning" | "danger" | "unknown";
 
@@ -77,6 +78,8 @@ export interface PluginPresentationRegistration {
   readonly pluginVersion: string;
   readonly capability: string;
   readonly presentation: PresentationFam;
+  /** 任意。Node Panelが編集できるQ schema／subtreeの宣言（Issue #27）。未宣言でもregistrationは有効。 */
+  readonly editor?: PluginEditorContract;
 }
 
 export interface RendererCapability {
@@ -382,3 +385,12 @@ export {
   type CoreNodeViewModelOptions,
   type FamRole,
 } from "./core-nodes.js";
+export {
+  Q_SCHEMA_VERSION,
+  deriveKnownPointers,
+  escapePointerToken,
+  findRegistrationByPresentation,
+  type PluginEditorContract,
+  type QSchema,
+  type QSchemaProperty,
+} from "./editor-contract.js";

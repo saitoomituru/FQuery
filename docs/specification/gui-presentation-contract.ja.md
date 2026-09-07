@@ -120,6 +120,45 @@ canonical FAM（Host／engineが保持）
 - FAMVIM独自schemaを持たない。`fam_id / revision_id / schema_version / provenance`はread-only表示
 - validatorは注入する。`@fquery/fam-edit`はFAM Coreのschemaを所有しない
 
+## Q-schema駆動Node Panelとlossless partial editing
+
+Authority: FQuery Issue #27
+
+pluginはFAM ontologyの所有者ではなく、特定Q schema／subtreeのpresentation + edit capabilityを提供する。`PluginPresentationRegistration.editor`（任意）で宣言する。
+
+```text
+editor:
+  famRole        ψ | ∇φ | λ
+  qSchema        /Q配下のkey -> { type: string|number|boolean|enum, enum?, readOnly? }
+  knownPointers  Q以外で編集責務を持つcanonical pathのprefix
+  capabilities   任意
+presentation     Presentation FAM（presentation_schemaに相当）
+```
+
+`FQueryNodePanel`は次の5 tabを持つ。
+
+```text
+[設定]              nodeId / plugin / capability / famRole / projection
+[接続]              port状態、確定済みconnection、切断request
+[Q]                 qSchemaから生成。変更は /Q/<key> だけのfam.patch（set / insert）
+[Unsupported Data]  panelが編集できないがcanonical FAMに存在するleaf path。RAWへjump可能
+[RAW FAM]           FQueryFamvim埋め込み。knownPointers外をunsupportedとして表示
+```
+
+原則:
+
+```text
+unsupported != invalid
+GUI controllerにない != dataが存在しない
+unknown field != drop target
+```
+
+- known fieldだけをpatchし、unknown fieldはround-tripで保持する
+- plugin A -> plugin B切替でもcanonical FAMは同一。認識fieldが入れ替わるだけ
+- registrationが無い（ghost）nodeでもdataは保持され、RAW FAMで編集できる
+- Panel／FAMVIMはModelを書かない。requestの採否とloss receiptはHost／engine責務
+- GUI保存でcanonical FAMの未認識fieldが消えないことは`@fquery/fam-edit`のreceiptで検証する
+
 ## Engine event / VEU
 
 `fam.node.changed`、`source.diverged`、`q.changed`、`abi.mismatch`、`implementation.unavailable`等をnode/ref単位で投影する。変更対象外nodeのobject identityを保持し、全graph再構築を要求しない。

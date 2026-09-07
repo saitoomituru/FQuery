@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, shallowRef, watch } from "vue";
-import { FQueryBaklavaView, FQueryFamvim, FQueryPalette, FQueryPanel, FQueryRecordsPanel } from "@fquery/ui-vue";
+import { FQueryBaklavaView, FQueryNodePanel, FQueryPalette, FQueryPanel, FQueryRecordsPanel } from "@fquery/ui-vue";
 import {
   PluginPresentationRegistry,
   PresentationSession,
@@ -9,6 +9,7 @@ import {
   createCoreNodeViewModel,
   createFixtureDecisionPort,
   findCoreNodeContract,
+  findRegistrationByPresentation,
   registerCoreNodes,
   statusTone,
   type FQueryUiEvent,
@@ -59,7 +60,7 @@ const session = new PresentationSession(createFixtureDecisionPort({
   },
 }), { registry });
 const editReceipts = ref<readonly FamPatchResult["receipt"][]>([]);
-const famvimJump = ref<string | null>(null);
+const selectedNodeId = ref<string | undefined>();
 const sessionState = shallowRef<PresentationSessionState>(session.state);
 session.subscribe((state) => { sessionState.value = state; });
 const registrations = computed(() => session.registry.registrations());
@@ -74,6 +75,9 @@ const responseFam = computed(() => isFamJsonRecord(resultRecord.value?.value) ? 
 const famvimNode = computed(() => sessionState.value.nodes.find((node) => node.nodeId === coreNodeIds.value.famvim));
 /** canonical FAMは∇φ.FAMVIM nodeが保持するvalue。provider responseはその初期投影に過ぎない。 */
 const fam = computed<unknown>(() => famvimNode.value?.value ?? undefined);
+const selectedNode = computed(() => sessionState.value.nodes.find((node) => node.nodeId === selectedNodeId.value) ?? famvimNode.value);
+const selectedProjection = computed(() => selectedNode.value ? sessionState.value.presentations[selectedNode.value.nodeId] : undefined);
+const selectedRegistration = computed(() => findRegistrationByPresentation(session.registry, selectedProjection.value?.presentation?.presentationId));
 const semanticProjection = computed(() => {
   const value = resultRecord.value?.value;
   return isRecord(value) && typeof value.schema_version === "string" && value.schema_version.startsWith("fquery.semantic-block-projection/") ? value : undefined;
@@ -122,6 +126,7 @@ async function addCoreNode(capability: string, sequence: number): Promise<string
 
 function receive(event: FQueryUiEvent) {
   lastEvent.value = JSON.stringify(event);
+  if (event.type === "inspect") selectedNodeId.value = event.nodeId;
   if (isGuiRequest(event)) void session.dispatch(event).catch((error: unknown) => { routeError.value = error instanceof Error ? error.message : "session-dispatch-failed"; });
 }
 
@@ -213,14 +218,14 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
       <FQueryPalette :registrations="registrations" @event="receive" />
       <FQueryBaklavaView :nodes="sessionState.nodes" :connections="sessionState.connections" :layout="sessionState.layout" @event="receive" />
     </div>
-    <h2 class="surface-heading">∇φ.FAMVIM</h2>
-    <FQueryFamvim
-      v-if="famvimNode"
-      :target-ref="famvimNode.nodeId"
-      :value="fam"
+    <h2 class="surface-heading">Node panel</h2>
+    <FQueryNodePanel
+      v-if="selectedNode"
+      :node="selectedNode"
+      :registration="selectedRegistration"
+      :projection="selectedProjection"
+      :connections="sessionState.connections"
       :validate="validateFamJson"
-      :known-pointers="['/ψ', '/∇φ', '/λ', '/Q']"
-      :jump-to="famvimJump"
       @event="receive"
     />
     <section v-if="editReceipts.length" class="session-receipt" aria-label="fam edit receipts">

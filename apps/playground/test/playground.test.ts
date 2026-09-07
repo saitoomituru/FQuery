@@ -73,6 +73,10 @@ describe("FQuery Playground FAMVIM", () => {
     await flushPromises();
     await wrapper.get('[aria-label="route controls"] button').trigger("click");
     await flushPromises();
+    const panel = wrapper.get('[aria-label="FQuery node panel"]');
+    expect(panel.attributes("data-node-id")).toContain("q://playground/node/2");
+    await panel.get('[data-tab="unsupported"]').trigger("click");
+    await panel.get('[data-jump="/x-plugin-extension/retained"]').trigger("click");
     const famvim = wrapper.get('[aria-label="FAMVIM RAW FAM editor"]');
     expect(famvim.get('[data-pointer="/x-plugin-extension/retained"]').attributes("data-unsupported")).toBe("true");
     const textarea = famvim.get("textarea");
@@ -84,10 +88,17 @@ describe("FQuery Playground FAMVIM", () => {
     expect(wrapper.get('[aria-label="fam edit receipts"]').text()).toContain("applied");
     expect(wrapper.findAll('[data-decision-status="accepted"]').length).toBeGreaterThanOrEqual(9);
 
-    await famvim.get("textarea").setValue("{ broken");
-    await famvim.get("footer button").trigger("click");
+    const famvimAfter = wrapper.get('[aria-label="FAMVIM RAW FAM editor"]');
+    await famvimAfter.get("textarea").setValue("{ broken");
+    await famvimAfter.get("footer button").trigger("click");
     await flushPromises();
     expect(wrapper.get('[aria-label="session decisions"]').text()).toContain("fam-text-unparsed");
     expect(wrapper.get('[data-record-kind="fam"]').text()).toContain("edited-purpose");
+
+    // inspectで別nodeを選択するとpanelが切り替わり、ghost判定はprojectionから読む
+    await wrapper.findAll(".fquery-node")[0]!.get("header button").trigger("click");
+    await flushPromises();
+    expect(wrapper.get('[aria-label="FQuery node panel"]').attributes("data-node-id")).toContain("q://playground/node/1");
+    expect(wrapper.get('[aria-label="FQuery node panel"]').text()).toContain("fquery.core@");
   });
 });

@@ -94,6 +94,7 @@ export function coreNodeRegistrations(): readonly PluginPresentationRegistration
     pluginVersion: CORE_PLUGIN_VERSION,
     capability: contract.capability,
     presentation: contract.presentation,
+    editor: Object.freeze({ famRole: contract.famRole }),
   })));
 }
 
