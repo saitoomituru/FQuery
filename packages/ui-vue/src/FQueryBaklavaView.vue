@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, provide, ref, watch, type Component } from "vue";
-import { BaklavaEditor, ZOOM_TO_FIT_GRAPH_COMMAND, useBaklava } from "@baklavajs/renderer-vue";
+import { BaklavaEditor, ZOOM_TO_FIT_GRAPH_COMMAND, ZOOM_TO_FIT_NODES_COMMAND, useBaklava } from "@baklavajs/renderer-vue";
 import { selectionEquals, type ConnectionViewModel, type FQueryUiEvent, type NodeSelection, type NodeViewModel, type PresentationProjection } from "@fquery/ui-core";
 import { BaklavaPresentationAdapter, type BaklavaLayoutValue } from "./baklava-adapter.js";
 import { canvasContextKey } from "./canvas-context.js";
@@ -90,7 +90,20 @@ function zoomToFit(): boolean {
   }
 }
 
-defineExpose({ viewportCenter, zoomToFit });
+/** outlinerのfocus。該当nodeをviewportへ収める。 */
+function focusNode(nodeId: string): boolean {
+  const node = viewModel.displayedGraph.nodes.find((candidate) => candidate.id === nodeId);
+  if (!node) return false;
+  try {
+    if (!viewModel.commandHandler.canExecuteCommand(ZOOM_TO_FIT_NODES_COMMAND)) return false;
+    viewModel.commandHandler.executeCommand(ZOOM_TO_FIT_NODES_COMMAND, false, [node]);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+defineExpose({ viewportCenter, zoomToFit, focusNode });
 </script>
 
 <template>

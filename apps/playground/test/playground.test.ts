@@ -34,7 +34,14 @@ describe("FQuery Playground", () => {
     expect(wrapper.get('[data-record-kind="semantic-projection"]').text()).toContain("未生成");
     expect(wrapper.get('[data-record-kind="debug-event"]').text()).toContain("result");
     // recordsは左Tool paneのtabであり、canvasの主表示を奪わない
-    expect(wrapper.get('[aria-label="left pane"]').findAll('[role="tab"]').map((tab) => tab.attributes("data-pane-tab"))).toEqual(["add", "records", "decisions"]);
+    expect(wrapper.get('[aria-label="left pane"]').findAll('[role="tab"]').map((tab) => tab.attributes("data-pane-tab"))).toEqual(["add", "outline", "records", "decisions"]);
+    // outlinerからの選択はsession selectionを通り、canvasのnodeとinspectorに反映される
+    await openLeftTab(wrapper, "outline");
+    await wrapper.get('[data-node-id="q://playground/node/3"] .fquery-outliner-select').trigger("click");
+    await flushPromises();
+    expect(wrapper.get('[data-node-id="q://playground/node/3"]').attributes("data-active")).toBe("true");
+    expect(canvasNode(wrapper, 2).classes()).toContain("--selected");
+    await wrapper.get('[data-node-id="q://playground/node/3"] .fquery-outliner-focus').trigger("click");
   });
 
   it("pluginなしでCore 3 nodeがcanvas内に中身付きで並び、分解結果が∇φ.FAMVIMとλ.NLへ投影される", async () => {
@@ -55,6 +62,7 @@ describe("FQuery Playground", () => {
     expect(wrapper.findAll('[data-decision-status="accepted"]')).toHaveLength(8);
     await openLeftTab(wrapper, "add");
     expect(wrapper.get('[aria-label="Plugin node palette"]').findAll("li")).toHaveLength(3);
+    expect(wrapper.get('[aria-label="Plugin node palette"] [data-category="Core"]').exists()).toBe(true);
 
     await canvasNode(wrapper, 0).get('[aria-label="route controls"] button').trigger("click");
     await flushPromises();
@@ -64,7 +72,7 @@ describe("FQuery Playground", () => {
     expect(canvasNode(wrapper, 2).text()).toContain("雨が降る。");
     expect(canvasNode(wrapper, 2).get('[data-axis="lambda"]').text()).toContain("unknown");
 
-    await wrapper.get('[aria-label="Plugin node palette"] button').trigger("click");
+    await wrapper.get('[aria-label="Plugin node palette"] [data-capability="core.gradient.famvim"]').trigger("click");
     await flushPromises();
     expect(wrapper.findAll(".baklava-node:not(.--palette)")).toHaveLength(4);
     // 新規nodeはHostがviewport中央へ配置し、layout write-backとしてsessionへ通る

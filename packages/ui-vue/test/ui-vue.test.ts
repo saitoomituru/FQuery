@@ -7,6 +7,7 @@ import type { NodeViewModel, PluginPresentationRegistration } from "@fquery/ui-c
 import FQueryNode from "../src/FQueryNode.vue";
 import FQueryBaklavaView from "../src/FQueryBaklavaView.vue";
 import FQueryPalette from "../src/FQueryPalette.vue";
+import FQueryOutliner from "../src/FQueryOutliner.vue";
 import FQueryPanel from "../src/FQueryPanel.vue";
 import FQueryRecordsPanel from "../src/FQueryRecordsPanel.vue";
 
@@ -89,12 +90,42 @@ describe("FQueryPalette", () => {
   it("plugin presentationを検索しnode追加requestへ変換する", async () => {
     const wrapper = mount(FQueryPalette, { props: { registrations: [registration] } });
     await wrapper.get('input[type="search"]').setValue("torque");
-    await wrapper.get("button").trigger("click");
+    await wrapper.get('[data-capability="sensor.force-torque"]').trigger("click");
     expect(wrapper.emitted("event")?.[0]?.[0]).toMatchObject({
       type: "node.add.requested",
       capability: "sensor.force-torque",
       presentationRef: "presentation://sensor/default",
     });
+  });
+});
+
+describe("FQueryPalette tree", () => {
+  it("categoryごとにgroup化しCoreを先頭に置き、折り畳める", async () => {
+    const core = { ...registration, pluginId: "fquery.core", capability: "core.psi.nl-input", presentation: { ...registration.presentation, presentationId: "p-core", category: "Core", aliases: ["Ψ.NL"] } };
+    const wrapper = mount(FQueryPalette, { props: { registrations: [registration, core] } });
+    expect(wrapper.findAll(".fquery-palette-group").map((group) => group.attributes("data-category"))).toEqual(["Core", "Sensor"]);
+    expect(wrapper.get('[data-category="Core"] li strong').text()).toBe("Ψ.NL");
+    await wrapper.get('[data-category="Sensor"] .fquery-palette-group-toggle').trigger("click");
+    expect(wrapper.get('[data-category="Sensor"]').attributes("data-collapsed")).toBe("true");
+    expect(wrapper.find('[data-capability="sensor.force-torque"]').exists()).toBe(false);
+    await wrapper.get('input[type="search"]').setValue("torque");
+    expect(wrapper.find('[data-capability="sensor.force-torque"]').exists()).toBe(true);
+  });
+});
+
+describe("FQueryOutliner", () => {
+  it("nodeを一覧しclickでselect request、shift+clickで追加選択、focusでfocus eventを出す", async () => {
+    const second = { ...model, nodeId: "q://test/vue2", label: "Q2" };
+    const wrapper = mount(FQueryOutliner, { props: { nodes: [model, second], selection: { nodeIds: [model.nodeId], activeNodeId: model.nodeId }, connections: [{ connectionId: "c", fromPortId: "out", toPortId: "q://test/vue2:in" }] } });
+    expect(wrapper.get(`[data-node-id="${model.nodeId}"]`).attributes("aria-selected")).toBe("true");
+    expect(wrapper.get(`[data-node-id="${model.nodeId}"]`).attributes("data-active")).toBe("true");
+    expect(wrapper.get(`[data-node-id="${model.nodeId}"] .fquery-outliner-links`).text()).toBe("⟷1");
+    await wrapper.get(`[data-node-id="${second.nodeId}"] .fquery-outliner-select`).trigger("click");
+    expect(wrapper.emitted("event")?.[0]?.[0]).toMatchObject({ type: "node.select.requested", nodeIds: [second.nodeId], activeNodeId: second.nodeId });
+    await wrapper.get(`[data-node-id="${second.nodeId}"] .fquery-outliner-select`).trigger("click", { shiftKey: true });
+    expect(wrapper.emitted("event")?.[1]?.[0]).toMatchObject({ nodeIds: [model.nodeId, second.nodeId], activeNodeId: second.nodeId });
+    await wrapper.get(`[data-node-id="${second.nodeId}"] .fquery-outliner-focus`).trigger("click");
+    expect(wrapper.emitted("event")?.[2]?.[0]).toEqual({ type: "focus", nodeId: second.nodeId });
   });
 });
 

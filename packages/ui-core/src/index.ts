@@ -235,6 +235,7 @@ export type FQueryUiEvent =
   | { readonly type: "connect"; readonly fromPortId: string; readonly toPortId: string }
   | { readonly type: "disconnect"; readonly portId: string }
   | { readonly type: "inspect"; readonly nodeId: string }
+  | { readonly type: "focus"; readonly nodeId: string }
   | { readonly type: "preview"; readonly nodeId: string }
   | { readonly type: "execute-request"; readonly nodeId: string }
   | { readonly type: "cancel-request"; readonly nodeId: string }

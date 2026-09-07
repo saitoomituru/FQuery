@@ -24,6 +24,7 @@ import { applyFamPatch, openFamText, replaceFamText, serializeFamValue, type Fam
 import { decomposerContextKey, playgroundPaneContextKey, type PaneComponentMap, type PlaygroundRoute } from "./context.js";
 import CoreNodeRenderer from "./nodes/CoreNodeRenderer.vue";
 import AddNodeSection from "./panes/AddNodeSection.vue";
+import OutlinerSection from "./panes/OutlinerSection.vue";
 import RecordsSection from "./panes/RecordsSection.vue";
 import DecisionsSection from "./panes/DecisionsSection.vue";
 import NodePanelSection from "./panes/NodePanelSection.vue";
@@ -90,6 +91,7 @@ provide(decomposerContextKey, { routes, provider, model, source, running, execut
  */
 const paneRegistry = new PaneRegistry();
 paneRegistry.register({ side: "left", tab: { id: "add", title: "Add Node", icon: "＋", order: 0 }, section: { id: "palette", title: "検索して追加", order: 0 }, componentRef: "host:add-node", source: "host" });
+paneRegistry.register({ side: "left", tab: { id: "outline", title: "階層", icon: "☷", order: 10 }, section: { id: "outliner", title: "Nodes", order: 0 }, componentRef: "host:outliner", source: "host" });
 paneRegistry.register({ side: "left", tab: { id: "records", title: "Records", icon: "▤", order: 20 }, section: { id: "records", title: "FAM / projection / FAMLog / receipt / debug", order: 0 }, componentRef: "host:records", source: "host" });
 paneRegistry.register({ side: "left", tab: { id: "decisions", title: "Decisions", icon: "≡", order: 30 }, section: { id: "decisions", title: "Session decisions / FAM edit receipts", order: 0 }, componentRef: "host:decisions", source: "host" });
 paneRegistry.register({ side: "right", tab: { id: "node", title: "Node", icon: "◈", order: 0 }, section: { id: "node-panel", title: "Node panel", order: 10 }, componentRef: "core:node-panel", source: "core", applies: (context) => context.activeNode !== undefined });
@@ -97,6 +99,7 @@ paneRegistry.register({ side: "right", tab: { id: "node", title: "Node", icon: "
 for (const registration of registry.registrations()) paneRegistry.registerPlugin(registration);
 const paneComponents: PaneComponentMap = {
   "host:add-node": AddNodeSection,
+  "host:outliner": OutlinerSection,
   "host:records": RecordsSection,
   "host:decisions": DecisionsSection,
   "core:node-panel": NodePanelSection,
@@ -187,6 +190,7 @@ async function addCoreNode(capability: string, sequence: number): Promise<string
 
 function receive(event: FQueryUiEvent) {
   lastEvent.value = JSON.stringify(event);
+  if (event.type === "focus") { canvas.value?.focusNode(event.nodeId); return; }
   if (event.type === "inspect") {
     selectSequence += 1;
     void session.dispatch({ type: "node.select.requested", requestId: `playground:select:${selectSequence}`, nodeIds: [event.nodeId], activeNodeId: event.nodeId });
