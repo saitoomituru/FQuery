@@ -26,6 +26,7 @@ export class BaklavaPresentationAdapter {
   readonly inlineContent: boolean;
   #requestSequence = 0;
   #projecting = false;
+  #connectionModels: readonly ConnectionViewModel[] = [];
 
   constructor(emit: (event: GuiEventAbi) => void, options: { nodeWidth?: number; inlineContent?: boolean; editor?: Editor } = {}) {
     this.#emit = emit;
@@ -50,11 +51,14 @@ export class BaklavaPresentationAdapter {
     connections: readonly ConnectionViewModel[] = [],
     layout: readonly BaklavaLayoutValue[] = [],
   ): void {
+    this.#connectionModels = connections;
+    let requiresConnectionRefresh = false;
     const nextNodeIds = new Set(nodes.map((node) => node.nodeId));
     for (const [nodeId, projected] of this.#nodes) {
       if (nextNodeIds.has(nodeId)) continue;
       this.editor.graph.removeNode(projected.node);
       this.#nodes.delete(nodeId);
+      requiresConnectionRefresh = true;
     }
 
     const layoutByNode = new Map(layout.map((value) => [value.nodeId, value]));
@@ -65,24 +69,29 @@ export class BaklavaPresentationAdapter {
         this.editor.graph.removeNode(projected.node);
         this.#nodes.delete(model.nodeId);
         projected = undefined;
+        requiresConnectionRefresh = true;
       }
       if (!projected) {
         projected = this.#addNode(model, signature);
+        requiresConnectionRefresh = true;
       } else if (projected.node.title !== model.label) {
         projected.node.title = model.label;
       }
       const position = layoutByNode.get(model.nodeId);
       if (position) {
+        const current = getNodePosition(projected.node);
+        if (current.x !== position.x || current.y !== position.y) requiresConnectionRefresh = true;
         setNodePosition(projected.node, position.x, position.y);
         projected.acceptedPosition = position;
       }
     }
 
-    this.#syncConnections(connections);
+    this.#syncConnections(connections, requiresConnectionRefresh);
   }
 
   requestMovedNodes(nodes: readonly NodeViewModel[]): void {
     const modelById = new Map(nodes.map((node) => [node.nodeId, node]));
+    let resetPosition = false;
     for (const [nodeId, projected] of this.#nodes) {
       const accepted = projected.acceptedPosition;
       const model = modelById.get(nodeId);
@@ -100,7 +109,9 @@ export class BaklavaPresentationAdapter {
         y: position.y,
       });
       setNodePosition(projected.node, accepted.x, accepted.y);
+      resetPosition = true;
     }
+    if (resetPosition) this.#syncConnections(this.#connectionModels, true);
   }
 
   #addNode(model: NodeViewModel, signature: string): ProjectedNode {
@@ -138,7 +149,11 @@ export class BaklavaPresentationAdapter {
     return projected;
   }
 
-  #syncConnections(connections: readonly ConnectionViewModel[]): void {
+  #syncConnections(connections: readonly ConnectionViewModel[], forceRefresh = false): void {
+    if (forceRefresh) {
+      for (const connection of this.#connections.values()) this.editor.graph.removeConnection(connection);
+      this.#connections.clear();
+    }
     const nextConnectionIds = new Set(connections.map((connection) => connection.connectionId));
     for (const [connectionId, connection] of this.#connections) {
       if (nextConnectionIds.has(connectionId)) continue;

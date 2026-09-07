@@ -97,4 +97,29 @@ describe("Baklava Presentation Adapter", () => {
     })]);
     expect(node.position).toEqual({ x: 10, y: 20 });
   });
+
+  it("node座標の確定と差戻しでconnectionを再投影する", () => {
+    const adapter = new BaklavaPresentationAdapter(() => undefined);
+    const connection = { connectionId: "connection://accepted", fromPortId: "sensor:out", toPortId: "output:in" };
+    adapter.sync([source, sink], [connection], [
+      { nodeId: "fam://sensor", x: 10, y: 20 },
+      { nodeId: "fam://output", x: 300, y: 20 },
+    ]);
+    const initialConnection = adapter.editor.graph.connections[0];
+
+    adapter.sync([source, sink], [connection], [
+      { nodeId: "fam://sensor", x: 80, y: 120 },
+      { nodeId: "fam://output", x: 300, y: 20 },
+    ]);
+    const acceptedConnection = adapter.editor.graph.connections[0];
+    expect(acceptedConnection).not.toBe(initialConnection);
+
+    const node = adapter.editor.graph.findNodeById("fam://sensor") as typeof adapter.editor.graph.nodes[number] & { position: { x: number; y: number } };
+    node.position = { x: 160, y: 240 };
+    adapter.requestMovedNodes([source, sink]);
+
+    expect(node.position).toEqual({ x: 80, y: 120 });
+    expect(adapter.editor.graph.connections).toHaveLength(1);
+    expect(adapter.editor.graph.connections[0]).not.toBe(acceptedConnection);
+  });
 });
