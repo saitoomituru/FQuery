@@ -2,7 +2,8 @@ import { describe, expect, it, vi } from "vitest";
 import { explicitSource } from "@fquery/config";
 import { evaluateQ, Q, type CoreEvent } from "@fquery/core";
 import { createLiteralDecompositionFam } from "@fquery/fam-core";
-import { discoverGeminiModels, GeminiFamPlugin } from "../src/index.js";
+import type { DecompositionRequest } from "@fquery/plugin-sdk";
+import { discoverGeminiModels, GeminiFamPlugin, GeminiNlDecomposer } from "../src/index.js";
 
 describe("GeminiFamPlugin", () => {
   it("fake clientで再帰FAMとmodel routeを返す", async () => {
@@ -46,5 +47,14 @@ describe("GeminiFamPlugin", () => {
     const listModels = vi.fn(async () => [{ name: "gemini-test-a" }, { name: "gemini-test-b" }]);
     await expect(discoverGeminiModels("not-a-real-key", listModels)).resolves.toEqual([{ name: "gemini-test-a" }, { name: "gemini-test-b" }]);
     expect(listModels).toHaveBeenCalledWith("not-a-real-key");
+  });
+
+  it("GeminiをΨ.NL Decomposer SPIとして利用する", async () => {
+    const request: DecompositionRequest = { requestId: "request://gemini/spi", queryRef: "q://test/gemini-spi", profile: "nl", observation: { sourceRef: "input://gemini", mediaType: "text/plain", payload: "雨が降る。" } };
+    const generate = vi.fn(async () => ({ text: JSON.stringify(createLiteralDecompositionFam("雨が降る。", request.queryRef)) }));
+    const decomposer = new GeminiNlDecomposer({ model: "gemini-fixture", credentialName: "gemini-local", credentialSources: [explicitSource([{ name: "gemini-local", key: "not-a-real-key" }])], generate });
+    const outcome = await decomposer.decompose(request);
+    expect(outcome.status).toBe("resolved");
+    expect(outcome.receipt).toMatchObject({ implementationRef: "decomposer://fquery/gemini-nl", provider: "google", model: "gemini-fixture", validationStatus: "accepted" });
   });
 });

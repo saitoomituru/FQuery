@@ -84,17 +84,17 @@ export class ManualNlDecomposer implements Decomposer {
 
   decompose(request: DecompositionRequest): DecompositionOutcome {
     if (request.profile !== "nl" || request.observation.mediaType !== "text/plain") {
-      return unresolved(request, this, "unsupported-observation-profile", "select-compatible-decomposer", "compatible-decomposer-available");
+      return createUnresolvedDecomposition(request, this, "unsupported-observation-profile", "select-compatible-decomposer", "compatible-decomposer-available");
     }
     if (typeof request.observation.payload !== "string" || request.observation.payload.trim().length === 0) {
-      return unresolved(request, this, "source-text-unavailable", "provide-source-text", "source-text-available");
+      return createUnresolvedDecomposition(request, this, "source-text-unavailable", "provide-source-text", "source-text-available");
     }
     const fam = createLiteralDecompositionFam(request.observation.payload, request.queryRef);
     return validateDecomposerCandidate(request, fam, this);
   }
 }
 
-function unresolved(
+export function createUnresolvedDecomposition(
   request: DecompositionRequest,
   metadata: DecomposerCandidateMetadata,
   reason: string,

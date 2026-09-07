@@ -1,6 +1,6 @@
 import type { CapabilityInvocation, CapabilityResult, PluginResolver, QueryPolicy } from "@fquery/core";
 
-export { ManualNlDecomposer, validateDecomposerCandidate } from "./decomposer.js";
+export { createUnresolvedDecomposition, ManualNlDecomposer, validateDecomposerCandidate } from "./decomposer.js";
 export type * from "./decomposer.js";
 
 export interface PluginManifest {
