@@ -351,3 +351,18 @@ function freezeRegistration(registration: PluginPresentationRegistration): Plugi
 function registrationKey(pluginId: string, capability: string): string {
   return `${pluginId}\u0000${capability}`;
 }
+
+export {
+  PresentationSession,
+  applyPresentationDecision,
+  createEmptySessionState,
+  pluginEvidenceRef,
+  type DecisionStatus,
+  type GuiRequest,
+  type LayoutValue,
+  type PresentationDecision,
+  type PresentationDecisionPort,
+  type PresentationSessionListener,
+  type PresentationSessionState,
+} from "./session.js";
+export { createFixtureDecisionPort, type FixtureDecisionPortOptions } from "./fixture-port.js";
