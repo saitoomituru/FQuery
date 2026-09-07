@@ -168,7 +168,15 @@ export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Objec
       additionalProperties: true,
       properties: { source_text: { type: "string" }, source_ref: { type: "string" }, source_language: { type: "string" }, observation_status: { type: "string" } },
     },
-    "∇φ": { type: "array", items: { type: "object", required: ["gradient_type", "source_expression", "source_language"], additionalProperties: true } },
+    "∇φ": {
+      type: "array",
+      items: {
+        type: "object",
+        required: ["gradient_type", "source_expression", "source_language"],
+        additionalProperties: true,
+        properties: { gradient_type: { type: "string" }, source_expression: { type: "string" }, source_language: { type: "string" } },
+      },
+    },
     λ: {
       type: "object",
       required: ["purpose", "output_units", "satisfaction_status"],
@@ -184,8 +192,21 @@ export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Objec
             required: ["ψ", "∇φ", "λ", "Q"],
             additionalProperties: true,
             properties: {
-              ψ: { type: "object", required: ["source_text", "source_ref", "source_language", "observation_status"], additionalProperties: true },
-              "∇φ": { type: "array", items: { type: "object", required: ["gradient_type", "source_expression", "source_language"], additionalProperties: true } },
+              ψ: {
+                type: "object",
+                required: ["source_text", "source_ref", "source_language", "observation_status"],
+                additionalProperties: true,
+                properties: { source_text: { type: "string" }, source_ref: { type: "string" }, source_language: { type: "string" }, observation_status: { type: "string" } },
+              },
+              "∇φ": {
+                type: "array",
+                items: {
+                  type: "object",
+                  required: ["gradient_type", "source_expression", "source_language"],
+                  additionalProperties: true,
+                  properties: { gradient_type: { type: "string" }, source_expression: { type: "string" }, source_language: { type: "string" } },
+                },
+              },
               λ: {
                 type: "object",
                 required: ["manifestation", "manifestation_language", "sub_splitters"],
@@ -201,10 +222,35 @@ export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Objec
                       required: ["ψ", "∇φ", "λ", "Q"],
                       additionalProperties: true,
                       properties: {
-                        ψ: { type: "object", required: ["source_text", "source_language", "target_language"], additionalProperties: true },
+                        ψ: {
+                          type: "object",
+                          required: ["source_text", "source_language", "target_language"],
+                          additionalProperties: true,
+                          properties: { source_text: { type: "string" }, source_language: { type: "string" }, target_language: { type: "string" } },
+                        },
                         "∇φ": { type: "array", items: { type: "object", additionalProperties: true } },
                         λ: { type: "object", required: ["manifestation", "manifestation_language"], additionalProperties: true },
-                        Q: { type: "object", required: ["copy_role", "source_node_ref", "translation_error", "unknowns", "unknown_is_absence"], additionalProperties: true },
+                        Q: {
+                          type: "object",
+                          required: ["copy_role", "source_node_ref", "translation_error", "unknowns", "unknown_is_absence"],
+                          additionalProperties: true,
+                          properties: {
+                            copy_role: { type: "string", enum: ["translation-witness"] },
+                            source_node_ref: { type: "string" },
+                            unknowns: { type: "array", items: { type: "string" } },
+                            unknown_is_absence: { type: "boolean", enum: [false] },
+                            translation_error: {
+                              type: "object",
+                              required: ["status", "metric_refs", "measurements"],
+                              additionalProperties: true,
+                              properties: {
+                                status: { type: "string", enum: ["not-evaluated", "measured"] },
+                                metric_refs: { type: "array", items: { type: "string" } },
+                                measurements: { type: "array", items: {} },
+                              },
+                            },
+                          },
+                        },
                       },
                     },
                   },
