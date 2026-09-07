@@ -229,7 +229,12 @@ export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Objec
                           properties: { source_text: { type: "string" }, source_language: { type: "string" }, target_language: { type: "string" } },
                         },
                         "∇φ": { type: "array", items: { type: "object", additionalProperties: true } },
-                        λ: { type: "object", required: ["manifestation", "manifestation_language"], additionalProperties: true },
+                        λ: {
+                          type: "object",
+                          required: ["manifestation", "manifestation_language"],
+                          additionalProperties: true,
+                          properties: { manifestation: { type: "string" }, manifestation_language: { type: "string" } },
+                        },
                         Q: {
                           type: "object",
                           required: ["copy_role", "source_node_ref", "translation_error", "unknowns", "unknown_is_absence"],

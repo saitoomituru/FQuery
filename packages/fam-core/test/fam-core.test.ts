@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   readFamJson,
   createLiteralDecompositionFam,
+  FAM_JSON_RESPONSE_SCHEMA,
   inferSourceLanguage,
   serializeFamJson,
   validateFamJson,
@@ -122,6 +123,12 @@ describe("FAM JSON Core", () => {
     ]));
   });
 
+  it("provider response schemaのrequired fieldをpropertiesへ全て宣言する", () => {
+    const failures: string[] = [];
+    inspectSchema(FAM_JSON_RESPONSE_SCHEMA, "$", failures);
+    expect(failures).toEqual([]);
+  });
+
   it("blocksだけの旧candidate形式をFAMとして受理しない", () => {
     expect(validateFamDecomposition({
       schema_version: "fquery.candidate-fam/0.1.0-draft",
@@ -131,3 +138,14 @@ describe("FAM JSON Core", () => {
     }).valid).toBe(false);
   });
 });
+
+function inspectSchema(value: unknown, path: string, failures: string[]): void {
+  if (Array.isArray(value)) return value.forEach((child, index) => inspectSchema(child, `${path}[${index}]`, failures));
+  if (typeof value !== "object" || value === null) return;
+  const record = value as Record<string, unknown>;
+  if (Array.isArray(record.required)) {
+    const properties = typeof record.properties === "object" && record.properties !== null ? record.properties as Record<string, unknown> : {};
+    for (const field of record.required) if (typeof field === "string" && !(field in properties)) failures.push(`${path}.required:${field}`);
+  }
+  for (const [key, child] of Object.entries(record)) inspectSchema(child, `${path}.${key}`, failures);
+}
