@@ -22,11 +22,11 @@
         "ψ": { "source_text": "降水量は未確認である。", "source_ref": "input://source", "source_language": "ja", "observation_status": "provided" },
         "∇φ": [{ "gradient_type": "epistemic-boundary", "source_expression": "降水量は未確認である。", "source_language": "ja", "source_mutation": false }],
         "λ": { "manifestation": "降水量は未確認である。", "manifestation_language": "ja", "semantic_role": "unknown-retention", "sub_splitters": [] },
-        "Q": { "observer_ref": "observer://fixture", "registry_ref": "registry://fquery/fam-core", "fact_scope_ref": "fixture://rain", "unknowns": ["降水量の正確な数値"], "unknown_is_absence": false }
+        "Q": { "observer_ref": "observer://fixture", "registry_ref": "registry://fquery/fam-core", "fact_scope_ref": "fixture://rain", "unknowns": [{ "source_expression": "降水量は未確認である。", "source_language": "ja", "concept_id": "precipitation-amount" }], "unknown_is_absence": false }
       }
     ]
   },
-  "Q": { "observer_ref": "observer://fixture", "registry_ref": "registry://fquery/fam-core", "fact_scope_ref": "fixture://rain", "unknowns": ["降水量の正確な数値"], "unknown_is_absence": false },
+  "Q": { "observer_ref": "observer://fixture", "registry_ref": "registry://fquery/fam-core", "fact_scope_ref": "fixture://rain", "unknowns": [{ "source_expression": "ただし降水量は未確認である。", "source_language": "ja", "concept_id": "precipitation-amount" }], "unknown_is_absence": false },
   "pointers": [],
   "provenance": { "claim_scope": "TEST_FIXTURE", "source_refs": ["input://source"], "source_mutation": false }
 }

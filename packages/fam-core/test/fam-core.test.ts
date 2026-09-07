@@ -138,6 +138,16 @@ describe("FAM JSON Core", () => {
     expect(validateFamDecomposition(value).issues.filter((entry) => entry.code === "foreign-language-outside-sub-splitter")).toHaveLength(2);
   });
 
+  it("unknownの原言語表現とmachine identifierを分離する", () => {
+    const value = structuredClone(createLiteralDecompositionFam("降水量は未確認である。", "q://test/unknown")) as unknown as Record<string, unknown>;
+    (value.Q as { unknowns: unknown[] }).unknowns.push({ source_expression: "降水量は未確認である。", source_language: "ja", concept_id: "precipitation-amount" });
+    expect(validateFamDecomposition(value).valid).toBe(true);
+    (value.Q as { unknowns: unknown[] }).unknowns = ["precipitation_amount"];
+    expect(validateFamDecomposition(value).issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "structured-unknown-required" }),
+    ]));
+  });
+
   it("provider response schemaのrequired fieldをpropertiesへ全て宣言する", () => {
     const failures: string[] = [];
     inspectSchema(FAM_JSON_RESPONSE_SCHEMA, "$", failures);

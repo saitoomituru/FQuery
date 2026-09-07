@@ -36,7 +36,7 @@ top-levelは4軸に加えて `fam_id`、`revision_id`、`kind`、`title`、`inde
 
 ## unknownと旧blocks境界
 
-取得不能や未確認は不存在ではない。`Q.unknowns` を配列で保持し、`Q.unknown_is_absence` は常に `false` とする。`fquery.candidate-fam/0.1.0-draft` の `blocks[]` はFAMではなく、必要ならPresentation用の別recordとして保持する。`application/fam+json` やFAM paneへ昇格させない。
+取得不能や未確認は不存在ではない。`Q.unknowns` は原言語の `source_expression`、その `source_language`、機械可読な `concept_id` を分けたobject配列として保持し、`Q.unknown_is_absence` は常に `false` とする。識別子が英語風でも、それを原言語表現の代用品にはしない。`fquery.candidate-fam/0.1.0-draft` の `blocks[]` はFAMではなく、必要ならPresentation用の別recordとして保持する。`application/fam+json` やFAM paneへ昇格させない。
 
 ## byte保存
 

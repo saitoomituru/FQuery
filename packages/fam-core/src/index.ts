@@ -107,6 +107,7 @@ export function validateFamDecomposition(value: unknown): FamValidationResult {
   }
   const q = value.Q;
   if (!isRecord(q) || !Array.isArray(q.unknowns)) issue(issues, "$.Q.unknowns", "unknowns-required", "Q.unknownsはarrayでなければなりません");
+  else validateUnknownEntries(q.unknowns, "$.Q.unknowns", isRecord(psi) && typeof psi.source_text === "string" ? psi.source_text : undefined, sourceLanguage, issues);
   if (!isRecord(q) || q.unknown_is_absence !== false) issue(issues, "$.Q.unknown_is_absence", "unknown-absence-boundary-required", "unknown_is_absenceはfalseでなければなりません");
   if (sourceLanguage) validateCanonicalLanguageFields(value, isRecord(psi) && typeof psi.source_text === "string" ? psi.source_text : "", sourceLanguage, issues);
   return freezeResult(issues, nodePaths);
@@ -158,6 +159,13 @@ export function createLiteralDecompositionFam(sourceText: string, queryRef: stri
  * Provider structured output用の一段展開Schema。
  * runtime validatorはaxis内の任意深さにある4軸nodeを再帰検証する。
  */
+const UNKNOWN_ENTRY_RESPONSE_SCHEMA = Object.freeze({
+  type: "object",
+  required: ["source_expression", "source_language", "concept_id"],
+  additionalProperties: true,
+  properties: { source_expression: { type: "string" }, source_language: { type: "string" }, concept_id: { type: "string" } },
+});
+
 export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Object.freeze({
   type: "object",
   required: ["schema_version", "fam_id", "revision_id", "kind", "title", "title_language", "index_subjects", "ψ", "∇φ", "λ", "Q", "pointers", "provenance"],
@@ -275,7 +283,7 @@ export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Objec
                 additionalProperties: true,
                 properties: {
                   observer_ref: { type: "string" }, registry_ref: { type: "string" }, fact_scope_ref: { type: "string" },
-                  unknowns: { type: "array", items: { type: "string" } }, unknown_is_absence: { type: "boolean", enum: [false] },
+                  unknowns: { type: "array", items: UNKNOWN_ENTRY_RESPONSE_SCHEMA }, unknown_is_absence: { type: "boolean", enum: [false] },
                 },
               },
             },
@@ -289,7 +297,7 @@ export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Objec
       additionalProperties: true,
       properties: {
         observer_ref: { type: "string" }, registry_ref: { type: "string" }, fact_scope_ref: { type: "string" },
-        unknowns: { type: "array", items: { type: "string" } }, unknown_is_absence: { type: "boolean", enum: [false] },
+        unknowns: { type: "array", items: UNKNOWN_ENTRY_RESPONSE_SCHEMA }, unknown_is_absence: { type: "boolean", enum: [false] },
       },
     },
     pointers: { type: "array", items: {} },
@@ -340,9 +348,7 @@ function validateSourceUnit(
   const lambda = unit.λ;
   const q = unit.Q;
   if (!isRecord(q) || typeof q.observer_ref !== "string" || typeof q.registry_ref !== "string" || typeof q.fact_scope_ref !== "string" || !Array.isArray(q.unknowns) || q.unknown_is_absence !== false) issue(issues, `${path}.Q`, "unit-control-boundary-required", "分解unitにはObserver・Registry・fact scope・unknown境界が必要です");
-  else q.unknowns.forEach((entry, unknownIndex) => {
-    if (typeof entry === "string" && sourceLanguage && !usesOnlyCanonicalLanguage(entry, typeof rootSource === "string" ? rootSource : "", sourceLanguage)) issue(issues, `${path}.Q.unknowns[${unknownIndex}]`, "foreign-language-outside-sub-splitter", "unitのunknownも入力言語で保持します");
-  });
+  else validateUnknownEntries(q.unknowns, `${path}.Q.unknowns`, typeof rootSource === "string" ? rootSource : undefined, sourceLanguage, issues);
   if (!isRecord(lambda) || !Array.isArray(lambda.sub_splitters)) {
     issue(issues, `${path}.λ.sub_splitters`, "sub-splitters-required", "翻訳写本を分離するsub_splitters配列が必要です");
     return;
@@ -377,11 +383,22 @@ function validateTranslationCopy(copy: unknown, path: string, sourceText: string
 function validateCanonicalLanguageFields(value: Record<string, unknown>, rootSource: string, sourceLanguage: string, issues: FamValidationIssue[]): void {
   const candidates: Array<[string, unknown]> = [["$.title", value.title]];
   if (Array.isArray(value.index_subjects)) value.index_subjects.forEach((entry, index) => candidates.push([`$.index_subjects[${index}]`, entry]));
-  if (isRecord(value.Q) && Array.isArray(value.Q.unknowns)) value.Q.unknowns.forEach((entry, index) => candidates.push([`$.Q.unknowns[${index}]`, entry]));
   collectNarrativeFields(value.provenance, "$.provenance", candidates);
   for (const [path, candidate] of candidates) {
     if (typeof candidate === "string" && !usesOnlyCanonicalLanguage(candidate, rootSource, sourceLanguage)) issue(issues, path, "foreign-language-outside-sub-splitter", "他言語の自然言語表現はλ.sub_splittersの翻訳写本へ分離しなければなりません");
   }
+}
+
+function validateUnknownEntries(entries: readonly unknown[], path: string, rootSource: string | undefined, sourceLanguage: string | undefined, issues: FamValidationIssue[]): void {
+  entries.forEach((entry, index) => {
+    const entryPath = `${path}[${index}]`;
+    if (!isRecord(entry) || typeof entry.source_expression !== "string" || typeof entry.concept_id !== "string") {
+      issue(issues, entryPath, "structured-unknown-required", "unknownは原言語表現とmachine concept_idを分離したobjectでなければなりません");
+      return;
+    }
+    if (entry.source_language !== sourceLanguage) issue(issues, `${entryPath}.source_language`, "unknown-source-language-mismatch", "unknownのsource_languageが正本と一致しません");
+    if (rootSource && !rootSource.includes(entry.source_expression)) issue(issues, `${entryPath}.source_expression`, "unknown-source-lineage-required", "unknownの原言語表現は入力原文に含まれなければなりません");
+  });
 }
 
 function collectNarrativeFields(value: unknown, path: string, candidates: Array<[string, unknown]>): void {
