@@ -1,7 +1,22 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from "vue";
-import { FQueryBaklavaView, FQueryPanel, FQueryRecordsPanel } from "@fquery/ui-vue";
-import type { FQueryUiEvent, NodeViewModel } from "@fquery/ui-core";
+import { computed, onMounted, ref, shallowRef, watch } from "vue";
+import { FQueryBaklavaView, FQueryPalette, FQueryPanel, FQueryRecordsPanel } from "@fquery/ui-vue";
+import {
+  PluginPresentationRegistry,
+  PresentationSession,
+  CORE_RENDERER_HINT,
+  corePortId,
+  createCoreNodeViewModel,
+  createFixtureDecisionPort,
+  findCoreNodeContract,
+  registerCoreNodes,
+  statusTone,
+  type FQueryUiEvent,
+  type GuiEventAbi,
+  type NodeViewModel,
+  type PresentationSessionState,
+  type StatusBadgeViewModel,
+} from "@fquery/ui-core";
 import { isFamJsonRecord } from "@fquery/fam-core";
 
 interface Route { readonly provider: "fixture" | "gemini" | "ollama"; readonly label: string; readonly available: boolean; readonly models: readonly string[]; readonly credentialName?: string; readonly reason?: string }
@@ -14,6 +29,24 @@ const lastEvent = ref("未実行");
 const response = ref<unknown>();
 const running = ref(false);
 const routeError = ref("");
+
+// GUIは判定を行わない。Playgroundではengine不在のためfixture portが構造判定だけを返す。
+const registry = new PluginPresentationRegistry();
+registerCoreNodes(registry);
+const session = new PresentationSession(createFixtureDecisionPort({
+  registry,
+  renderer: { rendererId: "vue-baklava", supportedHints: [CORE_RENDERER_HINT] },
+  nodeIdPrefix: "q://playground/node",
+  createNode: (capability, nodeId) => {
+    const contract = findCoreNodeContract(capability);
+    if (!contract) throw new Error(`core-contract-not-found:${capability}`);
+    return createCoreNodeViewModel(contract, nodeId);
+  },
+}), { registry });
+const sessionState = shallowRef<PresentationSessionState>(session.state);
+session.subscribe((state) => { sessionState.value = state; });
+const registrations = computed(() => session.registry.registrations());
+const coreNodeIds = ref<{ psi?: string | undefined; famvim?: string | undefined; lambda?: string | undefined }>({});
 
 const selectedRoute = computed(() => routes.value.find((route) => route.provider === provider.value));
 const resultRecord = computed<Record<string, unknown> | undefined>(() => {
@@ -32,47 +65,11 @@ const providerReceipt = computed(() => resultRecord.value ? {
   evidence_refs: resultRecord.value.evidence_refs,
 } : undefined);
 const debugEvents = computed(() => isRecord(response.value) && Array.isArray(response.value.events) ? response.value.events : undefined);
-const nodes = computed<readonly NodeViewModel[]>(() => [{
-  nodeId: "q://playground/fam-decompose",
-  label: "fam.decompose",
-  badges: [
-    { axis: "resolution", value: response.value ? "resolved" : "unresolved", tone: response.value ? "success" : "notice" },
-    { axis: "connection", value: response.value ? "connected" : "unconnected", tone: response.value ? "success" : "notice" },
-    { axis: "plugin", value: running.value ? "running" : response.value ? "resolved" : "not-requested", tone: response.value ? "success" : "notice" },
-    { axis: "semantic", value: "unknown", tone: "unknown" },
-  ],
-  ports: [
-    { portId: "source", label: "natural language", direction: "input", connectionStatus: "connected" },
-    { portId: "projection", label: "FAM JSON", direction: "output", connectionStatus: fam.value ? "connected" : "unconnected" },
-  ],
-  value: response.value ?? null,
-  evidenceRefs: [],
-  canExecute: !running.value && Boolean(selectedRoute.value?.available),
-  canCancel: false,
-  presentation: {
-    targetRef: "q://playground/fam-decompose",
-    mode: "generic",
-    rendererId: "vue",
-    presentation: {
-      schemaVersion: "fquery.presentation-fam/0.1.0-draft",
-      presentationId: "presentation://fquery/playground/decompose",
-      targetRef: "q://playground/fam-decompose",
-      surfaces: ["node-editor", "inspector"],
-      visualRole: "query-operator",
-      interfaceRoles: ["source", "projection"],
-      visibility: "visible",
-      rendererHint: "fquery-node",
-      category: "FQuery",
-      layoutSlotRef: "layout://playground/fam-decompose",
-    },
-    reason: "renderer-unsupported",
-  },
-}]);
-const layout = Object.freeze([{ nodeId: "q://playground/fam-decompose", x: 120, y: 90 }]);
 
 watch(provider, () => { model.value = selectedRoute.value?.models[0] ?? ""; response.value = undefined; routeError.value = ""; });
 
 onMounted(async () => {
+  await buildCoreGraph();
   try {
     const fetched = await fetch("/api/routes");
     if (!fetched.ok) throw new Error(`routes-http-${fetched.status}`);
@@ -82,23 +79,78 @@ onMounted(async () => {
   }
 });
 
-function receive(event: FQueryUiEvent) { lastEvent.value = JSON.stringify(event); }
+/** Core 3 nodeをpluginなしで構築する。接続の可否はportへ委譲する。 */
+async function buildCoreGraph() {
+  const psi = await addCoreNode("core.psi.nl-input", 1);
+  const famvim = await addCoreNode("core.gradient.famvim", 2);
+  const lambda = await addCoreNode("core.lambda.nl-output", 3);
+  coreNodeIds.value = { psi, famvim, lambda };
+  if (psi && famvim) await session.dispatch({ type: "connection.add.requested", requestId: "playground:connect:psi-famvim", fromPortId: corePortId(psi, "observation"), toPortId: corePortId(famvim, "psi") });
+  if (famvim && lambda) await session.dispatch({ type: "connection.add.requested", requestId: "playground:connect:famvim-lambda", fromPortId: corePortId(famvim, "fam"), toPortId: corePortId(lambda, "fam") });
+  const positions = [psi, famvim, lambda].map((nodeId, index) => ({ nodeId, x: 60 + index * 320, y: 90 }));
+  for (const position of positions) {
+    if (!position.nodeId) continue;
+    await session.dispatch({ type: "node.move.requested", requestId: `playground:layout:${position.nodeId}`, nodeId: position.nodeId, layoutSlotRef: `layout://playground/${position.nodeId}`, x: position.x, y: position.y });
+  }
+}
+
+async function addCoreNode(capability: string, sequence: number): Promise<string | undefined> {
+  const state = await session.dispatch({ type: "node.add.requested", requestId: `playground:add:${sequence}`, capability });
+  const decision = state.decisions.at(-1);
+  return decision?.kind === "node.add" && decision.status === "accepted" ? decision.node?.nodeId : undefined;
+}
+
+function receive(event: FQueryUiEvent) {
+  lastEvent.value = JSON.stringify(event);
+  if (isGuiRequest(event)) void session.dispatch(event).catch((error: unknown) => { routeError.value = error instanceof Error ? error.message : "session-dispatch-failed"; });
+}
 
 async function execute() {
   running.value = true;
   response.value = undefined;
   routeError.value = "";
+  projectPsiNode({ running: true });
   try {
     const fetched = await fetch("/api/decompose", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify({ provider: provider.value, model: model.value, source: source.value }) });
     const payload: unknown = await fetched.json();
     if (!fetched.ok) throw new Error(isRecord(payload) && typeof payload.error === "string" ? payload.error : `decompose-http-${fetched.status}`);
     response.value = payload;
     if (isRecord(payload) && Array.isArray(payload.events)) lastEvent.value = JSON.stringify(payload.events.at(-1) ?? "完了");
+    projectPsiNode({ running: false });
+    projectFamvimNode();
   } catch (error) {
     routeError.value = error instanceof Error ? error.message : "decompose-failed";
+    projectPsiNode({ running: false });
   } finally {
     running.value = false;
   }
+}
+
+/** engineが返したQueryResultをΨ.NL nodeへ投影する。GUIはstatusを再計算しない。 */
+function projectPsiNode(options: { running: boolean }) {
+  const nodeId = coreNodeIds.value.psi;
+  const node = nodeId ? session.state.nodes.find((entry) => entry.nodeId === nodeId) : undefined;
+  if (!node) return;
+  const record = resultRecord.value;
+  const badges: StatusBadgeViewModel[] = (["resolution", "connection", "transport", "plugin", "semantic", "lambda", "control"] as const).map((axis) => {
+    const raw = record?.[`${axis}_status`];
+    const value = options.running && axis === "plugin" ? "running" : typeof raw === "string" ? raw : axis === "semantic" || axis === "lambda" ? "unknown" : "not-requested";
+    return { axis, value, tone: statusTone(value) };
+  });
+  session.applyEngineEvent({ type: "fam.node.changed", node: { ...node, badges, value: { source_text: source.value, provider: provider.value, model: model.value }, canExecute: false } });
+}
+
+/** 分解結果FAMを∇φ.FAMVIM nodeのvalueへ投影する。正本はrecords paneのFAMであり、node valueは表示用複製。 */
+function projectFamvimNode() {
+  const nodeId = coreNodeIds.value.famvim;
+  const node = nodeId ? session.state.nodes.find((entry) => entry.nodeId === nodeId) : undefined;
+  if (!node) return;
+  const semantic = fam.value ? "unknown" : "not-evaluated";
+  session.applyEngineEvent({ type: "fam.node.changed", node: { ...node, badges: [{ axis: "semantic", value: semantic, tone: statusTone(semantic) }], value: fam.value ?? null } });
+}
+
+function isGuiRequest(event: FQueryUiEvent): event is GuiEventAbi {
+  return event.type.endsWith(".requested") || event.type.startsWith("plugin.presentation.");
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> { return typeof value === "object" && value !== null; }
@@ -137,7 +189,18 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
       :debug-events="debugEvents"
     />
     <h2 class="surface-heading">Node editor projection</h2>
-    <FQueryBaklavaView :nodes="nodes" :layout="layout" @event="receive" />
-    <FQueryPanel :nodes="nodes" @event="receive" />
+    <div class="editor-grid">
+      <FQueryPalette :registrations="registrations" @event="receive" />
+      <FQueryBaklavaView :nodes="sessionState.nodes" :connections="sessionState.connections" :layout="sessionState.layout" @event="receive" />
+    </div>
+    <section class="session-receipt" aria-label="session decisions">
+      <h2 class="surface-heading">Session decisions</h2>
+      <ul>
+        <li v-for="decision in sessionState.decisions" :key="decision.requestId" :data-decision-status="decision.status">
+          <code>{{ decision.kind }}</code> {{ decision.requestId }} → <strong>{{ decision.status }}</strong><span v-if="decision.reason"> — {{ decision.reason }}</span>
+        </li>
+      </ul>
+    </section>
+    <FQueryPanel :nodes="sessionState.nodes" @event="receive" />
   </div>
 </template>

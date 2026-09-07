@@ -17,3 +17,8 @@ button:disabled { opacity: .5; cursor: wait; }
 output { display: block; margin: 1rem; padding: .75rem; color: #79c0ff; font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
 .surface-heading { margin: 1rem; color: #c9d5ed; font-size: 1rem; }
 @media (max-width: 650px) { .controls { grid-template-columns: 1fr; } .source { grid-column: auto; } .hero { min-height: 190px; } }
+.editor-grid { display: grid; grid-template-columns: minmax(14rem, 1fr) 3fr; gap: 1rem; margin: 0 1rem; }
+.session-receipt ul { margin: 0 1rem 1rem; padding-left: 1.2rem; color: #aeb8cc; font: .8rem/1.5 ui-monospace, monospace; }
+.session-receipt li[data-decision-status="rejected"] { color: #ff9b9b; }
+.session-receipt li[data-decision-status="unresolved"] { color: #d2a8ff; }
+@media (max-width: 900px) { .editor-grid { grid-template-columns: 1fr; } }

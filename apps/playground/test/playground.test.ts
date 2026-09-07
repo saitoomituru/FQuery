@@ -32,4 +32,32 @@ describe("FQuery Playground", () => {
     const editor = wrapper.get('[aria-label="FQuery Baklava presentation"]').element;
     expect(records.compareDocumentPosition(editor) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
   });
+
+  it("pluginなしでCore 3 nodeをΨ→∇φ→λへ接続し、分解結果を∇φ.FAMVIMへ投影する", async () => {
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(new Response(JSON.stringify([{ provider: "fixture", label: "Fixture", available: true, models: ["mock-fam-transformer"] }]), { status: 200 }))
+      .mockResolvedValueOnce(new Response(JSON.stringify({ result: { value: createLiteralDecompositionFam("自然言語テスト", "q://test/playground"), transport_status: "succeeded", plugin_status: "resolved", resolution_status: "resolved", connection_status: "connected" }, events: [] }), { status: 200 }));
+    vi.stubGlobal("fetch", fetcher);
+    const wrapper = mount(App);
+    await flushPromises();
+    const nodes = wrapper.findAll(".fquery-node");
+    expect(nodes.map((node) => node.attributes("aria-label"))).toEqual(["Ψ.NL", "∇φ.FAMVIM", "λ.NL"]);
+    expect(wrapper.findAll('[data-decision-status="accepted"]')).toHaveLength(8);
+    expect(nodes[1]!.findAll('[data-connection="connected"]')).toHaveLength(2);
+    expect(nodes[2]!.find('[data-direction="output"]').attributes("data-connection")).toBe("unconnected");
+    const palette = wrapper.get('[aria-label="Plugin node palette"]');
+    expect(palette.findAll("li")).toHaveLength(3);
+
+    await wrapper.get('[aria-label="route controls"] button').trigger("click");
+    await flushPromises();
+    const psi = wrapper.findAll(".fquery-node")[0]!;
+    expect(psi.get('[data-axis="transport"]').text()).toContain("succeeded");
+    expect(psi.get('[data-axis="semantic"]').text()).toContain("unknown");
+    const famvim = wrapper.findAll(".fquery-node")[1]!;
+    expect(famvim.get('[data-axis="semantic"]').attributes("data-tone")).toBe("unknown");
+
+    await palette.get("button").trigger("click");
+    await flushPromises();
+    expect(wrapper.findAll(".fquery-node")).toHaveLength(4);
+  });
 });

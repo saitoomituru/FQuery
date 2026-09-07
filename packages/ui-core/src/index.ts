@@ -366,3 +366,19 @@ export {
   type PresentationSessionState,
 } from "./session.js";
 export { createFixtureDecisionPort, type FixtureDecisionPortOptions } from "./fixture-port.js";
+export {
+  CORE_NODE_CONTRACTS,
+  CORE_PLUGIN_ID,
+  CORE_PLUGIN_VERSION,
+  CORE_RENDERER_HINT,
+  coreNodeRegistrations,
+  corePortId,
+  createCoreNodeViewModel,
+  findCoreNodeContract,
+  registerCoreNodes,
+  type CoreNodeContract,
+  type CoreNodePort,
+  type CoreNodeType,
+  type CoreNodeViewModelOptions,
+  type FamRole,
+} from "./core-nodes.js";

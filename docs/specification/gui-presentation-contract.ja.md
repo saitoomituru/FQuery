@@ -1,8 +1,8 @@
 # GUI Presentation contract
 
-Status: `IMPLEMENTED-CONTRACT / BAKLAVA-POC / HUMAN-TEST-WAIT`
+Status: `IMPLEMENTED-CONTRACT / SESSION-CONTROLLER / CORE-NODES / BAKLAVA-POC / HUMAN-TEST-WAIT`
 
-Authority: FQuery Issue #23  
+Authority: FQuery Issue #23, #25  
 Design source: ZeroRoomLab-manifest Issue #41 comment / Issue #44
 
 ## MVC境界
@@ -58,6 +58,45 @@ renderer固有componentやBaklava graph objectをFAM Core正本へ昇格しな�
 GUI操作は直接Modelを書き換えず、`node.add.requested`、`node.move.requested`、`connection.add.requested`等のrequestへ変換する。接続結果はengine側から`accepted / rejected / unresolved`として返す。
 
 `node.move.requested`の座標はwrite-back要求のpayloadでありPresentation FAMではない。Hostが`layoutSlotRef`の保存先へ反映する。
+
+## Presentation Session
+
+`PresentationSession`はGUI requestとengine判定の往復を保持するcontrollerである。
+
+```text
+GUI gesture
+  -> GuiEventAbi request（pending）
+  -> PresentationDecisionPort.decide()
+  -> PresentationDecision（accepted / rejected / unresolved）
+  -> acceptedのときだけstateへ反映
+```
+
+- `accepted`: node、connection、layout write-back、projectionをstateへ反映
+- `rejected`: 理由付きdecision履歴として保持し、stateは変えない
+- `unresolved`: portは`unconnected`のまま残す。`unconnected != failure`
+- decision履歴はreceiptであり、GUIはこれを意味判定へ昇格しない
+- `plugin.presentation.removed`はregistryから外し、既存nodeを`ghost`へ写像してdataを失わない
+
+`createFixtureDecisionPort`はengine不在の環境（Playground、component test）向けで、port方向・node存在・plugin一意性など構造判定だけを行い、semantic／λ／Q判定は`unresolved`のまま返す。
+
+## Core node contract
+
+Authority: FQuery Issue #25
+
+Node Editorの最小構成は、FAMの意味役割に沿った3標準nodeである。
+
+```text
+Ψ.NL Input   (core.psi.nl-input)      observation ->
+∇φ.FAMVIM    (core.gradient.famvim)   psi -> fam ->
+λ.NL Output  (core.lambda.nl-output)  fam -> manifestation
+```
+
+- GUI node typeをontology正本にしない。semantic roleは`ψ / ∇φ / λ`で固定する
+- `Q`はcanonical FAM側に保持し、`NodeViewModel`へ複製しない
+- 3 nodeは`pluginId: fquery.core`としてregistryへ登録するが、Coreはoptional pluginの追加でschemaを変えない
+- pluginゼロで3 node graphを表示・接続できる
+- Voice／Video／Sensor／RAG／API／Actuator等はoptional pluginとして別registrationで参加する
+- 接続可否はportが判定する。`carries`はpresentation上のhintであり、GUIはこれで接続を裁定しない
 
 ## Engine event / VEU
 

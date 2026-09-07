@@ -1,0 +1,41 @@
+{
+  "schema_version": "fquery.ui.core-nodes/0.1.0-draft",
+  "authority": "FQuery Issue #25",
+  "note": "GUI node typeはontology正本ではない。semantic roleはψ / ∇φ / λで固定し、Qはcanonical FAM側に保持する。",
+  "nodes": [
+    {
+      "nodeType": "Ψ.NL",
+      "famRole": "ψ",
+      "capability": "core.psi.nl-input",
+      "ports": [{"portKey": "observation", "direction": "output", "carries": "observation"}],
+      "optionalDecomposers": ["gemini", "ollama", "manual"]
+    },
+    {
+      "nodeType": "∇φ.FAMVIM",
+      "famRole": "∇φ",
+      "capability": "core.gradient.famvim",
+      "ports": [
+        {"portKey": "psi", "direction": "input", "carries": "observation"},
+        {"portKey": "fam", "direction": "output", "carries": "∇φ"}
+      ],
+      "role": "universal fallback editor / lossless RAW FAM edit surface"
+    },
+    {
+      "nodeType": "λ.NL",
+      "famRole": "λ",
+      "capability": "core.lambda.nl-output",
+      "ports": [
+        {"portKey": "fam", "direction": "input", "carries": "∇φ"},
+        {"portKey": "manifestation", "direction": "output", "carries": "manifestation"}
+      ]
+    }
+  ],
+  "nonCoreExamples": ["Ψ.Voice", "Ψ.Video", "Ψ.Sensor", "∇φ.RAG", "∇φ.API", "∇φ.Vector", "λ.Actuator", "λ.VML", "λ.File"],
+  "expectedGraph": {
+    "connections": [
+      {"from": "Ψ.NL:observation", "to": "∇φ.FAMVIM:psi"},
+      {"from": "∇φ.FAMVIM:fam", "to": "λ.NL:fam"}
+    ],
+    "requiresPlugins": false
+  }
+}
