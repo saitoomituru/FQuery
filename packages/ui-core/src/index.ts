@@ -166,6 +166,7 @@ export type GuiEventAbi =
   | { readonly type: "connection.remove.requested"; readonly requestId: string; readonly connectionId: string }
   | { readonly type: "property.change.requested"; readonly requestId: string; readonly targetRef: string; readonly property: string; readonly value: unknown }
   | { readonly type: "presentation.change.requested"; readonly requestId: string; readonly targetRef: string; readonly presentationRef: string }
+  | { readonly type: "node.select.requested"; readonly requestId: string; readonly nodeIds: readonly string[]; readonly activeNodeId?: string }
   | { readonly type: "plugin.presentation.discovered"; readonly registration: PluginPresentationRegistration }
   | { readonly type: "plugin.presentation.removed"; readonly pluginId: string; readonly capability: string };
 
@@ -363,6 +364,9 @@ export {
   type DecisionStatus,
   type GuiRequest,
   type LayoutValue,
+  type NodeSelection,
+  normalizeSelection,
+  selectionEquals,
   type PresentationDecision,
   type PresentationDecisionPort,
   type PresentationSessionListener,

@@ -178,3 +178,25 @@ describe("Presentation Session", () => {
     expect(seen).toEqual([1, 0]);
   });
 });
+
+describe("Presentation Session selection", () => {
+  it("node.select.requestedはengine判定なしで受理し、存在しないnodeを落としてactiveを正規化する", async () => {
+    const session = fixtureSession();
+    const { first, second } = await twoNodes(session);
+    const state = await session.dispatch({ type: "node.select.requested", requestId: "s-1", nodeIds: [second.nodeId, "q://missing", first.nodeId], activeNodeId: "q://missing" });
+    expect(state.selection).toEqual({ nodeIds: [second.nodeId, first.nodeId], activeNodeId: second.nodeId });
+    expect(state.decisions.at(-1)).toMatchObject({ kind: "node.select", status: "accepted" });
+    const same = await session.dispatch({ type: "node.select.requested", requestId: "s-2", nodeIds: [second.nodeId, first.nodeId], activeNodeId: second.nodeId });
+    expect(same).toBe(state);
+  });
+
+  it("選択中nodeがremoveされると選択から外れ、activeは残りへ移る", async () => {
+    const session = fixtureSession();
+    const { first, second } = await twoNodes(session);
+    await session.dispatch({ type: "node.select.requested", requestId: "s-1", nodeIds: [first.nodeId, second.nodeId], activeNodeId: first.nodeId });
+    const state = await session.dispatch({ type: "node.remove.requested", requestId: "r-1", nodeId: first.nodeId });
+    expect(state.selection).toEqual({ nodeIds: [second.nodeId], activeNodeId: second.nodeId });
+    const empty = await session.dispatch({ type: "node.remove.requested", requestId: "r-2", nodeId: second.nodeId });
+    expect(empty.selection).toEqual({ nodeIds: [] });
+  });
+});

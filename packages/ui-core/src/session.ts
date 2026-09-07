@@ -30,7 +30,14 @@ export type PresentationDecision =
   | (DecisionBase & { readonly kind: "connection.add"; readonly connection?: ConnectionViewModel })
   | (DecisionBase & { readonly kind: "connection.remove"; readonly connectionId: string })
   | (DecisionBase & { readonly kind: "property.change"; readonly targetRef: string; readonly node?: NodeViewModel })
-  | (DecisionBase & { readonly kind: "presentation.change"; readonly targetRef: string; readonly projection?: PresentationProjection });
+  | (DecisionBase & { readonly kind: "presentation.change"; readonly targetRef: string; readonly projection?: PresentationProjection })
+  | (DecisionBase & { readonly kind: "node.select"; readonly selection: NodeSelection });
+
+/** active cursor nodeと複数選択。GUI局所状態であり、canonical FAMではない。 */
+export interface NodeSelection {
+  readonly activeNodeId?: string;
+  readonly nodeIds: readonly string[];
+}
 
 /** layout write-backの確定値。Presentation FAMではなくHost layout storeの値。 */
 export interface LayoutValue {
@@ -39,13 +46,14 @@ export interface LayoutValue {
   readonly y: number;
 }
 
-export type GuiRequest = Exclude<GuiEventAbi, { type: "plugin.presentation.discovered" | "plugin.presentation.removed" }>;
+export type GuiRequest = Exclude<GuiEventAbi, { type: "plugin.presentation.discovered" | "plugin.presentation.removed" | "node.select.requested" }>;
 
 export interface PresentationSessionState extends PresentationProjectionState {
   readonly connections: readonly ConnectionViewModel[];
   readonly layout: readonly LayoutValue[];
   readonly pending: readonly GuiRequest[];
   readonly decisions: readonly PresentationDecision[];
+  readonly selection: NodeSelection;
 }
 
 /** engine／Hostが実装する判定port。GUIはこのport越しにしか状態を変更できない。 */
@@ -64,7 +72,22 @@ export function createEmptySessionState(): PresentationSessionState {
     layout: Object.freeze([]),
     pending: Object.freeze([]),
     decisions: Object.freeze([]),
+    selection: EMPTY_SELECTION,
   });
+}
+
+const EMPTY_SELECTION: NodeSelection = Object.freeze({ nodeIds: Object.freeze([]) });
+
+/** 存在するnodeだけに絞った選択を返す。activeが選択に含まれなければ先頭をactiveにする。 */
+export function normalizeSelection(state: PresentationSessionState, selection: NodeSelection): NodeSelection {
+  const existing = new Set(state.nodes.map((node) => node.nodeId));
+  const nodeIds = [...new Set(selection.nodeIds.filter((nodeId) => existing.has(nodeId)))];
+  const active = selection.activeNodeId && nodeIds.includes(selection.activeNodeId) ? selection.activeNodeId : nodeIds[0];
+  return Object.freeze({ nodeIds: Object.freeze(nodeIds), ...(active ? { activeNodeId: active } : {}) });
+}
+
+export function selectionEquals(left: NodeSelection, right: NodeSelection): boolean {
+  return left.activeNodeId === right.activeNodeId && left.nodeIds.length === right.nodeIds.length && left.nodeIds.every((id, index) => id === right.nodeIds[index]);
 }
 
 export function applyPresentationDecision(state: PresentationSessionState, decision: PresentationDecision): PresentationSessionState {
@@ -86,13 +109,14 @@ export function applyPresentationDecision(state: PresentationSessionState, decis
     case "node.remove": {
       const connections = base.connections.filter((connection) => !ownsPort(decision.nodeId, connection.fromPortId) && !ownsPort(decision.nodeId, connection.toPortId));
       const { [decision.nodeId]: _removed, ...presentations } = base.presentations;
-      return Object.freeze({
+      const remaining: PresentationSessionState = Object.freeze({
         ...base,
         nodes: Object.freeze(refreshPorts(base.nodes.filter((node) => node.nodeId !== decision.nodeId), connections)),
         connections: Object.freeze(connections),
         presentations: Object.freeze(presentations),
         layout: Object.freeze(base.layout.filter((value) => value.nodeId !== decision.nodeId)),
       });
+      return Object.freeze({ ...remaining, selection: normalizeSelection(remaining, remaining.selection) });
     }
     case "node.move": {
       if (!decision.layout) return base;
@@ -117,6 +141,8 @@ export function applyPresentationDecision(state: PresentationSessionState, decis
       if (!decision.projection) return base;
       return Object.freeze({ ...base, ...applyEnginePresentationEvent(base, { type: "presentation.changed", targetRef: decision.targetRef, projection: decision.projection }) });
     }
+    case "node.select":
+      return Object.freeze({ ...base, selection: normalizeSelection(base, decision.selection) });
   }
 }
 
@@ -160,6 +186,12 @@ export class PresentationSession {
         next = Object.freeze({ ...next, ...applyEnginePresentationEvent(next, { type: "plugin.removed", targetRef, reason: "plugin-unavailable" }) });
       }
       return this.#commit(next);
+    }
+    if (event.type === "node.select.requested") {
+      // 選択はGUI局所状態。engine判定を経由せずsessionが受理し、存在しないnodeだけを落とす
+      const selection = normalizeSelection(this.#state, { nodeIds: event.nodeIds, ...(event.activeNodeId ? { activeNodeId: event.activeNodeId } : {}) });
+      if (selectionEquals(selection, this.#state.selection)) return this.#state;
+      return this.#commit(applyPresentationDecision(this.#state, { kind: "node.select", requestId: event.requestId, status: "accepted", selection, evidenceRefs: Object.freeze([]) }));
     }
     const pendingState: PresentationSessionState = Object.freeze({ ...this.#state, pending: Object.freeze([...this.#state.pending, event]) });
     this.#commit(pendingState);

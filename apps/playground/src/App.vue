@@ -67,7 +67,7 @@ const sessionState = shallowRef<PresentationSessionState>(session.state);
 session.subscribe((state) => { sessionState.value = state; });
 const registrations = computed(() => session.registry.registrations());
 const coreNodeIds = ref<{ psi?: string | undefined; famvim?: string | undefined; lambda?: string | undefined }>({});
-const selectedNodeId = ref<string | undefined>();
+let selectSequence = 0;
 
 /** rendererHint -> canvas renderer。Core 3 nodeは最初のrenderer。pluginは同じ経路で自分のrendererを登録する。 */
 const nodeRenderers = { [CORE_RENDERER_HINT]: CoreNodeRenderer };
@@ -84,7 +84,8 @@ const famvimNode = computed(() => sessionState.value.nodes.find((node) => node.n
 /** canonical FAMは∇φ.FAMVIM nodeが保持するvalue。provider responseはその初期投影に過ぎない。 */
 const fam = computed<unknown>(() => famvimNode.value?.value ?? undefined);
 const psiNode = computed(() => sessionState.value.nodes.find((node) => node.nodeId === coreNodeIds.value.psi));
-const selectedNode = computed(() => sessionState.value.nodes.find((node) => node.nodeId === selectedNodeId.value) ?? psiNode.value);
+/** active cursor nodeはsessionのselection。未選択時はΨ.NLを既定にする */
+const selectedNode = computed(() => sessionState.value.nodes.find((node) => node.nodeId === sessionState.value.selection.activeNodeId) ?? psiNode.value);
 const selectedProjection = computed(() => selectedNode.value ? sessionState.value.presentations[selectedNode.value.nodeId] : undefined);
 const selectedRegistration = computed(() => findRegistrationByPresentation(session.registry, selectedProjection.value?.presentation?.presentationId));
 const semanticProjection = computed(() => {
@@ -138,7 +139,8 @@ async function addCoreNode(capability: string, sequence: number): Promise<string
 function receive(event: FQueryUiEvent) {
   lastEvent.value = JSON.stringify(event);
   if (event.type === "inspect") {
-    selectedNodeId.value = event.nodeId;
+    selectSequence += 1;
+    void session.dispatch({ type: "node.select.requested", requestId: `playground:select:${selectSequence}`, nodeIds: [event.nodeId], activeNodeId: event.nodeId });
     inspectorTab.value = event.nodeId === coreNodeIds.value.famvim ? "raw" : "settings";
     inspectorOpen.value = true;
     return;
@@ -236,6 +238,7 @@ function isRecord(value: unknown): value is Record<string, unknown> { return typ
         :layout="sessionState.layout"
         :presentations="sessionState.presentations"
         :node-renderers="nodeRenderers"
+        :selection="sessionState.selection"
         @event="receive"
       />
       <FQueryPalette class="overlay-palette" :registrations="registrations" @event="receive" />

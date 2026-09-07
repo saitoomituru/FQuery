@@ -149,6 +149,25 @@ describe("FQueryBaklavaView layout", () => {
   });
 });
 
+describe("FQueryBaklavaView selection", () => {
+  const second: NodeViewModel = { ...model, nodeId: "q://test/vue2", label: "Q2", ports: [] };
+
+  it("session selectionをBaklava selectedNodesへ反映し、Baklava側の変化をnode.select.requestedへ変換する", async () => {
+    const wrapper = mount(FQueryBaklavaView, { props: { nodes: [model, second], nodeRenderers: {}, selection: { nodeIds: [] } } });
+    await flushPromises();
+    await wrapper.setProps({ selection: { nodeIds: [second.nodeId], activeNodeId: second.nodeId } });
+    await flushPromises();
+    expect(wrapper.get(`.baklava-node:not(.--palette)[data-node-type="fquery-projection:${second.nodeId}"]`).classes()).toContain("--selected");
+    expect(wrapper.emitted("event") ?? []).toHaveLength(0);
+
+    await wrapper.get(`.baklava-node:not(.--palette)[data-node-type="fquery-projection:${model.nodeId}"] .__title`).trigger("pointerdown");
+    await flushPromises();
+    const events = (wrapper.emitted("event") ?? []).map((entry) => entry[0] as { type: string; nodeIds?: string[]; activeNodeId?: string });
+    const select = events.find((event) => event.type === "node.select.requested");
+    expect(select).toMatchObject({ nodeIds: [model.nodeId], activeNodeId: model.nodeId });
+  });
+});
+
 describe("FQueryCanvasNodeContent via FQueryBaklavaView", () => {
   const Custom = defineComponent({
     props: { model: { type: Object, required: true } },
