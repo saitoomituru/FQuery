@@ -195,7 +195,7 @@ export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Objec
     kind: { type: "string" },
     title: { type: "string" },
     title_language: { type: "string" },
-    index_subjects: { type: "array", items: {} },
+    index_subjects: { type: "array", items: { type: "string" } },
     ψ: {
       type: "object",
       required: ["source_text", "source_ref", "source_language", "observation_status"],
@@ -277,7 +277,7 @@ export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Objec
                             copy_role: { type: "string", enum: ["translation-witness"] },
                             source_node_ref: { type: "string" },
                             unknowns: { type: "array", items: { type: "string" } },
-                            unknown_is_absence: { type: "boolean", enum: [false] },
+                            unknown_is_absence: { type: "boolean" },
                             translation_error: {
                               type: "object",
                               required: ["status", "metric_refs", "measurements"],
@@ -285,7 +285,7 @@ export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Objec
                               properties: {
                                 status: { type: "string", enum: ["not-evaluated", "measured"] },
                                 metric_refs: { type: "array", items: { type: "string" } },
-                                measurements: { type: "array", items: {} },
+                                measurements: { type: "array", items: { type: "object", additionalProperties: true } },
                               },
                             },
                           },
@@ -302,7 +302,7 @@ export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Objec
                 properties: {
                   observer_ref: { type: "string" }, registry_ref: { type: "string" }, fact_scope_ref: { type: "string" },
                   unit_ref: { type: "string" }, unit_revision_ref: { type: "string" }, parent_fam_ref: { type: "string" }, parent_revision_ref: { type: "string" }, unit_order: { type: "integer", minimum: 0 }, claim_kind: { type: "string" },
-                  unknowns: { type: "array", items: UNKNOWN_ENTRY_RESPONSE_SCHEMA }, unknown_is_absence: { type: "boolean", enum: [false] },
+                  unknowns: { type: "array", items: UNKNOWN_ENTRY_RESPONSE_SCHEMA }, unknown_is_absence: { type: "boolean" },
                 },
               },
             },
@@ -316,10 +316,10 @@ export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Objec
       additionalProperties: true,
       properties: {
         observer_ref: { type: "string" }, registry_ref: { type: "string" }, fact_scope_ref: { type: "string" },
-        unknowns: { type: "array", items: UNKNOWN_ENTRY_RESPONSE_SCHEMA }, unknown_is_absence: { type: "boolean", enum: [false] },
+        unknowns: { type: "array", items: UNKNOWN_ENTRY_RESPONSE_SCHEMA }, unknown_is_absence: { type: "boolean" },
       },
     },
-    pointers: { type: "array", items: {} },
+    pointers: { type: "array", items: { type: "object", additionalProperties: true } },
     provenance: { type: "object", additionalProperties: true },
   },
 });

@@ -77,6 +77,8 @@ export interface CapabilityInvocation {
   readonly capability: string;
   readonly input: unknown;
   readonly sideEffect: QueryPolicy["sideEffect"];
+  /** Q deadlineに連動するclient側cancel。provider側課金停止を保証しない。 */
+  readonly signal?: AbortSignal;
 }
 
 export interface CapabilityResult {
@@ -84,6 +86,8 @@ export interface CapabilityResult {
   readonly pluginStatus?: "resolved" | "rejected";
   readonly value?: unknown;
   readonly transportStatus: "succeeded" | "failed" | "unknown";
+  /** provider応答をcanonical出力として採用できたか。transport状態と混同しない。 */
+  readonly outputStatus?: "accepted" | "invalid";
   readonly evidenceRefs?: readonly string[];
   readonly reason?: string;
   readonly execution?: {

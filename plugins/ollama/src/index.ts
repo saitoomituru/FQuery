@@ -27,7 +27,7 @@ export const ollamaPluginManifest: PluginManifest = Object.freeze({
 });
 
 export interface OllamaModel { readonly name: string; readonly size?: number; readonly family?: string }
-export interface OllamaGenerateRequest { readonly baseUrl: string; readonly model: string; readonly prompt: string; readonly responseSchema: Readonly<Record<string, unknown>> }
+export interface OllamaGenerateRequest { readonly baseUrl: string; readonly model: string; readonly prompt: string; readonly responseSchema: Readonly<Record<string, unknown>>; readonly signal?: AbortSignal }
 export interface OllamaGenerateResponse { readonly text: string }
 export type OllamaGenerator = (request: OllamaGenerateRequest) => Promise<OllamaGenerateResponse>;
 export interface OllamaPluginOptions { readonly model: string; readonly baseUrl?: string; readonly generate?: OllamaGenerator }
@@ -44,17 +44,28 @@ export class OllamaFamPlugin implements PluginResolver {
     if (request.sideEffect !== "network") return { pluginId: ollamaPluginManifest.pluginId, pluginStatus: "rejected", transportStatus: "failed", reason: "network-side-effect-not-authorized" };
     try {
       const generate = this.#options.generate ?? ollamaGenerate;
-      let response = await generate({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_JSON_RESPONSE_SCHEMA });
+      let response = await generate({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_JSON_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
       let fam: unknown;
       try {
         fam = parseFam(response.text);
       } catch (validationError) {
-        response = await generate({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildRepairPrompt(request, validationError), responseSchema: FAM_JSON_RESPONSE_SCHEMA });
-        fam = parseFam(response.text);
+        response = await generate({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildRepairPrompt(request, validationError), responseSchema: FAM_JSON_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
+        try {
+          fam = parseFam(response.text);
+        } catch (repairValidationError) {
+          return {
+            pluginId: ollamaPluginManifest.pluginId,
+            transportStatus: "succeeded",
+            outputStatus: "invalid",
+            reason: repairValidationError instanceof Error ? repairValidationError.message : "ollama-output-invalid",
+            execution: { provider: "ollama", model: this.#options.model, pluginVersion: ollamaPluginManifest.pluginVersion },
+          };
+        }
       }
       return {
         pluginId: ollamaPluginManifest.pluginId,
         transportStatus: "succeeded",
+        outputStatus: "accepted",
         value: fam,
         evidenceRefs: [],
         execution: { provider: "ollama", model: this.#options.model, pluginVersion: ollamaPluginManifest.pluginVersion },
@@ -111,7 +122,7 @@ async function ollamaGenerate(request: OllamaGenerateRequest): Promise<OllamaGen
     method: "POST",
     headers: { "content-type": "application/json", accept: "application/json" },
     body: JSON.stringify({ model: request.model, prompt: request.prompt, stream: false, think: false, format: request.responseSchema, options: { temperature: 0, num_predict: 1024 } }),
-    signal: AbortSignal.timeout(115_000),
+    signal: request.signal ?? AbortSignal.timeout(115_000),
   });
   if (!response.ok) throw new Error(`ollama-generate-http-${response.status}`);
   const payload: unknown = await response.json();

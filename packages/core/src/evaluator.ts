@@ -64,7 +64,7 @@ async function evaluateNode(
         value = Object.fromEntries(operation.fields.filter((field) => field in record).map((field) => [field, record[field]]));
         emit(context, { eventType: "projection", queryRef: query.queryId, status: "resolved" });
       } else if (operation.kind === "invoke") {
-        const invoked = await invokeCapability(query, operation.capability, value, context);
+        const invoked = await invokeCapability(query, operation.capability, value, context, state.deadline);
         if (isQueryResult(invoked)) return invoked;
         value = invoked.value;
         axes = { ...axes, transportStatus: invoked.transportStatus, pluginStatus: invoked.pluginStatus ?? "resolved" };
@@ -138,13 +138,35 @@ async function resolveInput(
   return { value: nestedResult.value, axes: nestedResult };
 }
 
-async function invokeCapability(query: QueryNode, capability: string, value: unknown, context: EvaluationContext) {
+async function invokeCapability(query: QueryNode, capability: string, value: unknown, context: EvaluationContext, deadline: number) {
   emit(context, { eventType: "plugin-resolve", queryRef: query.queryId, status: "requested", detail: { capability } });
   if (!context.pluginResolver) return pluginNotFound(query, context, capability);
   emit(context, { eventType: "plugin-call-start", queryRef: query.queryId, status: "running", detail: { capability } });
-  const result = await context.pluginResolver.invoke({ queryRef: query.queryId, capability, input: value, sideEffect: query.policy.sideEffect });
+  const remainingMs = Math.max(1, deadline - (context.now ?? Date.now)());
+  const controller = new AbortController();
+  const timeout = Symbol("plugin-timeout");
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let result: Awaited<ReturnType<NonNullable<EvaluationContext["pluginResolver"]>["invoke"]>>;
+  try {
+    const invocation = context.pluginResolver.invoke({ queryRef: query.queryId, capability, input: value, sideEffect: query.policy.sideEffect, signal: controller.signal });
+    const timed = new Promise<typeof timeout>((resolve) => {
+      timer = setTimeout(() => { controller.abort("timeout-exceeded"); resolve(timeout); }, remainingMs);
+    });
+    const settled = await Promise.race([invocation, timed]);
+    if (settled === timeout) {
+      emit(context, { eventType: "plugin-call-end", queryRef: query.queryId, status: "timeout-exceeded", detail: { capability, reason: "timeout-exceeded", timeoutMs: query.policy.limits.timeoutMs } });
+      return resourceLimit(query, context, "timeout-exceeded");
+    }
+    result = settled;
+  } catch (error) {
+    const reason = error instanceof DOMException && error.name === "AbortError" ? "timeout-exceeded" : "plugin-call-threw";
+    emit(context, { eventType: "plugin-call-end", queryRef: query.queryId, status: reason, detail: { capability, reason } });
+    return reason === "timeout-exceeded" ? resourceLimit(query, context, reason) : pluginCallFailed(query, context, reason);
+  } finally {
+    if (timer !== undefined) clearTimeout(timer);
+  }
   if (!result) return pluginNotFound(query, context, capability);
-  emit(context, { eventType: "plugin-call-end", queryRef: query.queryId, status: result.transportStatus, detail: { capability, pluginId: result.pluginId, ...(result.execution ? { execution: result.execution } : {}) } });
+  emit(context, { eventType: "plugin-call-end", queryRef: query.queryId, status: result.transportStatus, detail: { capability, pluginId: result.pluginId, ...(result.outputStatus ? { outputStatus: result.outputStatus } : {}), ...(result.reason ? { reason: result.reason } : {}), ...(result.execution ? { execution: result.execution } : {}) } });
   if (result.transportStatus === "failed") {
     const rejected = result.pluginStatus === "rejected";
     return {
@@ -166,7 +188,59 @@ async function invokeCapability(query: QueryNode, capability: string, value: unk
       },
     } satisfies QueryResult;
   }
+  if (result.outputStatus === "invalid") {
+    const reason = result.reason ?? "plugin-output-invalid";
+    return {
+      ...initialAxes(context.outputConnected),
+      resolutionStatus: "unknown" as const,
+      pluginStatus: "resolved" as const,
+      transportStatus: "succeeded" as const,
+      semanticStatus: "unknown" as const,
+      lambdaStatus: "unknown" as const,
+      controlStatus: "last-order" as const,
+      queryRef: query.queryId,
+      reason,
+      evidenceRefs: result.evidenceRefs ?? [],
+      lastOrder: {
+        code: "FQUERY-PLUGIN-OUTPUT-INVALID",
+        reason,
+        requestedNext: "inspect-provider-output-or-select-another-route",
+        resumeWhen: "valid-provider-output-available",
+      },
+    } satisfies QueryResult;
+  }
   return result;
+}
+
+function resourceLimit(query: QueryNode, context: EvaluationContext, reason: string): QueryResult {
+  return {
+    ...initialAxes(context.outputConnected),
+    resolutionStatus: "unknown",
+    transportStatus: "unknown",
+    semanticStatus: "unknown",
+    lambdaStatus: "unknown",
+    controlStatus: "last-order",
+    queryRef: query.queryId,
+    reason,
+    evidenceRefs: [],
+    lastOrder: { code: "FQUERY-RESOURCE-LIMIT", reason, requestedNext: "increase-limit-or-select-another-route", resumeWhen: "explicit-policy-update" },
+  };
+}
+
+function pluginCallFailed(query: QueryNode, context: EvaluationContext, reason: string): QueryResult {
+  return {
+    ...initialAxes(context.outputConnected),
+    resolutionStatus: "resolved",
+    pluginStatus: "resolved",
+    transportStatus: "failed",
+    semanticStatus: "unknown",
+    lambdaStatus: "unknown",
+    controlStatus: "last-order",
+    queryRef: query.queryId,
+    reason,
+    evidenceRefs: [],
+    lastOrder: { code: "FQUERY-PLUGIN-CALL-FAILED", reason, requestedNext: "inspect-plugin-or-select-another-route", resumeWhen: "plugin-route-available" },
+  };
 }
 
 async function runVerifier(query: QueryNode, verifierRef: string, value: unknown, context: EvaluationContext): Promise<VerificationResult> {

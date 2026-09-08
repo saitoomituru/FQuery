@@ -19,7 +19,9 @@ describe("OllamaFamPlugin", () => {
     const generate = vi.fn(async () => ({ text: JSON.stringify({ schema_version: "fquery.candidate-fam/0.1.0-draft", blocks: [] }) }));
     const plugin = new OllamaFamPlugin({ model: "qwen3:8b", generate });
     const result = await evaluateQ(Q({ kind: "literal", value: "source" }, { queryId: "q://test/invalid", operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: "network" } }), { pluginResolver: plugin });
-    expect(result.transportStatus).toBe("failed");
+    expect(result.transportStatus).toBe("succeeded");
+    expect(result.controlStatus).toBe("last-order");
+    expect(result.lastOrder?.code).toBe("FQUERY-PLUGIN-OUTPUT-INVALID");
   });
 
   it("validator違反を1回だけproviderへ返して全置換する", async () => {

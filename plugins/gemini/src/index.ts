@@ -28,7 +28,7 @@ export const geminiPluginManifest: PluginManifest = Object.freeze({
   implementation: { language: "typescript", runtime: "node" },
 });
 
-export interface GeminiGenerateRequest { readonly apiKey: string; readonly model: string; readonly prompt: string; readonly responseSchema: Readonly<Record<string, unknown>> }
+export interface GeminiGenerateRequest { readonly apiKey: string; readonly model: string; readonly prompt: string; readonly responseSchema: Readonly<Record<string, unknown>>; readonly signal?: AbortSignal }
 export interface GeminiGenerateResponse { readonly text: string; readonly requestId?: string }
 export type GeminiGenerator = (request: GeminiGenerateRequest) => Promise<GeminiGenerateResponse>;
 export interface GeminiModel { readonly name: string; readonly displayName?: string }
@@ -49,17 +49,21 @@ export class GeminiFamPlugin implements PluginResolver {
     if (!resolved?.credential.key) return { pluginId: "plugin://fquery/gemini", transportStatus: "failed", reason: `credential-not-found:${this.#options.credentialName}` };
     try {
       const generate = this.#options.generate ?? googleGenerate;
-      let response = await generate({ apiKey: resolved.credential.key, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_JSON_RESPONSE_SCHEMA });
+      let response = await generate({ apiKey: resolved.credential.key, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_JSON_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
       let fam: unknown;
       try {
         fam = parseFam(response.text);
       } catch (validationError) {
-        response = await generate({ apiKey: resolved.credential.key, model: this.#options.model, prompt: buildRepairPrompt(request, validationError), responseSchema: FAM_JSON_RESPONSE_SCHEMA });
-        fam = parseFam(response.text);
+        response = await generate({ apiKey: resolved.credential.key, model: this.#options.model, prompt: buildRepairPrompt(request, validationError), responseSchema: FAM_JSON_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
+        try {
+          fam = parseFam(response.text);
+        } catch (repairValidationError) {
+          return { pluginId: geminiPluginManifest.pluginId, transportStatus: "succeeded", outputStatus: "invalid", reason: errorReason(repairValidationError, resolved.credential.key, "gemini-output-invalid"), execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name, ...(response.requestId ? { requestId: response.requestId } : {}) } };
+        }
       }
-      return { pluginId: geminiPluginManifest.pluginId, transportStatus: "succeeded", value: fam, evidenceRefs: [], execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name, ...(response.requestId ? { requestId: response.requestId } : {}) } };
+      return { pluginId: geminiPluginManifest.pluginId, transportStatus: "succeeded", outputStatus: "accepted", value: fam, evidenceRefs: [], execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name, ...(response.requestId ? { requestId: response.requestId } : {}) } };
     } catch (error) {
-      return { pluginId: geminiPluginManifest.pluginId, transportStatus: "failed", reason: error instanceof Error ? error.message : "gemini-call-failed", execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name } };
+      return { pluginId: geminiPluginManifest.pluginId, transportStatus: "failed", reason: errorReason(error, resolved.credential.key, "gemini-call-failed"), execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name } };
     }
   }
 }
@@ -90,9 +94,17 @@ export class GeminiNlDecomposer implements Decomposer {
 
 async function googleGenerate(request: GeminiGenerateRequest): Promise<GeminiGenerateResponse> {
   const client = new GoogleGenAI({ apiKey: request.apiKey });
-  const response = await client.models.generateContent({ model: request.model, contents: request.prompt, config: { responseMimeType: "application/json", responseJsonSchema: request.responseSchema } });
+  const response = await client.models.generateContent({ model: request.model, contents: request.prompt, config: { responseMimeType: "application/json", responseJsonSchema: request.responseSchema, ...(request.signal ? { abortSignal: request.signal } : {}) } });
   if (!response.text) throw new Error("gemini-empty-response");
   return { text: response.text, ...(response.responseId ? { requestId: response.responseId } : {}) };
+}
+
+function errorReason(error: unknown, credential: string, fallback: string): string {
+  const raw = error instanceof Error ? error.message : fallback;
+  return raw
+    .replaceAll(credential, "[REDACTED]")
+    .replace(/(authorization|x-goog-api-key)\s*[:=]\s*[^\s,;]+/gi, "$1=[REDACTED]")
+    .slice(0, 2_000);
 }
 
 async function googleListModels(apiKey: string): Promise<readonly GeminiModel[]> {

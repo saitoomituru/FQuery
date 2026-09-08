@@ -154,6 +154,12 @@ describe("FAM JSON Core", () => {
     expect(failures).toEqual([]);
   });
 
+  it("Gemini responseJsonSchema非対応のboolean enumと空items schemaを含めない", () => {
+    const serialized = JSON.stringify(FAM_JSON_RESPONSE_SCHEMA);
+    expect(serialized).not.toContain('"enum":[false]');
+    expect(serialized).not.toContain('"items":{}');
+  });
+
   it("blocksだけの旧candidate形式をFAMとして受理しない", () => {
     expect(validateFamDecomposition({
       schema_version: "fquery.candidate-fam/0.1.0-draft",

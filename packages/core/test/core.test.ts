@@ -89,4 +89,15 @@ describe("Q", () => {
     expect(result.controlStatus).toBe("last-order");
     expect(result.reason).toBe("max-depth-exceeded");
   });
+
+  it("応答しないpluginをQ deadlineで停止してLast Orderを返す", async () => {
+    let receivedSignal: AbortSignal | undefined;
+    const query = Q({ kind: "literal", value: "hello" }, { queryId: "q://test/timeout", operations: [{ kind: "invoke", capability: "hang" }], policy: { sideEffect: "network", limits: { timeoutMs: 10 } } });
+    const result = await evaluateQ(query, { pluginResolver: { invoke: async (request) => {
+      receivedSignal = request.signal;
+      return await new Promise<never>(() => undefined);
+    } } });
+    expect(receivedSignal?.aborted).toBe(true);
+    expect(result).toMatchObject({ transportStatus: "unknown", controlStatus: "last-order", reason: "timeout-exceeded", lastOrder: { code: "FQUERY-RESOURCE-LIMIT" } });
+  });
 });

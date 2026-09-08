@@ -21,7 +21,9 @@ describe("GeminiFamPlugin", () => {
     const generate = vi.fn(async () => ({ text: JSON.stringify({ schema_version: "fquery.candidate-fam/0.1.0-draft", blocks: [] }) }));
     const plugin = new GeminiFamPlugin({ model: "gemini-2.5-flash", credentialName: "gemini-local", credentialSources: [explicitSource([{ name: "gemini-local", key: "not-a-real-key" }])], generate });
     const result = await evaluateQ(Q({ kind: "literal", value: "source" }, { queryId: "q://test/invalid", operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: "network" } }), { pluginResolver: plugin });
-    expect(result.transportStatus).toBe("failed");
+    expect(result.transportStatus).toBe("succeeded");
+    expect(result.controlStatus).toBe("last-order");
+    expect(result.lastOrder?.code).toBe("FQUERY-PLUGIN-OUTPUT-INVALID");
   });
   it("validator違反を1回だけproviderへ返して全置換する", async () => {
     const generate = vi.fn()
@@ -42,6 +44,22 @@ describe("GeminiFamPlugin", () => {
     const generate = vi.fn(); const plugin = new GeminiFamPlugin({ model: "gemini-2.5-flash", credentialName: "gemini-local", credentialSources: [explicitSource([{ name: "gemini-local", key: "not-a-real-key" }])], generate });
     const result = await evaluateQ(Q({ kind: "literal", value: "source" }, { queryId: "q://test/deny", operations: [{ kind: "invoke", capability: "fam.decompose" }] }), { pluginResolver: plugin });
     expect(result.pluginStatus).toBe("rejected"); expect(generate).not.toHaveBeenCalled();
+  });
+  it("Q deadlineのcancel signalをgenerateへ渡す", async () => {
+    const generate = vi.fn(async (request: { signal?: AbortSignal }) => {
+      expect(request.signal).toBeInstanceOf(AbortSignal);
+      return { text: JSON.stringify(createLiteralDecompositionFam("source", "q://test/signal")) };
+    });
+    const plugin = new GeminiFamPlugin({ model: "gemini-2.5-flash", credentialName: "gemini-local", credentialSources: [explicitSource([{ name: "gemini-local", key: "not-a-real-key" }])], generate });
+    await evaluateQ(Q({ kind: "literal", value: "source" }, { queryId: "q://test/signal", operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: "network" } }), { pluginResolver: plugin });
+    expect(generate).toHaveBeenCalledOnce();
+  });
+  it("provider errorへcredentialを露出しない", async () => {
+    const generate = vi.fn(async () => { throw new Error("x-goog-api-key: not-a-real-key"); });
+    const plugin = new GeminiFamPlugin({ model: "gemini-2.5-flash", credentialName: "gemini-local", credentialSources: [explicitSource([{ name: "gemini-local", key: "not-a-real-key" }])], generate });
+    const result = await evaluateQ(Q({ kind: "literal", value: "source" }, { queryId: "q://test/redact", operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: "network" } }), { pluginResolver: plugin });
+    expect(result.reason).toContain("[REDACTED]");
+    expect(result.reason).not.toContain("not-a-real-key");
   });
   it("model catalogをprovider adapter境界から取得する", async () => {
     const listModels = vi.fn(async () => [{ name: "gemini-test-a" }, { name: "gemini-test-b" }]);
