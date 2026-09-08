@@ -34,6 +34,7 @@ export function PsiNlNode({ model, emit }: NodeRendererProps) {
       <div className="psi-node-badges">
         {statusBadges.map((badge) => <span key={badge.axis} className="fquery-badge" data-axis={badge.axis} data-tone={badge.tone}><small>{badge.axis}</small>{badge.value}</span>)}
       </div>
+      {context?.error && <p className="psi-node-error" role="alert">Last Order: <code>{context.error}</code></p>}
       {selectedRoute?.credentialName && <p className="psi-node-muted">credential: {selectedRoute.credentialName}</p>}
     </div>
   );

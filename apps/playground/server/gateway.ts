@@ -64,7 +64,7 @@ export async function decomposeText(request: DecomposeRequest, options: GatewayO
   const resolver = createResolver(request, options);
   const result = await evaluateQ(Q(
     { kind: "literal", value: request.source },
-    { queryId: `q://playground/${randomUUID()}`, operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: request.provider === "fixture" ? "none" : "network", limits: { maxDepth: 32, maxNodes: 10_000, timeoutMs: 120_000 } } },
+    { queryId: `q://playground/${randomUUID()}`, operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: request.provider === "fixture" ? "none" : "network", limits: { maxDepth: 32, maxNodes: 10_000, timeoutMs: 45_000 } } },
   ), { pluginResolver: resolver, outputConnected: true, emit: (event) => events.push(event) });
   const accessMapDocument = readFamJson(await readFile(join(options.repoRoot, "fixtures/test-cases/basic-commons-access-mapper/access-map.fam.json"), "utf8"));
   readAccessMapProfile(accessMapDocument.value);

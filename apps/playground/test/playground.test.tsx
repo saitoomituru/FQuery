@@ -35,6 +35,15 @@ async function mountWithGraph(fetcher: ReturnType<typeof vi.fn>) {
 }
 
 describe("FQuery Playground", () => {
+  it("provider Last OrderのcodeとreasonをΨ.NL node内へ表示する", async () => {
+    const failed = { result: { schema_version: "fquery.result/0.1.0-draft", query_ref: "q://test/failure", resolution_status: "unknown", connection_status: "connected", transport_status: "succeeded", plugin_status: "resolved", semantic_status: "unknown", lambda_status: "unknown", control_status: "last-order", reason: "invalid-fam-json:source-coverage-incomplete", evidence_refs: [], last_order: { code: "FQUERY-PLUGIN-OUTPUT-INVALID", reason: "invalid-fam-json:source-coverage-incomplete", requested_next: "inspect-provider-output-or-select-another-route", resume_when: "valid-provider-output-available" } } };
+    const fetcher = vi.fn().mockResolvedValueOnce(json(fixtureRoutes)).mockResolvedValueOnce(json(failed));
+    const { container } = await mountWithGraph(fetcher);
+    await act(async () => { fireEvent.click(canvasNodes(container)[0]!.querySelector('[aria-label="route controls"] button')!); });
+    await waitFor(() => expect(container.querySelector(".psi-node-error")?.textContent).toContain("FQUERY-PLUGIN-OUTPUT-INVALID"));
+    expect(container.querySelector(".psi-node-error")?.textContent).toContain("source-coverage-incomplete");
+  });
+
   it("複数provider/modelを発見し、Ψ.NL node内のdecomposerで分解する", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(json([

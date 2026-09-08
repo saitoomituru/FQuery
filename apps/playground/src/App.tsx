@@ -227,10 +227,12 @@ export function App() {
   }, [session, fams, logs, source, provider, model]);
 
   const decomposer = useMemo<DecomposerContextValue>(() => ({
-    routes, provider, model, source, running,
+    routes, provider, model, source, running, ...(error ? { error } : {}),
     setProvider: (next) => { setProvider(next); setModel(routes.find((route) => route.provider === next)?.models[0] ?? ""); setResponse(undefined); setError(""); },
-    setModel, setSource, execute,
-  }), [routes, provider, model, source, running, execute]);
+    setModel: (next) => { setModel(next); setResponse(undefined); setError(""); },
+    setSource: (next) => { setSource(next); setError(""); },
+    execute,
+  }), [routes, provider, model, source, running, error, execute]);
 
   // Host責務: ∇φ.FAMVIMのcanonical FAMが変わったら、接続先λ.NLへmanifestationをfixture projectionとして投影する（λ判定はしない）
   const fam = canonicalDocument?.value;

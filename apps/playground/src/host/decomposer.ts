@@ -24,6 +24,7 @@ export interface DecomposerContextValue {
   readonly model: string;
   readonly source: string;
   readonly running: boolean;
+  readonly error?: string;
   readonly setProvider: (provider: PlaygroundRoute["provider"]) => void;
   readonly setModel: (model: string) => void;
   readonly setSource: (source: string) => void;
@@ -42,14 +43,31 @@ export interface DecomposeOutcome {
 
 /** gateway越しに分解を要求する。GUIはengineを実行しない。 */
 export async function requestDecompose(body: { provider: string; model: string; source: string }, options: { readonly signal?: AbortSignal } = {}): Promise<DecomposeOutcome> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort("client-timeout"), 50_000);
+  const forwardAbort = () => controller.abort(options.signal?.reason ?? "cancelled");
+  options.signal?.addEventListener("abort", forwardAbort, { once: true });
   try {
-    const fetched = await fetch("/api/decompose", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), ...(options.signal ? { signal: options.signal } : {}) });
+    const fetched = await fetch("/api/decompose", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), signal: controller.signal });
     const payload: unknown = await fetched.json();
     if (!fetched.ok) return { response: undefined, error: isRecord(payload) && typeof payload.error === "string" ? payload.error : `decompose-http-${fetched.status}` };
-    return { response: payload };
+    const failure = resultFailureReason(payload);
+    return { response: payload, ...(failure ? { error: failure } : {}) };
   } catch (error) {
-    return { response: undefined, error: error instanceof DOMException && error.name === "AbortError" ? "decompose-cancelled" : error instanceof Error ? error.message : "decompose-failed" };
+    return { response: undefined, error: error instanceof DOMException && error.name === "AbortError" ? options.signal?.aborted ? "decompose-cancelled" : "decompose-timeout" : error instanceof Error ? error.message : "decompose-failed" };
+  } finally {
+    clearTimeout(timer);
+    options.signal?.removeEventListener("abort", forwardAbort);
   }
+}
+
+function resultFailureReason(response: unknown): string | undefined {
+  const result = resultRecord(response);
+  if (!result || result.control_status !== "last-order") return undefined;
+  const lastOrder = isRecord(result.last_order) ? result.last_order : undefined;
+  const code = typeof lastOrder?.code === "string" ? lastOrder.code : "FQUERY-LAST-ORDER";
+  const reason = typeof result.reason === "string" ? result.reason : typeof lastOrder?.reason === "string" ? lastOrder.reason : "reason-not-provided";
+  return `${code}: ${reason}`;
 }
 
 export function resultRecord(response: unknown): Record<string, unknown> | undefined {
