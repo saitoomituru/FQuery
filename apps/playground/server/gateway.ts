@@ -17,7 +17,12 @@ export interface PlaygroundRoute {
 }
 
 export interface DecomposeRequest { readonly provider: PlaygroundRoute["provider"]; readonly model: string; readonly source: string }
-export interface GatewayOptions { readonly repoRoot: string; readonly ollamaBaseUrl?: string }
+export interface GatewayOptions {
+  readonly repoRoot: string;
+  readonly ollamaBaseUrl?: string;
+  /** gatewayからprovider/Coreまでを同じ経路で検証するための明示的なadapter seam。production既定では使用しない。 */
+  readonly resolverFactory?: (request: DecomposeRequest) => PluginResolver;
+}
 
 const FIXTURE_MODEL = "mock-fam-transformer";
 
@@ -61,7 +66,7 @@ function orderGeminiTextModels(models: readonly string[]): readonly string[] {
 export async function decomposeText(request: DecomposeRequest, options: GatewayOptions): Promise<Readonly<Record<string, unknown>>> {
   assertDecomposeRequest(request);
   const events: CoreEvent[] = [];
-  const resolver = createResolver(request, options);
+  const resolver = options.resolverFactory?.(request) ?? createResolver(request, options);
   const result = await evaluateQ(Q(
     { kind: "literal", value: request.source },
     { queryId: `q://playground/${randomUUID()}`, operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: request.provider === "fixture" ? "none" : "network", limits: { maxDepth: 32, maxNodes: 10_000, timeoutMs: 45_000 } } },
