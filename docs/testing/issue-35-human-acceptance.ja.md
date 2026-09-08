@@ -6,6 +6,9 @@
 
 ## 2026-09-08 Human Test観測
 
+- 追加retestの1回目はChromeで背景だけの黒画面となり、app headerやnodeが一切描画されなかった。画面証拠だけではmodule load失敗、HMR切替、React初期化例外のどれかを確定できないため、原因は`UNKNOWN`とする。
+- 2回目は画面が描画されたが、Gemini生成候補の`$.λ.output_units[2].Q.unknown_is_absence`欠落を`unknown-absence-boundary-required`として拒否し、`FQUERY-PLUGIN-CALL-FAILED` Last Orderとなった。これはtransport失敗ではなくprovider出力とFQuery profile不変条件の境界事故である。
+- 上記2件に対し、初期module／React描画失敗を黒画面にせず停止理由と再読込導線へ変換し、`unknown_is_absence=false`とstable unit identityだけをFQuery profile側で局所補正して補正pathをevent receiptへ残す修正を実施した。実Chrome／Safariの再Human Testは未実施であり、状態は不合格のままとする。
 - 修正後retestでもChrome、Safariの両方が初回Gemini decompositionを完了できず不合格となった。
 - 両browserで`plugin resolved`後に`transport failed`、または`plugin running / transport not-requested`のまま停止する状態が観測された。browser差より手前のprovider generate／validation／timeout境界が共通原因候補だが、取得済み画面だけでは原因を一つに確定できないため`UNKNOWN`を保持する。
 - Chromeは初回decomposition時点で`transport failed`となり不合格。component testは実Browser testではなく、この不合格を覆さない。browser固有原因は`UNKNOWN`のまま保持する。
@@ -20,6 +23,8 @@
 ## 自動検証済み
 
 - decomposition FAMの各unitがstable `Q.unit_ref`、unit revision、親FAM revisionを持つ
+- provider候補でprofile所有のstable identityまたは`unknown_is_absence=false`が欠けても本文や`unknowns`を発明せず局所補正し、補正pathを`plugin-call-end.normalization`へ記録する
+- 初期module loadまたはReact初期化が失敗しても無言の黒画面にせず、停止理由と再読込導線を表示する
 - テスト用Basic Commons Access Mapper自体がrevision固定FAMであり、World/Astral/Element/unknown分類とTC2局所gateを注入する
 - 初期placeholderから、分解後に `1 Ψ → N ∇φ → 1 λ` の独立nodeへ投影する
 - 選択unitだけの差替えで兄弟unit、親FAM拡張field、旧revisionを保持する
@@ -37,7 +42,7 @@
 
 ## Human GUI Test
 
-1. Safariで`npm run dev`の`http://127.0.0.1:3000`を開く。Chromeは別の原因調査Issueが閉じるまで合格対象にしない。
+1. SafariとChromeでそれぞれ`npm run dev`の`http://127.0.0.1:3000`を開き、初回からheaderと初期graphが表示されることを確認する。失敗時は黒画面ではなく起動失敗理由が表示されることを確認する。
 2. 「降水確率は38%である。不安である。傘を持つ。」をfixtureで分解し、3つの独立∇φ nodeと1つのλ nodeが見えることを確認する。
 3. 第1unitを「降水確率は68%である。」へ差替え、λが3行を保持することを確認する。
 4. 第1unitを「降水確率は0%である。」へ差替え、影響nodeがstale表示になり、λが「再構成待ち」で旧3行を表示しないことを確認する。
@@ -48,6 +53,7 @@
 9. Access Mapper / evidenceを開き、FAM IDとrevisionが読めることを確認する。
 10. localeをEnglishへ切替え、機械可読key・URI・`unit_ref`が変化しないことを確認する。
 11. 左paneに不要なtab scrollbarが再発せず、tab操作とpane本文scrollが分離していることを確認する。
+12. Geminiで3unitを分解し、provider候補に`unknown_is_absence`欠落があっても1回のprovider応答から3unitとλが表示され、Recordsの`plugin-call-end.normalization.repairedPaths`で補正箇所を確認できることを確認する。
 
 ## 完了に含めない境界
 

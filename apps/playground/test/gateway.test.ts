@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { decomposeText } from "../server/gateway.js";
 
@@ -14,5 +15,13 @@ describe("Playground gateway", () => {
 
   it("空sourceを拒否する", async () => {
     await expect(decomposeText({ provider: "fixture", model: "mock-fam-transformer", source: "" }, { repoRoot })).rejects.toThrow("invalid-source");
+  });
+
+  it("初期module失敗時も黒画面にせず起動状態と再読込導線を残す", () => {
+    const html = readFileSync(resolve(repoRoot, "apps/playground/index.html"), "utf8");
+    expect(html).toContain("id=\"fquery-boot-status\"");
+    expect(html).toContain("import(\"/src/main.tsx\").catch");
+    expect(html).toContain("FQuery起動失敗");
+    expect(html).toContain("再読込");
   });
 });

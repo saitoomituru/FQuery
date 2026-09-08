@@ -38,6 +38,8 @@ top-levelは4軸に加えて `fam_id`、`revision_id`、`kind`、`title`、`inde
 
 取得不能や未確認は不存在ではない。`Q.unknowns` は原言語の `source_expression`、その `source_language`、機械可読な `concept_id` を分けたobject配列として保持し、`Q.unknown_is_absence` は常に `false` とする。識別子が英語風でも、それを原言語表現の代用品にはしない。`fquery.candidate-fam/0.1.0-draft` の `blocks[]` はFAMではなく、必要ならPresentation用の別recordとして保持する。`application/fam+json` やFAM paneへ昇格させない。
 
+`Q.unknown_is_absence=false`とdecomposition unitのstable identityはproviderが判断するWorld factではなく、FQuery decomposition profileが所有する構造的不変条件である。provider候補でこれらが欠落した場合、consumerは本文や`Q.unknowns`を発明せず当該不変条件だけを局所補正できる。ただし補正を無言で正本化せず、profile refと補正JSON pathをnormalization receiptへ記録する。その他のvalidator違反はprovider出力不正としてLast Orderを返す。
+
 ## byte保存
 
 `readFamJson` は未知fieldを含む値を読み、未変更documentは `writeUnmodifiedFamJson` により元のJSON文字列をそのまま返す。これはJSON FAM documentのbyte保存境界であり、Proton原典そのもののbyte保存は `proton/origins/` のreceiptが正本である。

@@ -4,9 +4,36 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FQuery Playground</title>
+    <style>
+      html, body, #app { min-height: 100%; margin: 0; }
+      body { background: #080d16; color: #dce8ff; font-family: system-ui, sans-serif; }
+      .boot-status { margin: 10vh auto; width: min(36rem, calc(100% - 3rem)); padding: 1.25rem; border: 1px solid #385070; border-radius: .75rem; background: #101827; }
+      .boot-status h1 { margin: 0 0 .75rem; font-size: 1.1rem; }
+      .boot-status p { margin: .5rem 0; line-height: 1.5; overflow-wrap: anywhere; }
+      .boot-status button { padding: .45rem .8rem; color: inherit; border: 1px solid #6584ab; border-radius: .35rem; background: #1a2940; }
+    </style>
   </head>
   <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.tsx"></script>
+    <div id="app">
+      <main class="boot-status" id="fquery-boot-status" role="status">
+        <h1>FQueryを起動中…</h1>
+        <p>初期moduleを読み込んでいます。</p>
+        <noscript><p>JavaScriptが無効なためFQueryを起動できません。</p></noscript>
+      </main>
+    </div>
+    <script type="module">
+      import("/src/main.tsx").catch((error) => {
+        const status = document.getElementById("fquery-boot-status");
+        if (!status) return;
+        const message = document.createElement("p");
+        message.dataset.bootError = "true";
+        message.textContent = `初期moduleの読込に失敗しました: ${String(error).slice(0, 800)}`;
+        const reload = document.createElement("button");
+        reload.type = "button";
+        reload.textContent = "再読込";
+        reload.addEventListener("click", () => location.reload());
+        status.replaceChildren(Object.assign(document.createElement("h1"), { textContent: "FQuery起動失敗" }), message, reload);
+      });
+    </script>
   </body>
 </html>
