@@ -115,7 +115,7 @@ describe("FQuery Playground", () => {
 });
 
 describe("FQuery Playground FAMVIM", () => {
-  it("Why連打を一実行へ直列化し、処理中表示と同一結果cacheで子node増殖を防ぐ", async () => {
+  it("「なんで？-DeFold-」連打を一実行へ直列化し、処理中表示と同一結果cacheで子node増殖を防ぐ", async () => {
     const parentFam = createLiteralDecompositionFam("前提である。結論である。", "q://test/playground/recursive-chatter-parent");
     const childFam = createLiteralDecompositionFam("理由Aである。理由Bである。", "q://test/playground/recursive-chatter-child");
     let resolveRecursive!: (response: Response) => void;
@@ -128,11 +128,11 @@ describe("FQuery Playground FAMVIM", () => {
     await act(async () => { fireEvent.click(canvasNodes(container)[0]!.querySelector('[aria-label="route controls"] button')!); });
     await waitFor(() => expect(canvasNodes(container)).toHaveLength(4));
     const parentUnit = canvasNodes(container).find((node) => node.querySelector("[data-fold-ref]"))!;
-    const why = within(parentUnit).getByText("Whyを再分解") as HTMLButtonElement;
+    const why = within(parentUnit).getByText("なんで？-DeFold-") as HTMLButtonElement;
     fireEvent.click(why);
     await waitFor(() => expect(why.disabled).toBe(true));
     expect(why.getAttribute("aria-busy")).toBe("true");
-    expect(why.textContent).toBe("Why分解中…");
+    expect(why.textContent).toBe("DeFold中…");
     fireEvent.click(why);
     expect(fetcher).toHaveBeenCalledTimes(3);
     await act(async () => { resolveRecursive(json(decompositionResponse(childFam))); await recursiveResponse; });
@@ -145,7 +145,7 @@ describe("FQuery Playground FAMVIM", () => {
     expect(canvasNodes(container)).toHaveLength(6);
   });
 
-  it("選択unitのWhy再分解を子Foldとして追加し、親子identityをFoldLogへ残す", async () => {
+  it("選択unitの「なんで？-DeFold-」を子Foldとして追加し、親子identityをFoldLogへ残す", async () => {
     const parentFam = createLiteralDecompositionFam("前提である。結論である。", "q://test/playground/recursive-parent");
     const childFam = createLiteralDecompositionFam("理由Aである。理由Bである。", "q://test/playground/recursive-child");
     const fetcher = vi.fn()
@@ -156,7 +156,7 @@ describe("FQuery Playground FAMVIM", () => {
     await act(async () => { fireEvent.click(canvasNodes(container)[0]!.querySelector('[aria-label="route controls"] button')!); });
     await waitFor(() => expect(canvasNodes(container)).toHaveLength(4));
     const parentUnit = canvasNodes(container).find((node) => node.querySelector("[data-fold-ref]"))!;
-    await act(async () => { fireEvent.click(within(parentUnit).getByText("Whyを再分解")); });
+    await act(async () => { fireEvent.click(within(parentUnit).getByText("なんで？-DeFold-")); });
     await waitFor(() => expect(canvasNodes(container)).toHaveLength(6));
     await waitFor(() => expect(container.querySelectorAll('[data-resolution-mode="atomic-resolution"]')).toHaveLength(1));
     const children = canvasNodes(container).filter((node) => node.querySelector('[data-fold-ref^="q://test/playground/recursive-child"]'));
@@ -164,6 +164,14 @@ describe("FQuery Playground FAMVIM", () => {
     const boundary = container.querySelector('[data-resolution-mode="atomic-resolution"]')!;
     expect(boundary.getAttribute("data-dispatch-mode")).toBe("single-processing-unit");
     expect(boundary.textContent).toContain("G=1/1/1 · D=1 · L=0/0/0/not-declared · mL=1/1/1 · child=2 · S=ready");
+    expect(boundary.textContent).toContain("まとめる-Fold-");
+    fireEvent.click(within(boundary as HTMLElement).getByText("まとめる-Fold-"));
+    await waitFor(() => expect(boundary.getAttribute("data-collapsed")).toBe("true"));
+    expect(canvasNodes(container)).toHaveLength(4);
+    expect(boundary.textContent).toContain("ひらく-DeFold-");
+    fireEvent.click(within(boundary as HTMLElement).getByText("ひらく-DeFold-"));
+    await waitFor(() => expect(boundary.getAttribute("data-collapsed")).toBe("false"));
+    expect(canvasNodes(container)).toHaveLength(6);
     openLeftTab(container, "outline");
     expect(container.querySelectorAll('.fquery-outliner [data-depth="1"]')).toHaveLength(1);
     expect(container.querySelectorAll('.fquery-outliner [data-depth="2"]')).toHaveLength(2);
@@ -172,7 +180,7 @@ describe("FQuery Playground FAMVIM", () => {
     expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain("q://test/playground/recursive-parent/fam/unit/1");
   });
 
-  it("親unit更新後のWhy再実行で旧generationを境界ごと交換しchainを残骸化しない", async () => {
+  it("親unit更新後の「なんで？-DeFold-」再実行で旧generationを境界ごと交換しchainを残骸化しない", async () => {
     const parentFam = createLiteralDecompositionFam("前提である。結論である。", "q://test/playground/recursive-replace-parent");
     const firstChild = createLiteralDecompositionFam("旧理由Aである。旧理由Bである。", "q://test/playground/recursive-old-child");
     const nextChild = createLiteralDecompositionFam("新理由である。", "q://test/playground/recursive-new-child");
@@ -185,12 +193,12 @@ describe("FQuery Playground FAMVIM", () => {
     await act(async () => { fireEvent.click(canvasNodes(container)[0]!.querySelector('[aria-label="route controls"] button')!); });
     await waitFor(() => expect(canvasNodes(container)).toHaveLength(4));
     let parentUnit = canvasNodes(container).find((node) => node.querySelector('[data-fold-ref^="q://test/playground/recursive-replace-parent"]'))!;
-    await act(async () => { fireEvent.click(within(parentUnit).getByText("Whyを再分解")); });
+    await act(async () => { fireEvent.click(within(parentUnit).getByText("なんで？-DeFold-")); });
     await waitFor(() => expect(container.textContent).toContain("旧理由Bである。"));
     setText(parentUnit.querySelector("textarea")!, "更新した前提である。");
     await act(async () => { fireEvent.click(parentUnit.querySelector("button")!); });
     parentUnit = canvasNodes(container).find((node) => node.querySelector('[data-fold-ref^="q://test/playground/recursive-replace-parent"]'))!;
-    await act(async () => { fireEvent.click(within(parentUnit).getByText("Whyを再分解")); });
+    await act(async () => { fireEvent.click(within(parentUnit).getByText("なんで？-DeFold-")); });
     await waitFor(() => expect(container.textContent).toContain("新理由である。"));
     expect(container.textContent).not.toContain("旧理由Aである。");
     expect(container.textContent).not.toContain("旧理由Bである。");

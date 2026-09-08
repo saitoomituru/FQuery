@@ -21,7 +21,7 @@
 
 automated testはSession判定往復、Core 3 node契約、fam-edit round-trip、component描画までを検証済み。以下は人間が実画面で判断する。
 
-Issue #35の分解後`1 + N + 1` graph、局所因果再投影、recursive Why、FoldLog alphaは[`issue-35-human-acceptance.ja.md`](issue-35-human-acceptance.ja.md)を併用する。以下の「Core 3 node」は起動直後のplaceholder graphを指す。
+Issue #35の分解後`1 + N + 1` graph、局所因果再投影、「なんで？-DeFold-」、描画縮約の「まとめる-Fold-」、FoldLog alphaは[`issue-35-human-acceptance.ja.md`](issue-35-human-acceptance.ja.md)を併用する。以下の「Core 3 node」は起動直後のplaceholder graphを指す。
 
 ### 全画面canvasとnode本体
 

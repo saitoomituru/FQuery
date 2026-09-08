@@ -13,6 +13,20 @@ dispatch_mode   = single-processing-unit
 
 同じ親Foldの実行中は次の再帰分解要求を受理しない。親revision、入力、providerまたはmodelが変わった再実行ではgenerationを進め、旧boundaryとその子を一括交換する。中止済み旧generationの遅延応答はgraphへ接続しない。
 
+## Fold操作語彙
+
+日本語UIを正本とし、次の3操作を混同しない。
+
+| 操作 | 日本語UI | 中間表現・来歴 | 用途 |
+|---|---|---|---|
+| `DeFold` | `なんで？-DeFold-` | 保持する | Meaning anchorから子Fold、説明、低G操作面を非破壊に展開する |
+| `Fold` | `まとめる-Fold-` | 保持する | atomic boundary配下の描画だけを縮約し、一つの縮小nodeとして扱う |
+| `unFold` | 現時点でUI未実装 | 破棄し得る | modelへのbakeや生成結果への置換など、破壊的結合を明示する |
+
+`Fold`はchildren、edge、G/D/L/mL/S、revision、FoldLogを削除しない。canvas rendererから子孫を外し、boundaryを縮小投影するpresentation accelerationである。縮小nodeの`ひらく-DeFold-`で同じ中間表現を再描画できる。
+
+`unFold`は将来の予約語とする。既存のAtlantis/Manifest文書で`UnFold`と記された「変換前の表現を破棄し、生成結果へ置換する系」と同じ概念を指し、FQueryの機械可読operation tokenでは`unFold`と綴る。`DeFold`や描写上の`Fold`を、暗黙に`unFold`へ昇格させない。
+
 ## `fold_boundary.boundary_metrics` namespace
 
 短縮表示はG/D/L/mL/Sを使うが、機械契約では必ずFold boundaryの`boundary_metrics`配下へ閉じる。完全pathは`fold_boundary.boundary_metrics`である。Dは`context_dimension_count`、Lは`technical_layer_ref`／tool chainの系譜を維持し、判断を含むcontext chainだけをmLへ分離する。
@@ -65,6 +79,6 @@ Sが不成立なら`FOLD-SOCKET-MISSING`、必須L routeが切れた場合は`FO
 
 ## #35での実装境界
 
-#35ではrecursive Whyの子graphをboundaryへネストし、busy状態、chattering防止、generation直列化、旧応答遮断、FoldLog alphaへの`boundary_metrics`記録までを扱う。Playground上の境界表示はHuman Testに必要な最小debug表示であり、Gの視覚的な深度表現やD/L/mLの本表示設計は後続Issueとする。
+#35では「なんで？-DeFold-」の子graphをboundaryへネストし、busy状態、chattering防止、generation直列化、旧応答遮断、FoldLog alphaへの`boundary_metrics`記録までを扱う。`まとめる-Fold-`は意味構造を保持したcanvas縮約として扱う。Playground上の境界表示はHuman Testに必要な最小debug表示であり、Gの視覚的な深度表現やD/L/mLの本表示設計は後続Issueとする。
 
 IBDでの永続化、索引、revision管理は本仕様の実装済み範囲に含めない。BrowserのFoldLog alphaはOAE recordを生成できるが、永続OAE管理システムではない。

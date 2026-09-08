@@ -21,6 +21,10 @@
 .fquery-fold-boundary > header { display: flex; justify-content: space-between; gap: 1rem; padding: 0.55rem 0.7rem; border-bottom: 1px solid rgba(139, 92, 246, 0.55); }
 .fquery-fold-boundary > header span, .fquery-fold-boundary > small { font: 0.68rem ui-monospace, monospace; }
 .fquery-fold-boundary > small { display: block; padding: 0.35rem 0.7rem; color: #b9a8ee; }
+.fquery-fold-boundary-toggle { pointer-events: auto; margin: 0.2rem 0.7rem 0.55rem; color: #f2ebff; background: #312356; border: 1px solid #8b5cf6; border-radius: 0.35rem; padding: 0.3rem 0.55rem; cursor: pointer; }
+.fquery-fold-boundary[data-collapsed="true"] { background: rgba(49, 35, 86, 0.48); }
+.fquery-fold-boundary[data-collapsed="true"] > header { padding-block: 0.4rem; }
+.fquery-fold-boundary[data-collapsed="true"] > small { padding-block: 0.2rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .fquery-fold-boundary[data-status="running"] { border-style: solid; animation: fquery-fold-pulse 1.1s ease-in-out infinite alternate; }
 .fquery-fold-boundary[data-status="failed"], .fquery-fold-boundary[data-status="cancelled"] { border-color: #ff7b72; }
 @keyframes fquery-fold-pulse { from { opacity: 0.72; } to { opacity: 1; } }

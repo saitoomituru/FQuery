@@ -6,12 +6,12 @@ export type MessageKey = "app.title" | "app.lastEvent" | "app.frameAll" | "unit.
 const messages: Readonly<Record<PlaygroundLocale, Readonly<Record<MessageKey, string>>>> = Object.freeze({
   "ja-JP": Object.freeze({
     "app.title": "FQuery Playground — Ψ.NL → ∇φ.FAMVIM → λ.NL", "app.lastEvent": "最終event", "app.frameAll": "全体表示",
-    "unit.replace": "選択unitだけ差替え", "unit.why": "Whyを再分解", "unit.whyRunning": "Why分解中…", "unit.details": "詳細 / FoldLog", "unit.dimension": "次元", "unit.evidence": "Access Mapper / evidence",
+    "unit.replace": "選択unitだけ差替え", "unit.why": "なんで？-DeFold-", "unit.whyRunning": "DeFold中…", "unit.details": "詳細 / FoldLog", "unit.dimension": "次元", "unit.evidence": "Access Mapper / evidence",
     "lambda.stale": "再構成待ち — stale λ投影は出力しない", "lambda.empty": "未提供 — 上流FAMから出力がまだ投影されていない",
   }),
   "en-US": Object.freeze({
     "app.title": "FQuery Playground — Ψ.NL → ∇φ.FAMVIM → λ.NL", "app.lastEvent": "last event", "app.frameAll": "Frame all",
-    "unit.replace": "Replace selected unit", "unit.why": "Decompose Why", "unit.whyRunning": "Decomposing Why…", "unit.details": "Details / FoldLog", "unit.dimension": "dimension", "unit.evidence": "Access Mapper / evidence",
+    "unit.replace": "Replace selected unit", "unit.why": "Why? -DeFold-", "unit.whyRunning": "DeFolding…", "unit.details": "Details / FoldLog", "unit.dimension": "dimension", "unit.evidence": "Access Mapper / evidence",
     "lambda.stale": "Recomposition required — stale λ projection is blocked", "lambda.empty": "NOT PROVIDED — no upstream FAM projection yet",
   }),
 });

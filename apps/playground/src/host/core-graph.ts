@@ -79,7 +79,7 @@ export async function projectDecompositionGraph(
   return Object.freeze({ psi: current.psi, lambda: current.lambda, gradients: Object.freeze(gradients) });
 }
 
-/** recursive Whyの子decompositionを、親unit identityを保った階層nodeとして追加する。 */
+/** 「なんで？-DeFold-」の子decompositionを、親unit identityを保った階層nodeとして追加する。 */
 export interface RecursiveFoldProjection {
   readonly boundaryNodeId: string;
   readonly childNodeIds: readonly string[];
@@ -94,7 +94,7 @@ export async function removeRecursiveFoldProjection(session: PresentationSession
   }
 }
 
-/** 親unitへRunnerの状態を投影し、Why操作のbusy表示をsession stateと同期する。 */
+/** 親unitへRunnerの状態を投影し、「なんで？-DeFold-」のbusy表示をsession stateと同期する。 */
 export function setRecursiveFoldStatus(session: PresentationSession, nodeId: string, status: "running" | "complete" | "failed" | "cancelled"): void {
   const node = session.state.nodes.find((candidate) => candidate.nodeId === nodeId);
   if (!node) return;
@@ -106,6 +106,14 @@ export function setRecursiveFoldStatus(session: PresentationSession, nodeId: str
       canCancel: status === "running",
     },
   });
+}
+
+/** Foldの意味構造を残したまま、canvas投影だけを縮約または再展開する。 */
+export function setFoldBoundaryCollapsed(session: PresentationSession, nodeId: string, collapsed: boolean): boolean {
+  const node = session.state.nodes.find((candidate) => candidate.nodeId === nodeId);
+  if (!node?.foldBoundary) return false;
+  session.applyEngineEvent({ type: "fam.node.changed", node: { ...node, collapsed } });
+  return true;
 }
 
 export async function projectRecursiveDecompositionGraph(

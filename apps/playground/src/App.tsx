@@ -4,7 +4,7 @@ import { CORE_RENDERER_HINT, createPaneContext, findRegistrationByPresentation, 
 import { isFamJsonRecord, readAccessMapProfile, validateFamJson, type AccessMapProfile } from "@fquery/fam-core";
 import { createPlaygroundSession } from "./host/session.js";
 import { useCanonicalFam, useEditReceipts, useFoldLogRecords, useSessionState } from "./host/use-session.js";
-import { buildCoreGraph, placeUnplacedNodes, projectDecompositionGraph, projectRecursiveDecompositionGraph, refreshDecompositionNodes, removeRecursiveFoldProjection, setRecursiveFoldStatus, type CoreNodeIds } from "./host/core-graph.js";
+import { buildCoreGraph, placeUnplacedNodes, projectDecompositionGraph, projectRecursiveDecompositionGraph, refreshDecompositionNodes, removeRecursiveFoldProjection, setFoldBoundaryCollapsed, setRecursiveFoldStatus, type CoreNodeIds } from "./host/core-graph.js";
 import { DecomposerContext, FIXTURE_ROUTE, isRecord, projectLambdaNode, projectPsiNode, requestDecompose, resultRecord, type DecomposerContextValue, type PlaygroundRoute } from "./host/decomposer.js";
 import { PANE_COMPONENTS, createPlaygroundPaneRegistry } from "./host/pane-registry.js";
 import { PlaygroundPaneContext, type PlaygroundEditReceiptView, type PlaygroundPaneContextValue } from "./context.js";
@@ -80,6 +80,11 @@ export function App() {
       return;
     }
     if (!isGuiRequest(event)) return;
+    if (event.type === "property.change.requested" && event.property === "fold.presentation-collapsed") {
+      const payload = isRecord(event.value) ? event.value : {};
+      if (!setFoldBoundaryCollapsed(session, event.targetRef, payload.collapsed === true)) setError("fold-boundary-not-found");
+      return;
+    }
     if (event.type === "property.change.requested" && event.property === "unit.recursive-decompose") {
       const parent = session.state.nodes.find((node) => node.nodeId === event.targetRef);
       const payload = isRecord(event.value) ? event.value : {};
@@ -106,7 +111,7 @@ export function App() {
           return;
         }
         const outcome = await requestDecompose(
-          { provider, model, source: `なぜ: ${sourceText}` },
+          { provider, model, source: `なんで？: ${sourceText}` },
           { signal: started.run.controller.signal },
         );
         if (!recursiveRuns.current.isCurrent(parentFoldRef, started.run.generation)) return;

@@ -60,4 +60,15 @@ describe("projectFlow", () => {
     expect(projection.nodes[0]).toMatchObject({ id: "boundary", type: "foldBoundary", style: { width: 760, height: 420 } });
     expect(projection.nodes[1]).toMatchObject({ id: "child", type: "fquery", parentId: "boundary", extent: "parent", position: { x: 30, y: 80 } });
   });
+
+  it("Foldを縮約すると子孫nodeと内部edgeを描画せずboundaryだけを縮小投影する", () => {
+    const boundary: NodeViewModel = { ...node("boundary", [{ portId: "boundary:children", label: "children", direction: "output", connectionStatus: "connected" }]), collapsed: true, foldBoundary: { boundaryRef: "fold-boundary://1", rootFoldRef: "fold://root", childFoldRefs: ["fold://child"], resolutionMode: "atomic-resolution", dispatchMode: "single-processing-unit", closesAxes: ["G", "D", "L", "mL"], generation: 1, status: "complete", boundaryMetrics: { G: { max: 1, median: 1, min: 1 }, D: 1, L: { max: 0, median: 0, min: 0, continuity: "not-declared", broken_route_refs: [] }, mL: { max: 1, median: 1, min: 1 }, direct_child_count: 1, S: { socket_present: true, adapter_ref: "adapter://lambda", on_missing: "last-order" } }, width: 760, height: 420 } };
+    const child: NodeViewModel = { ...node("child", [{ portId: "child:in", label: "in", direction: "input", connectionStatus: "connected" }]), parentNodeId: "boundary", parentFoldRef: "fold://root" };
+    const grandchild: NodeViewModel = { ...node("grandchild", []), parentNodeId: "child", parentFoldRef: "fold://child" };
+    const projection = projectFlow({ nodes: [boundary, child, grandchild], connections: [{ connectionId: "inside", fromPortId: "boundary:children", toPortId: "child:in" }], layout: [], selection: { nodeIds: [] } });
+    expect(projection.nodes).toHaveLength(1);
+    expect(projection.nodes[0]).toMatchObject({ id: "boundary", style: { width: 340, height: 150 } });
+    expect(projection.edges).toEqual([]);
+    expect(projection.portOwner.get("child:in")).toBe("child");
+  });
 });

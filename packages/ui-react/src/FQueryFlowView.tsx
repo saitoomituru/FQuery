@@ -84,7 +84,7 @@ function FlowSurface({ nodes, connections, layout, decisions, presentations, nod
         // drag中またはdecision待ちのnodeは、sessionの再投影で座標を巻き戻さない
         const keepPosition = before && (before.dragging || pending.pendingRequests.has(node.id));
         const position = keepPosition ? before.position : { x: node.position.x, y: node.position.y };
-        if (before && before.position.x === position.x && before.position.y === position.y && before.selected === node.selected && before.className === (node.unplaced ? "fquery-flow-node-unplaced" : undefined)) {
+        if (before && before.position.x === position.x && before.position.y === position.y && before.selected === node.selected && before.type === node.type && before.parentId === node.parentId && before.style?.width === node.style?.width && before.style?.height === node.style?.height && before.className === (node.unplaced ? "fquery-flow-node-unplaced" : undefined)) {
           return before;
         }
         return {

@@ -46,10 +46,13 @@ const UNPLACED_POSITION = Object.freeze({ x: 0, y: 0 });
 export function projectFlow(input: FlowProjectionInput): FlowProjection {
   const layoutByNode = new Map(input.layout.map((value) => [value.nodeId, value]));
   const selected = new Set(input.selection.nodeIds);
+  const nodeById = new Map(input.nodes.map((node) => [node.nodeId, node]));
+  const visibleNodes = input.nodes.filter((node) => !hasCollapsedAncestor(node, nodeById));
+  const visibleNodeIds = new Set(visibleNodes.map((node) => node.nodeId));
   const portOwner = new Map<string, string>();
   for (const node of input.nodes) for (const port of node.ports) portOwner.set(port.portId, node.nodeId);
 
-  const nodes = input.nodes.map((node): FlowNodeProjection => {
+  const nodes = visibleNodes.map((node): FlowNodeProjection => {
     const draft = input.draft?.get(node.nodeId);
     const accepted = layoutByNode.get(node.nodeId);
     const position = draft ?? (accepted ? { x: accepted.x, y: accepted.y } : UNPLACED_POSITION);
@@ -61,7 +64,7 @@ export function projectFlow(input: FlowProjectionInput): FlowProjection {
       unplaced: accepted === undefined,
       data: Object.freeze({ nodeId: node.nodeId }),
       ...(node.parentNodeId ? { parentId: node.parentNodeId, extent: "parent" as const } : {}),
-      ...(node.foldBoundary ? { style: Object.freeze({ width: node.foldBoundary.width, height: node.foldBoundary.height }) } : {}),
+      ...(node.foldBoundary ? { style: Object.freeze(node.collapsed ? { width: 340, height: 150 } : { width: node.foldBoundary.width, height: node.foldBoundary.height }) } : {}),
     });
   });
 
@@ -70,7 +73,7 @@ export function projectFlow(input: FlowProjectionInput): FlowProjection {
     const source = portOwner.get(connection.fromPortId);
     const target = portOwner.get(connection.toPortId);
     // 片端のportが存在しないconnectionは描画しない。canonical側の状態は変えない
-    if (!source || !target) continue;
+    if (!source || !target || !visibleNodeIds.has(source) || !visibleNodeIds.has(target)) continue;
     edges.push(Object.freeze({
       id: connection.connectionId,
       source,
@@ -81,4 +84,18 @@ export function projectFlow(input: FlowProjectionInput): FlowProjection {
   }
 
   return Object.freeze({ nodes: Object.freeze(nodes), edges: Object.freeze(edges), portOwner });
+}
+
+function hasCollapsedAncestor(node: NodeViewModel, nodeById: ReadonlyMap<string, NodeViewModel>): boolean {
+  let parentId = node.parentNodeId;
+  const visited = new Set<string>();
+  while (parentId) {
+    if (visited.has(parentId)) return true;
+    visited.add(parentId);
+    const parent = nodeById.get(parentId);
+    if (!parent) return false;
+    if (parent.foldBoundary && parent.collapsed) return true;
+    parentId = parent.parentNodeId;
+  }
+  return false;
 }
