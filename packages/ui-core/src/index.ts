@@ -49,7 +49,67 @@ export interface NodeViewModel {
   readonly collapsed?: boolean;
   readonly revisionRef?: string;
   readonly projectionFreshness?: "fresh" | "stale" | "unknown";
+  /** recursive child graphを一括解決・一括dispatchするFold境界。GUI groupingだけの情報ではない。 */
+  readonly foldBoundary?: FoldBoundaryViewModel;
+  /** React Flow投影上の親boundary node。canonicalな意味親はparentFoldRefで保持する。 */
+  readonly parentNodeId?: string;
   readonly presentation?: PresentationProjection;
+}
+
+export interface FoldBoundaryViewModel {
+  readonly boundaryRef: string;
+  readonly rootFoldRef: string;
+  readonly childFoldRefs: readonly string[];
+  readonly resolutionMode: "atomic-resolution";
+  readonly dispatchMode: "single-processing-unit";
+  readonly closesAxes: readonly ("G" | "D" | "L" | "mL")[];
+  readonly generation: number;
+  readonly status: "running" | "complete" | "failed" | "cancelled";
+  readonly boundaryMetrics: FoldBoundaryMetrics;
+  readonly width: number;
+  readonly height: number;
+}
+
+export interface FoldPathStatistics {
+  readonly max: number;
+  readonly median: number;
+  readonly min: number;
+}
+
+export interface FoldTechnologyLayerMetrics extends FoldPathStatistics {
+  readonly continuity: "connected" | "disconnected" | "not-declared";
+  readonly broken_route_refs: readonly string[];
+}
+
+export interface FoldBoundaryContinuation {
+  readonly mode: "spiritual-trust" | "imaginative-hypothesis";
+  readonly domain_ref: string;
+  readonly claimant_ref: string;
+  readonly claim_status: "declared-belief" | "hypothesis";
+  readonly verification_status: "not-verified" | "verification-not-applicable" | "verification-prohibited";
+  readonly verification_boundary_ref: string | null;
+  readonly source_tool_chain_continuity: FoldTechnologyLayerMetrics["continuity"];
+  readonly relabels_tool_chain_as_connected: false;
+}
+
+/** FoldをRunnerへ渡すG/D/L/mL/S。値は宣言済みgraphからだけ計算する。 */
+export interface FoldBoundaryMetrics {
+  /** Gravity: boundaryを跨いだFold-on-Fold path深度の標準3統計。 */
+  readonly G: FoldPathStatistics;
+  /** Dimension: Fold内で明示された一意なcontext dimension数。 */
+  readonly D: number;
+  /** Layer: API、adapter、tool等のtechnology chain node数の標準3統計。 */
+  readonly L: FoldTechnologyLayerMetrics;
+  /** meta Layer: 判断・解釈を含むcontext chain。MLと区別するため小文字mを保持する。 */
+  readonly mL: FoldPathStatistics;
+  /** Dへ混ぜないpresentation構造補助量。 */
+  readonly direct_child_count: number;
+  /** Socket/SDK: 元tool経路の外部接続契約。不在時の既定はLast Order。 */
+  readonly S: {
+    readonly socket_present: boolean;
+    readonly adapter_ref: string | null;
+    readonly on_missing: "last-order";
+  };
 }
 
 export type PresentationSurface =
@@ -422,3 +482,4 @@ export {
   type ResolvedPaneSection,
   type ResolvedPaneTab,
 } from "./pane-contract.js";
+export { declareFoldBoundaryContinuation, deriveFoldBoundaryMetrics, foldBoundaryLastOrder, type FoldBoundaryContinuationInput, type FoldBoundaryMetricsInput, type ProceduralChildEdge, type RequiredTechnologyRoute } from "./fold-boundary.js";
