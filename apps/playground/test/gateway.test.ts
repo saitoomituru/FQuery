@@ -18,6 +18,7 @@ describe("Playground gateway", () => {
 
   it("ref FAM欠落をgatewayからGemini adapterとCoreまで結合してprofile補正する", async () => {
     const candidate = structuredClone(createLiteralDecompositionFam("雨が降っている。傘を持って出かける。", "q://provider/ref-fam"));
+    (candidate as { kind: string }).kind = "provider-candidate";
     delete (candidate.Q as Record<string, unknown>).unknown_is_absence;
     for (const unit of (candidate.λ as { output_units: Array<{ Q: Record<string, unknown> }> }).output_units) delete unit.Q.unknown_is_absence;
     const generate = vi.fn(async () => ({ text: JSON.stringify(candidate), requestId: "gateway-integration-fixture" }));
@@ -36,7 +37,7 @@ describe("Playground gateway", () => {
     expect(generate).toHaveBeenCalledOnce();
     expect(response.result).toMatchObject({ transport_status: "succeeded", control_status: "result", value: { Q: { unknown_is_absence: false } } });
     expect(response.events).toEqual(expect.arrayContaining([
-      expect.objectContaining({ eventType: "plugin-call-end", detail: expect.objectContaining({ normalization: expect.objectContaining({ repairedPaths: expect.arrayContaining(["$.Q.unknown_is_absence", "$.λ.output_units[0].Q.unknown_is_absence"]) }) }) }),
+      expect.objectContaining({ eventType: "plugin-call-end", detail: expect.objectContaining({ normalization: expect.objectContaining({ repairedPaths: expect.arrayContaining(["$.kind", "$.Q.unknown_is_absence", "$.λ.output_units[0].Q.unknown_is_absence"]) }) }) }),
     ]));
   });
 
