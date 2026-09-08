@@ -1,11 +1,13 @@
 # Issue #35 Browser Playground引継ぎ票
 
-状態: `AUTOMATED-PASS / SAFARI-RETEST-PENDING / CHROME-HUMAN-FAIL`
+状態: `AUTOMATED-PASS / SAFARI-HUMAN-FAIL / CHROME-HUMAN-FAIL`
 
 対象revision: `6e68470` 以降（実施時のHEADを記録すること）
 
 ## 2026-09-08 Human Test観測
 
+- 修正後retestでもChrome、Safariの両方が初回Gemini decompositionを完了できず不合格となった。
+- 両browserで`plugin resolved`後に`transport failed`、または`plugin running / transport not-requested`のまま停止する状態が観測された。browser差より手前のprovider generate／validation／timeout境界が共通原因候補だが、取得済み画面だけでは原因を一つに確定できないため`UNKNOWN`を保持する。
 - Chromeは初回decomposition時点で`transport failed`となり不合格。component testは実Browser testではなく、この不合格を覆さない。browser固有原因は`UNKNOWN`のまま保持する。
 - Safariではdecompositionと「なんで？-DeFold-」の結果表示まで進行した。
 - Safariの左pane tabに横・縦scrollbarが発生した。
