@@ -83,14 +83,19 @@ export async function projectDecompositionGraph(
 export interface RecursiveFoldProjection {
   readonly boundaryNodeId: string;
   readonly childNodeIds: readonly string[];
+  readonly replacedNode: NodeViewModel;
 }
 
-/** Fold境界配下を子から除去する。再実行時に旧generationを残してnodeを増殖させない。 */
+/** Fold境界配下を子から除去し、同一IDで置換した元unitを復元する。 */
 export async function removeRecursiveFoldProjection(session: PresentationSession, projection: RecursiveFoldProjection): Promise<void> {
-  for (const nodeId of [...projection.childNodeIds, projection.boundaryNodeId]) {
+  for (const nodeId of projection.childNodeIds) {
     if (!session.state.nodes.some((node) => node.nodeId === nodeId)) continue;
     graphSequence += 1;
     await session.dispatch({ type: "node.remove.requested", requestId: `playground:remove-recursive-fold:${graphSequence}`, nodeId });
+  }
+  session.applyEngineEvent({ type: "fam.node.changed", node: projection.replacedNode });
+  if (projection.replacedNode.presentation) {
+    session.applyEngineEvent({ type: "presentation.changed", targetRef: projection.boundaryNodeId, projection: projection.replacedNode.presentation });
   }
 }
 
@@ -125,11 +130,12 @@ export async function projectRecursiveDecompositionGraph(
 ): Promise<RecursiveFoldProjection> {
   const parent = session.state.nodes.find((node) => node.nodeId === parentNodeId);
   if (!parent?.foldRef) throw new TypeError("recursive-parent-fold-ref-required");
-  const parentLayout = session.state.layout.find((entry) => entry.nodeId === parentNodeId);
   graphSequence += 1;
-  const boundaryNodeId = `q://playground/fold-boundary/${graphSequence}`;
+  // Foldは親unitの隣へ増設せず、同じstable node IDを保ったまま表示・実行境界へ昇格する。
+  // これにより既存の外Ψ→親→外λ connectionは切断せず、そのまま境界gateへ接続される。
+  const boundaryNodeId = parentNodeId;
   const boundaryRef = `fold-boundary://${parent.foldRef}/generation/${generation}`;
-  const boundaryDepth = (parent.depth ?? 0) + 1;
+  const boundaryDepth = parent.depth ?? 0;
   const gravityDepth = foldBoundaryAncestorCount(session, parentNodeId) + 1;
   const boundaryWidth = 760;
   const units = projectDecompositionUnits(fam, accessMap);
@@ -137,20 +143,21 @@ export async function projectRecursiveDecompositionGraph(
   const boundaryPresentation = { targetRef: boundaryNodeId, mode: "native" as const, rendererId: "react-flow", presentation: { schemaVersion: "fquery.presentation-fam/0.1.0-draft" as const, presentationId: "presentation://fquery/core/fold-boundary", targetRef: boundaryNodeId, surfaces: ["node-editor" as const, "inspector" as const], visualRole: "fold-boundary", interfaceRoles: ["atomic-resolution", "single-processing-unit"], visibility: "visible" as const, rendererHint: "fquery-fold-boundary", category: "Core", aliases: ["Fold", "D/G/L/S"], layoutSlotRef: layoutSlotRef(boundaryNodeId) } };
   const boundaryNode: NodeViewModel = {
     nodeId: boundaryNodeId,
-    label: `Fold boundary · ${parent.label}`,
+    label: `Fold · ${parent.label}`,
     badges: [{ axis: "fold", value: "running", tone: "notice" }],
     ports: [
-      { portId: corePortId(boundaryNodeId, "entry"), label: "entry", direction: "input", connectionStatus: "unconnected", cardinality: "one" },
-      { portId: corePortId(boundaryNodeId, "children"), label: "children", direction: "output", connectionStatus: "unconnected", cardinality: "many" },
-      { portId: corePortId(boundaryNodeId, "return"), label: "return", direction: "input", connectionStatus: "unconnected", cardinality: "many" },
-      { portId: corePortId(boundaryNodeId, "closed"), label: "closed", direction: "output", connectionStatus: "unconnected", cardinality: "one" },
+      { portId: corePortId(boundaryNodeId, "psi"), label: "外Ψ", direction: "input", connectionStatus: "unconnected", cardinality: "one" },
+      { portId: corePortId(boundaryNodeId, "children"), label: "内Ψ", direction: "output", connectionStatus: "unconnected", cardinality: "many" },
+      { portId: corePortId(boundaryNodeId, "return"), label: "内λ", direction: "input", connectionStatus: "unconnected", cardinality: "many" },
+      { portId: corePortId(boundaryNodeId, "fam"), label: "外λ", direction: "output", connectionStatus: "unconnected", cardinality: "one" },
     ],
-    value: { childFamRef: fam.fam_id, childRevisionRef: fam.revision_id },
+    value: { sourceUnit: parent.value, childFamRef: fam.fam_id, childRevisionRef: fam.revision_id },
     evidenceRefs: [`${accessMap.famId}@${accessMap.revisionId}`],
     canExecute: false,
     canCancel: true,
-    foldRef: boundaryRef,
-    parentFoldRef: parent.foldRef,
+    foldRef: parent.foldRef,
+    ...(parent.parentFoldRef ? { parentFoldRef: parent.parentFoldRef } : {}),
+    ...(parent.parentNodeId ? { parentNodeId: parent.parentNodeId } : {}),
     depth: boundaryDepth,
     revisionRef: fam.revision_id,
     projectionFreshness: "unknown",
@@ -159,7 +166,6 @@ export async function projectRecursiveDecompositionGraph(
   };
   session.applyEngineEvent({ type: "fam.node.changed", node: boundaryNode });
   session.applyEngineEvent({ type: "presentation.changed", targetRef: boundaryNodeId, projection: boundaryPresentation });
-  await session.dispatch({ type: "node.move.requested", requestId: `playground:layout-boundary:${graphSequence}`, nodeId: boundaryNodeId, layoutSlotRef: layoutSlotRef(boundaryNodeId), x: (parentLayout?.x ?? 420) + 380, y: parentLayout?.y ?? 80 });
   const childNodeIds: string[] = [];
   const childFoldRefs: string[] = [];
   for (const unit of units) {
@@ -194,14 +200,13 @@ export async function projectRecursiveDecompositionGraph(
     await session.dispatch({ type: "connection.add.requested", requestId: `playground:connect-boundary-child:${graphSequence}`, fromPortId: corePortId(boundaryNodeId, "children"), toPortId: corePortId(nodeId, "psi") });
     await session.dispatch({ type: "connection.add.requested", requestId: `playground:connect-child-return:${graphSequence}`, fromPortId: corePortId(nodeId, "fam"), toPortId: corePortId(boundaryNodeId, "return") });
   }
-  await session.dispatch({ type: "connection.add.requested", requestId: `playground:connect-parent-boundary:${graphSequence}`, fromPortId: corePortId(parentNodeId, "fam"), toPortId: corePortId(boundaryNodeId, "entry") });
   session.applyEngineEvent({ type: "fam.node.changed", node: {
     ...boundaryNode,
     badges: [{ axis: "fold", value: "complete", tone: "success" }],
     projectionFreshness: "fresh",
     foldBoundary: { ...boundaryNode.foldBoundary!, childFoldRefs: Object.freeze(childFoldRefs), status: "complete", boundaryMetrics: deriveFoldBoundaryMetrics({ directChildNodeRefs: childFoldRefs, contextDimensionRefs: units.flatMap((unit) => unit.classification.dimensionRef ?? []), nestingPathDepths: [gravityDepth], technologyNodeRefs: [], technologyChainEdges: [], requiredTechnologyRoutes: [], metaContextNodeRefs: childFoldRefs, metaContextChainEdges: [], nodePluginAvailable: true, exitAdapterRef: "adapter://fquery/playground/lambda-fixture-projection" }) },
   } });
-  return Object.freeze({ boundaryNodeId, childNodeIds: Object.freeze(childNodeIds) });
+  return Object.freeze({ boundaryNodeId, childNodeIds: Object.freeze(childNodeIds), replacedNode: parent });
 }
 
 /** presentation depthではなく、実際に跨いだancestor boundaryだけをGとして数える。 */

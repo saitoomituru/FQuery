@@ -1,6 +1,17 @@
 import { describe, expect, it } from "vitest";
 import { RecursiveFoldController, recursiveFoldFingerprint } from "../src/host/recursive-fold-controller.js";
 
+const replacedNode = {
+  nodeId: "parent",
+  label: "parent",
+  badges: [],
+  ports: [],
+  value: null,
+  evidenceRefs: [],
+  canExecute: false,
+  canCancel: false,
+};
+
 describe("RecursiveFoldController", () => {
   it("同一boundaryの連打を一つのprocessing unitへ直列化する", () => {
     const controller = new RecursiveFoldController();
@@ -12,7 +23,7 @@ describe("RecursiveFoldController", () => {
   it("完了済み同一fingerprintを再生成せず、変更時だけ次generationへ進む", () => {
     const controller = new RecursiveFoldController();
     const first = controller.start("fold://parent", "v1");
-    controller.complete("fold://parent", first.run.generation, { boundaryNodeId: "boundary-1", childNodeIds: ["child-1"] });
+    controller.complete("fold://parent", first.run.generation, { boundaryNodeId: "boundary-1", childNodeIds: ["child-1"], replacedNode });
     expect(controller.start("fold://parent", "v1")).toMatchObject({ accepted: false, reason: "cached-complete" });
     expect(controller.start("fold://parent", "v2")).toMatchObject({ accepted: true, run: { generation: 2 }, previousProjection: { boundaryNodeId: "boundary-1" } });
   });
@@ -20,7 +31,7 @@ describe("RecursiveFoldController", () => {
     const controller = new RecursiveFoldController();
     const run = controller.start("fold://parent", "v1").run;
     expect(controller.cancel("fold://parent")?.controller.signal.aborted).toBe(true);
-    expect(controller.complete("fold://parent", run.generation, { boundaryNodeId: "late", childNodeIds: [] })).toBe(false);
+    expect(controller.complete("fold://parent", run.generation, { boundaryNodeId: "late", childNodeIds: [], replacedNode })).toBe(false);
   });
   it("fingerprintへ親revisionとprovider/modelを含める", () => {
     expect(recursiveFoldFingerprint({ parentFoldRef: "f", parentRevisionRef: "r1", sourceText: "why", provider: "fixture", model: "m" })).not.toBe(recursiveFoldFingerprint({ parentFoldRef: "f", parentRevisionRef: "r2", sourceText: "why", provider: "fixture", model: "m" }));

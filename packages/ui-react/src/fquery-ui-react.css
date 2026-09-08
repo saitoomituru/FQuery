@@ -17,10 +17,16 @@
 .fquery-flow-node .react-flow__handle-left { left: -0.35rem; }
 .fquery-flow-node .react-flow__handle-right { right: -0.35rem; }
 
-.fquery-fold-boundary { box-sizing: border-box; width: 100%; height: 100%; border: 2px dashed #8b5cf6; border-radius: 0.8rem; background: rgba(49, 35, 86, 0.18); color: #d8ccff; pointer-events: none; }
-.fquery-fold-boundary > header { display: flex; justify-content: space-between; gap: 1rem; padding: 0.55rem 0.7rem; border-bottom: 1px solid rgba(139, 92, 246, 0.55); }
+.fquery-fold-boundary { position: relative; box-sizing: border-box; width: 100%; height: 100%; border: 2px dashed #8b5cf6; border-radius: 0.8rem; background: rgba(49, 35, 86, 0.18); color: #d8ccff; pointer-events: auto; }
+.fquery-fold-boundary > header { display: flex; justify-content: space-between; gap: 1rem; padding: 0.55rem 0.7rem; border-bottom: 1px solid rgba(139, 92, 246, 0.55); cursor: grab; }
 .fquery-fold-boundary > header span, .fquery-fold-boundary > small { font: 0.68rem ui-monospace, monospace; }
 .fquery-fold-boundary > small { display: block; padding: 0.35rem 0.7rem; color: #b9a8ee; }
+.fquery-fold-boundary-gate { position: absolute; z-index: 2; display: flex; align-items: center; gap: 0.35rem; color: #79c0ff; font: 0.68rem ui-monospace, monospace; transform: translateY(-50%); pointer-events: none; }
+.fquery-fold-boundary-gate[data-side="left"] { left: 0.55rem; }
+.fquery-fold-boundary-gate[data-side="right"] { right: 0.55rem; flex-direction: row-reverse; }
+.fquery-fold-boundary-gate .react-flow__handle { pointer-events: auto; width: 0.75rem; height: 0.75rem; border: 2px solid #79c0ff; background: #0d1117; }
+.fquery-fold-boundary-gate[data-side="left"] .react-flow__handle { left: -0.95rem; }
+.fquery-fold-boundary-gate[data-side="right"] .react-flow__handle { right: -0.95rem; }
 .fquery-fold-boundary-toggle { pointer-events: auto; margin: 0.2rem 0.7rem 0.55rem; color: #f2ebff; background: #312356; border: 1px solid #8b5cf6; border-radius: 0.35rem; padding: 0.3rem 0.55rem; cursor: pointer; }
 .fquery-fold-boundary[data-collapsed="true"] { background: rgba(49, 35, 86, 0.48); }
 .fquery-fold-boundary[data-collapsed="true"] > header { padding-block: 0.4rem; }
