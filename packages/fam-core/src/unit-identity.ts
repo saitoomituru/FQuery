@@ -50,8 +50,13 @@ export function stampDecompositionUnitIdentity(value: FamJsonRecord): FamJsonRec
 
 /** provider候補へFQuery profile所有の不変条件だけを適用し、意味内容やunknownsは生成しない。 */
 export function normalizeDecompositionProfileInvariants(value: FamJsonRecord): DecompositionProfileNormalization {
-  const identified = stampDecompositionUnitIdentity(value);
-  const repairedPaths = identityRepairPaths(value, identified);
+  const repairedPaths: string[] = [];
+  const profiled = value.kind === "decomposition"
+    ? value
+    : Object.freeze({ ...value, kind: "decomposition" }) as FamJsonRecord;
+  if (profiled !== value) repairedPaths.push("$.kind");
+  const identified = stampDecompositionUnitIdentity(profiled);
+  repairedPaths.push(...identityRepairPaths(profiled, identified));
   const normalized = normalizeFamNodes(identified, "$", repairedPaths) as FamJsonRecord;
   return Object.freeze({ value: normalized, repairedPaths: Object.freeze(repairedPaths), profileRef: DECOMPOSITION_PROFILE_INVARIANT_REF });
 }

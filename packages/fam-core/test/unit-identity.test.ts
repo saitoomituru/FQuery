@@ -47,4 +47,16 @@ describe("decomposition unit identity", () => {
     ]);
     expect(fam).toEqual(original);
   });
+
+  it("fam.decompose provider候補のkindをFQuery profile不変条件として補正する", () => {
+    const fam = structuredClone(createLiteralDecompositionFam("雨。傘。", "q://test/provider-kind"));
+    fam.kind = "provider-candidate";
+    expect(validateFamDecomposition(fam).issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ path: "$.kind", code: "decomposition-kind-required" }),
+    ]));
+    const normalized = normalizeDecompositionProfileInvariants(fam);
+    expect(normalized.value.kind).toBe("decomposition");
+    expect(normalized.repairedPaths[0]).toBe("$.kind");
+    expect(validateFamDecomposition(normalized.value).valid).toBe(true);
+  });
 });

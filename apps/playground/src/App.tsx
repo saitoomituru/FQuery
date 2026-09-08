@@ -111,7 +111,8 @@ export function App() {
           return;
         }
         const outcome = await requestDecompose(
-          { provider, model, source: `なんで？: ${sourceText}` },
+          // 「なんで？」は操作意図でありcanonical sourceではない。原文へ混ぜると子unitとして分解される。
+          { provider, model, source: sourceText },
           { signal: started.run.controller.signal },
         );
         if (!recursiveRuns.current.isCurrent(parentFoldRef, started.run.generation)) return;

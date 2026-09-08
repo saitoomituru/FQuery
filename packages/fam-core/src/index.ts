@@ -92,6 +92,7 @@ export function validateFamDecomposition(value: unknown): FamValidationResult {
   const issues = [...base.issues];
   const nodePaths = [...base.nodePaths];
   if (!isRecord(value)) return freezeResult(issues, nodePaths);
+  if (value.kind !== "decomposition") issue(issues, "$.kind", "decomposition-kind-required", "decomposition FAMのkindはdecompositionでなければなりません");
   const psi = value.ψ;
   if (!isRecord(psi) || typeof psi.source_text !== "string" || psi.source_text.length === 0) {
     issue(issues, "$.ψ.source_text", "source-text-required", "decomposition FAMには原入力source_textが必要です");

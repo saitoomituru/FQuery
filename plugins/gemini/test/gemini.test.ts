@@ -37,6 +37,7 @@ describe("GeminiFamPlugin", () => {
   });
   it("profile所有のunknown非不存在宣言はproviderへ再送せず局所補正する", async () => {
     const candidate = structuredClone(createLiteralDecompositionFam("雨。傘。未知。", "q://test/invariant"));
+    candidate.kind = "provider-candidate";
     const units = (candidate.λ as { output_units: Array<{ Q: Record<string, unknown> }> }).output_units;
     delete units[2]!.Q.unknown_is_absence;
     const generate = vi.fn(async () => ({ text: JSON.stringify(candidate) }));
@@ -45,7 +46,7 @@ describe("GeminiFamPlugin", () => {
     const result = await evaluateQ(Q({ kind: "literal", value: "雨。傘。未知。" }, { queryId: "q://test/invariant", operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: "network" } }), { pluginResolver: plugin, emit: (event) => events.push(event) });
     expect(result.transportStatus).toBe("succeeded");
     expect(generate).toHaveBeenCalledOnce();
-    expect(events.find((event) => event.eventType === "plugin-call-end")?.detail).toMatchObject({ normalization: { profileRef: "profile://fquery/decomposition-invariants@0.1.0-draft", repairedPaths: ["$.λ.output_units[2].Q.unknown_is_absence"] } });
+    expect(events.find((event) => event.eventType === "plugin-call-end")?.detail).toMatchObject({ normalization: { profileRef: "profile://fquery/decomposition-invariants@0.1.0-draft", repairedPaths: ["$.kind", "$.λ.output_units[2].Q.unknown_is_absence"] } });
   });
   it("credentialなしをnetwork callせずLast Orderへ接続する", async () => {
     const generate = vi.fn(); const plugin = new GeminiFamPlugin({ model: "gemini-2.5-flash", credentialName: "missing", credentialSources: [], generate });
