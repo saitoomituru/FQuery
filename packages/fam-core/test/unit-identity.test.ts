@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { createLiteralDecompositionFam, projectDecompositionUnits, readAccessMapProfile, readFamJson, stampDecompositionUnitIdentity } from "../src/index.js";
+import { createLiteralDecompositionFam, normalizeDecompositionProfileInvariants, projectDecompositionUnits, readAccessMapProfile, readFamJson, stampDecompositionUnitIdentity, validateFamDecomposition } from "../src/index.js";
 
 const accessMap = readAccessMapProfile(readFamJson(readFileSync(new URL("../../../fixtures/test-cases/basic-commons-access-mapper/access-map.fam.json", import.meta.url), "utf8")).value);
 
@@ -28,5 +28,23 @@ describe("decomposition unit identity", () => {
     const units = (fam.λ as { output_units: Array<{ Q: Record<string, unknown> }> }).output_units;
     units[1]!.Q.unit_ref = units[0]!.Q.unit_ref;
     expect(() => projectDecompositionUnits(fam, accessMap)).toThrow("decomposition-unit-ref-duplicate");
+  });
+
+  it("provider候補へidentityとUNKNOWN非不存在宣言だけを補正してreceiptを返す", () => {
+    const fam = structuredClone(createLiteralDecompositionFam("雨。傘。", "q://test/normalize"));
+    const units = (fam.λ as { output_units: Array<{ Q: Record<string, unknown> }> }).output_units;
+    delete units[0]!.Q.unit_ref;
+    delete units[0]!.Q.unit_revision_ref;
+    delete units[1]!.Q.unknown_is_absence;
+    const original = structuredClone(fam);
+    const normalized = normalizeDecompositionProfileInvariants(fam);
+    expect(validateFamDecomposition(normalized.value).valid).toBe(true);
+    expect((normalized.value.λ as { output_units: Array<{ Q: Record<string, unknown> }> }).output_units[1]!.Q.unknown_is_absence).toBe(false);
+    expect(normalized.repairedPaths).toEqual([
+      "$.λ.output_units[0].Q.unit_ref",
+      "$.λ.output_units[0].Q.unit_revision_ref",
+      "$.λ.output_units[1].Q.unknown_is_absence",
+    ]);
+    expect(fam).toEqual(original);
   });
 });

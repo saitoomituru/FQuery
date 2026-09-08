@@ -90,6 +90,11 @@ export interface CapabilityResult {
   readonly outputStatus?: "accepted" | "invalid";
   readonly evidenceRefs?: readonly string[];
   readonly reason?: string;
+  /** source内容を生成せず、consumer profile所有の不変条件だけを補正したreceipt。 */
+  readonly normalization?: {
+    readonly profileRef: string;
+    readonly repairedPaths: readonly string[];
+  };
   readonly execution?: {
     readonly provider: string;
     readonly model: string;

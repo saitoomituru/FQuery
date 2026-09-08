@@ -1,6 +1,14 @@
 import { classifyWithAccessMap, type AccessMapProfile, type ClassificationBinding } from "./access-map.js";
 import type { FamJsonRecord, FamNode, JsonObject } from "./index.js";
 
+export const DECOMPOSITION_PROFILE_INVARIANT_REF = "profile://fquery/decomposition-invariants@0.1.0-draft" as const;
+
+export interface DecompositionProfileNormalization {
+  readonly value: FamJsonRecord;
+  readonly repairedPaths: readonly string[];
+  readonly profileRef: typeof DECOMPOSITION_PROFILE_INVARIANT_REF;
+}
+
 export interface DecompositionUnitProjection {
   readonly unitRef: string;
   readonly unitRevisionRef: string;
@@ -40,6 +48,31 @@ export function stampDecompositionUnitIdentity(value: FamJsonRecord): FamJsonRec
   return Object.freeze({ ...value, λ: Object.freeze({ ...lambda, output_units: Object.freeze(nextUnits) }) }) as FamJsonRecord;
 }
 
+/** provider候補へFQuery profile所有の不変条件だけを適用し、意味内容やunknownsは生成しない。 */
+export function normalizeDecompositionProfileInvariants(value: FamJsonRecord): DecompositionProfileNormalization {
+  const identified = stampDecompositionUnitIdentity(value);
+  const repairedPaths = identityRepairPaths(value, identified);
+  const normalized = normalizeFamNodes(identified, "$", repairedPaths) as FamJsonRecord;
+  return Object.freeze({ value: normalized, repairedPaths: Object.freeze(repairedPaths), profileRef: DECOMPOSITION_PROFILE_INVARIANT_REF });
+}
+
+function identityRepairPaths(before: FamJsonRecord, after: FamJsonRecord): string[] {
+  const beforeUnits = asObject(before.λ)?.output_units;
+  const afterUnits = asObject(after.λ)?.output_units;
+  if (!Array.isArray(beforeUnits) || !Array.isArray(afterUnits)) return [];
+  const fields = ["unit_ref", "unit_revision_ref", "parent_fam_ref", "parent_revision_ref", "unit_order", "claim_kind"] as const;
+  const paths: string[] = [];
+  afterUnits.forEach((candidate, index) => {
+    const beforeQ = asObject(asObject(beforeUnits[index])?.Q);
+    const afterQ = asObject(asObject(candidate)?.Q);
+    if (!beforeQ || !afterQ) return;
+    for (const field of fields) {
+      if (beforeQ[field] !== afterQ[field]) paths.push(`$.λ.output_units[${index}].Q.${field}`);
+    }
+  });
+  return paths;
+}
+
 export function projectDecompositionUnits(value: FamJsonRecord, accessMap: AccessMapProfile): readonly DecompositionUnitProjection[] {
   if (value.kind !== "decomposition") throw new TypeError("decomposition-kind-required");
   const lambda = requiredObject(value.λ, "$.λ");
@@ -69,6 +102,36 @@ export function projectDecompositionUnits(value: FamJsonRecord, accessMap: Acces
 
 function asObject(value: unknown): JsonObject | undefined {
   return value && typeof value === "object" && !Array.isArray(value) ? value as JsonObject : undefined;
+}
+
+function normalizeFamNodes(value: unknown, path: string, repairedPaths: string[]): unknown {
+  if (Array.isArray(value)) {
+    let changed = false;
+    const next = value.map((child, index) => {
+      const normalized = normalizeFamNodes(child, `${path}[${index}]`, repairedPaths);
+      if (normalized !== child) changed = true;
+      return normalized;
+    });
+    return changed ? Object.freeze(next) : value;
+  }
+  const object = asObject(value);
+  if (!object) return value;
+  let changed = false;
+  const next: Record<string, unknown> = {};
+  for (const [key, child] of Object.entries(object)) {
+    const normalized = normalizeFamNodes(child, `${path}.${key}`, repairedPaths);
+    next[key] = normalized;
+    if (normalized !== child) changed = true;
+  }
+  if (asObject(object.ψ) && Array.isArray(object["∇φ"]) && asObject(object.λ) && asObject(object.Q)) {
+    const q = asObject(next.Q)!;
+    if (q.unknown_is_absence !== false) {
+      next.Q = Object.freeze({ ...q, unknown_is_absence: false });
+      repairedPaths.push(`${path}.Q.unknown_is_absence`);
+      changed = true;
+    }
+  }
+  return changed ? Object.freeze(next) : value;
 }
 
 function requiredObject(value: unknown, path: string): JsonObject {

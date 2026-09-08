@@ -7,7 +7,7 @@ import {
   type DecompositionRequest,
   type PluginManifest,
 } from "@fquery/plugin-sdk";
-import { FAM_JSON_RESPONSE_SCHEMA, inferSourceLanguage, validateFamDecomposition } from "@fquery/fam-core";
+import { FAM_JSON_RESPONSE_SCHEMA, inferSourceLanguage, normalizeDecompositionProfileInvariants, validateFamDecomposition, type FamJsonRecord } from "@fquery/fam-core";
 
 export type OllamaFamCapability = "fam.decompose" | "fam.integrate" | "fam.compare" | "fam.project";
 const CAPABILITIES: readonly OllamaFamCapability[] = ["fam.decompose", "fam.integrate", "fam.compare", "fam.project"];
@@ -45,13 +45,13 @@ export class OllamaFamPlugin implements PluginResolver {
     try {
       const generate = this.#options.generate ?? ollamaGenerate;
       let response = await generate({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_JSON_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
-      let fam: unknown;
+      let parsed: ParsedFam;
       try {
-        fam = parseFam(response.text);
+        parsed = parseFam(response.text);
       } catch (validationError) {
         response = await generate({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildRepairPrompt(request, validationError), responseSchema: FAM_JSON_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
         try {
-          fam = parseFam(response.text);
+          parsed = parseFam(response.text);
         } catch (repairValidationError) {
           return {
             pluginId: ollamaPluginManifest.pluginId,
@@ -66,8 +66,9 @@ export class OllamaFamPlugin implements PluginResolver {
         pluginId: ollamaPluginManifest.pluginId,
         transportStatus: "succeeded",
         outputStatus: "accepted",
-        value: fam,
+        value: parsed.value,
         evidenceRefs: [],
+        ...(parsed.repairedPaths.length > 0 ? { normalization: { profileRef: parsed.profileRef, repairedPaths: parsed.repairedPaths } } : {}),
         execution: { provider: "ollama", model: this.#options.model, pluginVersion: ollamaPluginManifest.pluginVersion },
       };
     } catch (error) {
@@ -140,11 +141,14 @@ function buildRepairPrompt(request: CapabilityInvocation, error: unknown): strin
   return `${buildPrompt(request)}\nThe previous candidate was rejected by the FAM validator. Return a complete replacement, not a patch. Validator findings: ${error instanceof Error ? error.message : "invalid-fam-json"}`;
 }
 
-function parseFam(text: string): unknown {
-  const value: unknown = JSON.parse(text);
-  const validation = validateFamDecomposition(value);
+interface ParsedFam { readonly value: FamJsonRecord; readonly repairedPaths: readonly string[]; readonly profileRef: string }
+
+function parseFam(text: string): ParsedFam {
+  const candidate = JSON.parse(text) as FamJsonRecord;
+  const normalized = normalizeDecompositionProfileInvariants(candidate);
+  const validation = validateFamDecomposition(normalized.value);
   if (!validation.valid) throw new TypeError(`invalid-fam-json:${validation.issues.map((issue) => `${issue.path}:${issue.code}`).join(",")}`);
-  return value;
+  return normalized;
 }
 
 function normalizeBaseUrl(value: string): string { return value.replace(/\/+$/, ""); }

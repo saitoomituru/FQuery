@@ -2,7 +2,7 @@ export const FAM_JSON_SCHEMA_VERSION = "fam.json/0.1.0-draft" as const;
 
 export { classifyWithAccessMap, readAccessMapProfile } from "./access-map.js";
 export type * from "./access-map.js";
-export { projectDecompositionUnits, stampDecompositionUnitIdentity } from "./unit-identity.js";
+export { DECOMPOSITION_PROFILE_INVARIANT_REF, normalizeDecompositionProfileInvariants, projectDecompositionUnits, stampDecompositionUnitIdentity } from "./unit-identity.js";
 export type * from "./unit-identity.js";
 export { propagateLocalSin, validateLocalSinMeasurement } from "./sin.js";
 export type * from "./sin.js";

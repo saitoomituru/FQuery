@@ -9,7 +9,7 @@ import {
   type DecompositionRequest,
   type PluginManifest,
 } from "@fquery/plugin-sdk";
-import { FAM_JSON_RESPONSE_SCHEMA, inferSourceLanguage, validateFamDecomposition } from "@fquery/fam-core";
+import { FAM_JSON_RESPONSE_SCHEMA, inferSourceLanguage, normalizeDecompositionProfileInvariants, validateFamDecomposition, type FamJsonRecord } from "@fquery/fam-core";
 
 export type GeminiFamCapability = "fam.decompose" | "fam.integrate" | "fam.compare" | "fam.project";
 const CAPABILITIES: readonly GeminiFamCapability[] = ["fam.decompose", "fam.integrate", "fam.compare", "fam.project"];
@@ -50,18 +50,18 @@ export class GeminiFamPlugin implements PluginResolver {
     try {
       const generate = this.#options.generate ?? googleGenerate;
       let response = await generate({ apiKey: resolved.credential.key, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_JSON_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
-      let fam: unknown;
+      let parsed: ParsedFam;
       try {
-        fam = parseFam(response.text);
+        parsed = parseFam(response.text);
       } catch (validationError) {
         response = await generate({ apiKey: resolved.credential.key, model: this.#options.model, prompt: buildRepairPrompt(request, validationError), responseSchema: FAM_JSON_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
         try {
-          fam = parseFam(response.text);
+          parsed = parseFam(response.text);
         } catch (repairValidationError) {
           return { pluginId: geminiPluginManifest.pluginId, transportStatus: "succeeded", outputStatus: "invalid", reason: errorReason(repairValidationError, resolved.credential.key, "gemini-output-invalid"), execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name, ...(response.requestId ? { requestId: response.requestId } : {}) } };
         }
       }
-      return { pluginId: geminiPluginManifest.pluginId, transportStatus: "succeeded", outputStatus: "accepted", value: fam, evidenceRefs: [], execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name, ...(response.requestId ? { requestId: response.requestId } : {}) } };
+      return { pluginId: geminiPluginManifest.pluginId, transportStatus: "succeeded", outputStatus: "accepted", value: parsed.value, evidenceRefs: [], ...(parsed.repairedPaths.length > 0 ? { normalization: { profileRef: parsed.profileRef, repairedPaths: parsed.repairedPaths } } : {}), execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name, ...(response.requestId ? { requestId: response.requestId } : {}) } };
     } catch (error) {
       return { pluginId: geminiPluginManifest.pluginId, transportStatus: "failed", reason: errorReason(error, resolved.credential.key, "gemini-call-failed"), execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name } };
     }
@@ -127,9 +127,12 @@ function buildRepairPrompt(request: CapabilityInvocation, error: unknown): strin
   return `${buildPrompt(request)}\nThe previous candidate was rejected by the FAM validator. Return a complete replacement, not a patch. Validator findings: ${error instanceof Error ? error.message : "invalid-fam-json"}`;
 }
 
-function parseFam(text: string): unknown {
-  const value: unknown = JSON.parse(text);
-  const validation = validateFamDecomposition(value);
+interface ParsedFam { readonly value: FamJsonRecord; readonly repairedPaths: readonly string[]; readonly profileRef: string }
+
+function parseFam(text: string): ParsedFam {
+  const candidate = JSON.parse(text) as FamJsonRecord;
+  const normalized = normalizeDecompositionProfileInvariants(candidate);
+  const validation = validateFamDecomposition(normalized.value);
   if (!validation.valid) throw new TypeError(`invalid-fam-json:${validation.issues.map((issue) => `${issue.path}:${issue.code}`).join(",")}`);
-  return value;
+  return normalized;
 }

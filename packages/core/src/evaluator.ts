@@ -166,7 +166,7 @@ async function invokeCapability(query: QueryNode, capability: string, value: unk
     if (timer !== undefined) clearTimeout(timer);
   }
   if (!result) return pluginNotFound(query, context, capability);
-  emit(context, { eventType: "plugin-call-end", queryRef: query.queryId, status: result.transportStatus, detail: { capability, pluginId: result.pluginId, ...(result.outputStatus ? { outputStatus: result.outputStatus } : {}), ...(result.reason ? { reason: result.reason } : {}), ...(result.execution ? { execution: result.execution } : {}) } });
+  emit(context, { eventType: "plugin-call-end", queryRef: query.queryId, status: result.transportStatus, detail: { capability, pluginId: result.pluginId, ...(result.outputStatus ? { outputStatus: result.outputStatus } : {}), ...(result.reason ? { reason: result.reason } : {}), ...(result.normalization ? { normalization: result.normalization } : {}), ...(result.execution ? { execution: result.execution } : {}) } });
   if (result.transportStatus === "failed") {
     const rejected = result.pluginStatus === "rejected";
     return {
