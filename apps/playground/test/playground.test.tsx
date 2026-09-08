@@ -172,6 +172,7 @@ describe("FQuery Playground FAMVIM", () => {
     await act(async () => { fireEvent.click(unitNodes[0]!.querySelector("button")!); });
     await waitFor(() => expect(unitNodes[0]!.textContent).toContain("差替えた意味単位。"));
     expect(unitNodes[1]!.textContent).toBe(untouchedText);
+    await waitFor(() => expect(container.querySelector('[data-node-id="q://playground/node/3"]')?.textContent).toContain("差替えた意味単位。"));
     openLeftTab(container, "records");
     expect(container.querySelector('[data-record-kind="fam"]')?.textContent).toContain("x-plugin-extension");
     expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain('"operation": "edit"');

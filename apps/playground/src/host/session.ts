@@ -106,6 +106,7 @@ export function createPlaygroundSession(): PlaygroundSession {
   const receipts = new EditReceiptStore();
   const fams = new FamDocumentStore();
   const logs = new FoldLogStore();
+  const pendingFamEffects = new Map<string, { readonly sourceFam: FamJsonRecord; readonly sourceFoldRef: string; readonly receipt: FamEditReceipt; readonly document?: FamDocument }>();
   let editSequence = 0;
   const session = new PresentationSession(createFixtureDecisionPort({
     registry,
@@ -138,10 +139,13 @@ export function createPlaygroundSession(): PlaygroundSession {
           overrideSourceRef: typeof replacement.overrideSourceRef === "string" ? replacement.overrideSourceRef : `input://playground/user-override/${editSequence}`,
           overrideObserverRef: typeof replacement.overrideObserverRef === "string" ? replacement.overrideObserverRef : "observer://playground/user",
         });
-        receipts.push(result.decision.receipt);
-        appendEditFoldLog(logs, node.foldRef, fams.current.value, result.decision.receipt);
+        pendingFamEffects.set(request.requestId, {
+          sourceFam: fams.current.value,
+          sourceFoldRef: node.foldRef,
+          receipt: result.decision.receipt,
+          ...(result.decision.status === "accepted" ? { document: result.decision.document } : {}),
+        });
         if (result.decision.status === "rejected") return { rejected: result.decision.receipt.reason ?? "fam-unit-replacement-rejected" };
-        fams.setDecision(result.decision.document);
         const outputUnits = (result.decision.document.value.λ as { output_units?: unknown[] }).output_units ?? [];
         const changed = outputUnits.find((unit) => unit && typeof unit === "object" && !Array.isArray(unit) && (unit as { Q?: { unit_ref?: unknown } }).Q?.unit_ref === node.foldRef);
         return { ...node, value: { ...(node.value && typeof node.value === "object" && !Array.isArray(node.value) ? node.value as Record<string, unknown> : {}), unit: changed }, revisionRef: `${node.foldRef}/revision/${editSequence + 1}`, projectionFreshness: "unknown", evidenceRefs: [...node.evidenceRefs, `fam-edit://${request.requestId}/${result.decision.receipt.resultRevisionId}`] };
@@ -181,10 +185,13 @@ export function createPlaygroundSession(): PlaygroundSession {
         resultRevisionId: `rev://playground/fam-edit/${editSequence}`,
         patches,
       }, { validate: validateFamJson });
-      receipts.push(decision.receipt);
-      appendEditFoldLog(logs, node.foldRef ?? document.value.fam_id, document.value, decision.receipt);
+      pendingFamEffects.set(request.requestId, {
+        sourceFam: document.value,
+        sourceFoldRef: node.foldRef ?? document.value.fam_id,
+        receipt: decision.receipt,
+        ...(decision.status === "accepted" ? { document: decision.document } : {}),
+      });
       if (decision.status === "rejected") return { rejected: decision.receipt.reason ?? "fam-edit-rejected" };
-      fams.setDecision(decision.document);
       const semantic = "unknown";
       return {
         ...node,
@@ -194,6 +201,17 @@ export function createPlaygroundSession(): PlaygroundSession {
       };
     },
   }), { registry });
+  // decision commit後にcanonical FAMとFoldLogを公開する。commit前通知によるλ再投影の取りこぼしを防ぐ。
+  session.subscribe((state) => {
+    const decision = state.decisions.at(-1);
+    if (!decision) return;
+    const effect = pendingFamEffects.get(decision.requestId);
+    if (!effect) return;
+    pendingFamEffects.delete(decision.requestId);
+    receipts.push(effect.receipt);
+    appendEditFoldLog(logs, effect.sourceFoldRef, effect.sourceFam, effect.receipt);
+    if (effect.document) fams.setDecision(effect.document);
+  });
   return { session, receipts, fams, logs };
 }
 
