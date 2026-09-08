@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readFamJson, validateFamDecomposition, writeUnmodifiedFamJson } from "@fquery/fam-core";
+import { createLiteralDecompositionFam, readFamJson, validateFamDecomposition, writeUnmodifiedFamJson } from "@fquery/fam-core";
 import { affectedChildrenForPatches, applyFamPatch, reviewParentPatchProposal } from "../src/index.js";
 import { sha256Hex } from "../src/sha256.js";
 
@@ -100,22 +100,17 @@ describe("FAM edit engine", () => {
     expect(decision.receipt.validationIssues).toContainEqual(expect.objectContaining({ path: "$.Q", code: "axis-required" }));
   });
 
-  it("profile validatorを注入しCore以上の制約を保持する", () => {
-    const decomposition = `{
-      "schema_version":"fam.json/0.1.0-draft","fam_id":"fam://test/decomposition","revision_id":"rev://test/decomposition/1","kind":"decomposition","title":"雨。","title_language":"ja","index_subjects":[],
-      "ψ":{"source_text":"雨。","source_ref":"input://source","source_language":"ja","observation_status":"provided"},
-      "∇φ":[{"gradient_type":"decomposition","source_expression":"雨。","source_language":"ja"}],
-      "λ":{"purpose":"source-decomposition","purpose_expression":"雨。","purpose_language":"ja","output_units":[{"ψ":{"source_text":"雨。","source_ref":"input://source","source_language":"ja","observation_status":"provided"},"∇φ":[{"gradient_type":"source-segmentation","source_expression":"雨。","source_language":"ja"}],"λ":{"manifestation":"雨。","manifestation_language":"ja","sub_splitters":[]},"Q":{"observer_ref":"observer://test","registry_ref":"registry://test","fact_scope_ref":"world://test","unknowns":[],"unknown_is_absence":false}}],"satisfaction_status":"not-evaluated"},
-      "Q":{"observer_ref":"observer://test","registry_ref":"registry://test","fact_scope_ref":"world://test","unknowns":[],"unknown_is_absence":false,"semantic_status":"not-evaluated"},"pointers":[],"provenance":{}
-    }`;
-    const decision = applyFamPatch(readFamJson(decomposition), {
+  it("context内容を裁定せず書換えの発生とrevisionをreceiptへ残す", () => {
+    const decision = applyFamPatch({ value: createLiteralDecompositionFam("雨。", "q://test/decomposition"), raw: "" }, {
       operationId: "edit://test/profile",
-      baseRevisionId: "rev://test/decomposition/1",
+      baseRevisionId: "q://test/decomposition/revision/1",
       resultRevisionId: "rev://test/decomposition/2",
       patches: [{ op: "set", path: "/λ/output_units/0/λ/manifestation", value: "Rain." }],
     }, { clock, validate: validateFamDecomposition });
-    expect(decision.receipt.reason).toBe("fam-validation-failed");
-    expect(decision.receipt.validationIssues).toContainEqual(expect.objectContaining({ code: "canonical-manifestation-required" }));
+    expect(decision.status).toBe("accepted");
+    expect(decision.receipt.baseRevisionId).toBe("q://test/decomposition/revision/1");
+    expect(decision.receipt.resultRevisionId).toBe("rev://test/decomposition/2");
+    expect(decision.receipt.beforeSha256).not.toBe(decision.receipt.afterSha256);
   });
 
   it("不正なpointerと存在しないremoveを区別する", () => {

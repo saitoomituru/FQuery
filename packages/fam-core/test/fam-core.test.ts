@@ -112,30 +112,36 @@ describe("FAM JSON Core", () => {
     expect(validateFamDecomposition(value).valid).toBe(true);
   });
 
-  it("原言語nodeを英訳で置換した分解を拒否する", () => {
+  it("Coreは表現のbyte一致を裁定せず構造を検証する", () => {
     const value = structuredClone(createLiteralDecompositionFam("雨が降る。", "q://test/replaced")) as unknown as Record<string, unknown>;
     const unit = (value.λ as { output_units: Array<Record<string, unknown>> }).output_units[0]!;
     (unit["∇φ"] as Array<Record<string, unknown>>)[0]!.source_expression = "It is raining.";
     (unit.λ as Record<string, unknown>).manifestation = "It is raining.";
-    expect(validateFamDecomposition(value).issues).toEqual(expect.arrayContaining([
-      expect.objectContaining({ code: "canonical-source-expression-required" }),
-      expect.objectContaining({ code: "canonical-manifestation-required" }),
-    ]));
+    expect(validateFamDecomposition(value).valid).toBe(true);
   });
 
-  it("原文を欠落させた部分分解を拒否する", () => {
+  it("Coreは入力内容のcoverageを裁定せず分類後shapeを検証する", () => {
     const value = structuredClone(createLiteralDecompositionFam("雨が降る。傘を持つ。", "q://test/coverage")) as unknown as Record<string, unknown>;
     (value.λ as { output_units: unknown[] }).output_units.pop();
-    expect(validateFamDecomposition(value).issues).toEqual(expect.arrayContaining([
-      expect.objectContaining({ code: "source-coverage-incomplete" }),
-    ]));
+    expect(validateFamDecomposition(value).valid).toBe(true);
   });
 
-  it("正本indexやprovenanceへの他言語混入を拒否する", () => {
+  it("日本語・英語・codeが混在するindexとprovenanceを保持する", () => {
     const value = structuredClone(createLiteralDecompositionFam("雨が降る。", "q://test/foreign")) as unknown as Record<string, unknown>;
     value.index_subjects = ["weather"];
     value.provenance = { source_separation: "Observed weather" };
-    expect(validateFamDecomposition(value).issues.filter((entry) => entry.code === "foreign-language-outside-sub-splitter")).toHaveLength(2);
+    value.index_subjects = ["天気", "weather", "const rain = true;"];
+    value.provenance = { source_separation: "観測 / Observed / if (rain) umbrella();" };
+    expect(validateFamDecomposition(value).valid).toBe(true);
+  });
+
+  it("分類後shapeの必須source_expression欠落は拒否する", () => {
+    const value = structuredClone(createLiteralDecompositionFam("雨が降る。", "q://test/shape")) as unknown as Record<string, unknown>;
+    const unit = (value.λ as { output_units: Array<Record<string, unknown>> }).output_units[0]!;
+    (unit["∇φ"] as Array<Record<string, unknown>>)[0]!.source_expression = "";
+    expect(validateFamDecomposition(value).issues).toEqual(expect.arrayContaining([
+      expect.objectContaining({ code: "source-expression-required" }),
+    ]));
   });
 
   it("unknownの原言語表現とmachine identifierを分離する", () => {

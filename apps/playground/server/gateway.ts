@@ -104,7 +104,13 @@ function validateWithAccessMap(value: unknown, binding: CapabilityProfileBinding
   const accessMap = readAccessMapProfile(binding.value as Parameters<typeof readAccessMapProfile>[0]);
   const units = projectDecompositionUnits(value, accessMap);
   if (units.some((unit) => unit.classification.accessMapFamRef !== binding.profileRef || unit.classification.accessMapRevisionRef !== binding.revisionRef)) throw new TypeError("access-map-revision-drift");
-  return Object.freeze({ profileRef: binding.profileRef, revisionRef: binding.revisionRef, appliedStages: Object.freeze(["post-validation"] as const) });
+  return Object.freeze({
+    profileRef: binding.profileRef,
+    revisionRef: binding.revisionRef,
+    appliedStages: Object.freeze(["post-validation"] as const),
+    validationScope: "fam-shape-and-classification-binding",
+    oaeConstraintEvaluations: Object.freeze([]),
+  });
 }
 
 function findProfileReceipt(events: readonly CoreEvent[], binding: CapabilityProfileBinding, stage: CapabilityProfileReceipt["appliedStages"][number]): CapabilityProfileReceipt | undefined {

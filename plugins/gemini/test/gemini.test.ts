@@ -29,6 +29,8 @@ describe("GeminiFamPlugin", () => {
     const prompt = JSON.parse(generate.mock.calls[0]![0].prompt) as Record<string, unknown>;
     expect(prompt.ref_profiles).toEqual([expect.objectContaining({ profileRef: "fam://test/access-map", revisionRef: "rev://test/access-map/1", value: { kind: "access-map" } })]);
     expect(events.find((event) => event.eventType === "plugin-call-end")?.detail).toMatchObject({ profileReceipts: [{ profileRef: "fam://test/access-map", revisionRef: "rev://test/access-map/1", appliedStages: ["generation-constraint"] }] });
+    expect(prompt).not.toHaveProperty("source_language_hint");
+    expect(prompt).not.toHaveProperty("translation_target");
   });
   it("旧blocks形式をFAMとして受理しない", async () => {
     const generate = vi.fn(async () => ({ text: JSON.stringify({ schema_version: "fquery.candidate-fam/0.1.0-draft", blocks: [] }) }));

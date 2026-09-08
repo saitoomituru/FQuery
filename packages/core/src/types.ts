@@ -96,6 +96,32 @@ export interface CapabilityProfileReceipt {
   readonly profileRef: string;
   readonly revisionRef: string;
   readonly appliedStages: readonly ("generation-constraint" | "post-validation" | "presentation-projection")[];
+  /** post-validationが何を実測したか。context/hash一致を暗黙に含めない。 */
+  readonly validationScope?: string;
+  /**
+   * 外部rule/evaluatorが返したOAE拘束評価。FQueryはdomain固有の成立条件や
+   * 複数observerのverdict優先順位を解釈せず、参照束縛と確定可能性だけを保持する。
+   */
+  readonly oaeConstraintEvaluations?: readonly OaeConstraintEvaluationReceipt[];
+}
+
+export interface OaeConstraintEvaluationReceipt {
+  readonly subjectRef: string;
+  readonly subjectRevisionRef: string;
+  readonly observerRef: string;
+  readonly observerDomainRef: string;
+  readonly ruleRef: string;
+  readonly ruleRevisionRef: string;
+  readonly candidateRecordRef: string;
+  readonly candidateRecordRevisionRef: string;
+  readonly evaluatorRef: string;
+  readonly evaluatorRevisionRef: string;
+  readonly recordIntegrity: "valid" | "invalid";
+  readonly ruleConformance: "satisfied" | "not-satisfied" | "not-evaluable";
+  /** domain rule側の語彙。Coreはmatched/completed/experienced等を列挙・裁定しない。 */
+  readonly observerVerdict: string;
+  readonly evidenceRefs: readonly string[];
+  readonly issueCodes: readonly string[];
 }
 
 export interface CapabilityResult {

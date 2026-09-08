@@ -66,6 +66,7 @@
 11. localeをEnglishへ切替え、機械可読key・URI・`unit_ref`が変化しないことを確認する。
 12. 左paneに不要なtab scrollbarが再発せず、tab操作とpane本文scrollが分離していることを確認する。
 13. Geminiで3unitを分解し、provider候補に`unknown_is_absence`または`kind`の逸脱があっても1回のprovider応答から3unitとλが表示され、Recordsの`plugin-call-end.normalization.repairedPaths`で補正箇所を確認できることを確認する。
+14. Xのtimeline、小説、Web記事等から権利・個人情報の扱える範囲で無作為に選んだ実文と、日本語・英語・codeが混在する実文を投入する。機械的な言語分割や全unitのflat fan-outに逃げず、人間から見てcontext、包含、順序、Fold boundaryが妥当かを観測する。本文の恒久複製を既定にせず、source URLまたは投入ref、取得時刻、対象範囲、subject revision、observer ref/domain、適用したOAE rule ref、verdict、evidence refを記録する。別observerの相反するverdictは上書きせず、別OAEとして併記する。
 
 ## 完了に含めない境界
 
@@ -73,4 +74,5 @@
 - IBDのvector graph DBとRDBへの二重永続化、取得、整合receiptは後続Issueである。
 - 実RAG/World provider、VS Code Host、Sphere Hostの確認は#35へ混ぜない。
 - この票の自動テストは、人間による配置、可読性、drag、操作感の確認を代替しない。
+- 自動validator合格はcontext一致を意味しない。Human Testの`matched`／`not-matched`もglobal truthではなく、指定OAE rule下のobserver verdictとして扱う。
 - Playwright等の別browser engine試験も、実Safariまたは実ChromeのHuman Testを代替しない。

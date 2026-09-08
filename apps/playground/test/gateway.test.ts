@@ -19,7 +19,7 @@ describe("Playground gateway", () => {
       revision_ref: "rev://fquery/test/basic-commons-access-mapper/1",
       resolved_before_provider: true,
       generation_constraint: null,
-      post_validation: { appliedStages: ["post-validation"] },
+      post_validation: { appliedStages: ["post-validation"], validationScope: "fam-shape-and-classification-binding", oaeConstraintEvaluations: [] },
       presentation_projection: { status: "provided-to-host" },
     });
   });

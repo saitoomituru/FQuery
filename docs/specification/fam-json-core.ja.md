@@ -19,7 +19,15 @@ top-levelは4軸に加えて `fam_id`、`revision_id`、`kind`、`title`、`inde
 
 正本言語は日本語固定ではない。日本語入力なら日本語、アラビア語入力ならアラビア語、古代ヘブライ語入力ならその入力が正本になる。scriptだけで時代・方言まで断定できない場合は、例えば `und-Hebr` として判定不能を残し、存在しない精度を捏造しない。
 
-分解profileではrootと各unitが `ψ.source_language` を共有する。各unitの `ψ.source_text` はroot原文の改変されていない部分文字列であり、`∇φ[*].source_expression` と `λ.manifestation` も同じ原言語表現を保持する。`λ.manifestation_language` も入力言語と一致する。翻訳でこれらを置換したrecordはrejectする。
+分解profileのCore validatorは、分類後FAMが`ψ / ∇φ / λ / Q`と必須lineage fieldを持つかを機械検証する。入力内容の言語を機械分割せず、日本語・英語・C言語等が混在する入力は混在したコンテキストのまま出力できる。`source_language`等はそのnodeが宣言する非空metadataであり、rootと全unitの単一言語一致やbyte一致をCoreの受理条件にしない。
+
+翻訳命令が無い場合は入力と出力の言語・code register・意味構造を維持する。ただしその一致はbyte列一致やscript検出ではなくcontext-levelのsemantic contractであり、Core shape validatorが内容を裁定しない。検証器またはactive refFAMが測定できない場合は`not-evaluated`／`unknown`として残し、別言語混入だけを理由にFAM全体をrejectしない。
+
+byte一致が必要な経路はSQL／IBD等の外部storage/verifier pluginがhashを比較し、使用algorithm・比較対象・一致結果をreceiptに残す。context一致を測る経路は人間、別LLM、embedding/vector verifier等の観測者が、そのWorldで指定されたOAE拘束rule refに従って観測OAEを生成する。FQueryはどの観測者の`matched`／`not-matched`が正しいかを裁定せず、相反する観測も別OAEとして併存させる。
+
+ゲームWorldのsystem event、科学Worldの追試、心象Worldの当事者感覚など、何を成立条件とするかはrule ref側に記述し、FQuery Coreへhard-codeしない。FQueryが機械検証するのは、候補OAE recordを指定rule refの拘束下で確定可能か、およびその評価receiptがrule／candidate record／evaluatorへrevision固定で束縛されているかである。ruleまたはevaluator未接続時は未評価のまま保持し、推測で成立へ昇格させない。
+
+LLMの分類事故は起こり得るものとして受容し、FAMの編集性とrevision履歴で修正可能にする。Coreが機械的に保証するのはshape、差分、書換えの発生、修正receipt、API実行結果／空振り等であり、分類内容の正しさそのものではない。
 
 ## 翻訳sub-splitter写本
 
