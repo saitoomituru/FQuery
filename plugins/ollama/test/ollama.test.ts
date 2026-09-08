@@ -14,6 +14,19 @@ describe("OllamaFamPlugin", () => {
     expect(result.value).toMatchObject({ schema_version: "fam.json/0.1.0-draft", Q: { unknown_is_absence: false } });
     expect(events.find((event) => event.eventType === "plugin-call-end")?.detail).toMatchObject({ execution: { provider: "ollama", model: "qwen3:8b", pluginVersion: "0.1.0-draft.0" } });
   });
+  it("revision固定refFAMをprovider promptとCore receiptへ通す", async () => {
+    const generate = vi.fn(async () => ({ text: JSON.stringify(createLiteralDecompositionFam("雨。", "q://test/ref-profile")) }));
+    const plugin = new OllamaFamPlugin({ model: "qwen-fixture", generate });
+    const events: CoreEvent[] = [];
+    await evaluateQ(Q({ kind: "literal", value: "雨。" }, { queryId: "q://test/ref-profile", operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: "network" } }), {
+      pluginResolver: plugin,
+      profileBindings: [{ profileRef: "fam://test/access-map", revisionRef: "rev://test/access-map/1", mediaType: "application/fam+json", roles: ["generation-constraint"], value: { kind: "access-map" } }],
+      emit: (event) => events.push(event),
+    });
+    const prompt = JSON.parse(generate.mock.calls[0]![0].prompt) as Record<string, unknown>;
+    expect(prompt.ref_profiles).toEqual([expect.objectContaining({ profileRef: "fam://test/access-map", revisionRef: "rev://test/access-map/1" })]);
+    expect(events.find((event) => event.eventType === "plugin-call-end")?.detail).toMatchObject({ profileReceipts: [{ appliedStages: ["generation-constraint"] }] });
+  });
 
   it("旧blocks形式をFAMとして受理しない", async () => {
     const generate = vi.fn(async () => ({ text: JSON.stringify({ schema_version: "fquery.candidate-fam/0.1.0-draft", blocks: [] }) }));

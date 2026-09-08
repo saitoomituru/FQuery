@@ -17,6 +17,19 @@ describe("GeminiFamPlugin", () => {
     expect(callEnd?.detail).toMatchObject({ execution: { provider: "google", model: "gemini-2.5-flash", pluginVersion: "0.1.0-draft.0", credentialName: "gemini-local", requestId: "request-fixture" } });
     expect(JSON.stringify(events)).not.toContain("not-a-real-key");
   });
+  it("revision固定refFAMをprovider promptとCore receiptへ通す", async () => {
+    const generate = vi.fn(async () => ({ text: JSON.stringify(createLiteralDecompositionFam("雨。", "q://test/ref-profile")) }));
+    const plugin = new GeminiFamPlugin({ model: "gemini-fixture", credentialName: "gemini-local", credentialSources: [explicitSource([{ name: "gemini-local", key: "not-a-real-key" }])], generate });
+    const events: CoreEvent[] = [];
+    await evaluateQ(Q({ kind: "literal", value: "雨。" }, { queryId: "q://test/ref-profile", operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: "network" } }), {
+      pluginResolver: plugin,
+      profileBindings: [{ profileRef: "fam://test/access-map", revisionRef: "rev://test/access-map/1", mediaType: "application/fam+json", roles: ["generation-constraint", "validation-ruler", "presentation-ruler"], value: { kind: "access-map" } }],
+      emit: (event) => events.push(event),
+    });
+    const prompt = JSON.parse(generate.mock.calls[0]![0].prompt) as Record<string, unknown>;
+    expect(prompt.ref_profiles).toEqual([expect.objectContaining({ profileRef: "fam://test/access-map", revisionRef: "rev://test/access-map/1", value: { kind: "access-map" } })]);
+    expect(events.find((event) => event.eventType === "plugin-call-end")?.detail).toMatchObject({ profileReceipts: [{ profileRef: "fam://test/access-map", revisionRef: "rev://test/access-map/1", appliedStages: ["generation-constraint"] }] });
+  });
   it("旧blocks形式をFAMとして受理しない", async () => {
     const generate = vi.fn(async () => ({ text: JSON.stringify({ schema_version: "fquery.candidate-fam/0.1.0-draft", blocks: [] }) }));
     const plugin = new GeminiFamPlugin({ model: "gemini-2.5-flash", credentialName: "gemini-local", credentialSources: [explicitSource([{ name: "gemini-local", key: "not-a-real-key" }])], generate });

@@ -77,8 +77,25 @@ export interface CapabilityInvocation {
   readonly capability: string;
   readonly input: unknown;
   readonly sideEffect: QueryPolicy["sideEffect"];
+  /** Hostが実行前に解決したrevision固定profile。Coreはprofile固有の意味を解釈しない。 */
+  readonly profileBindings?: readonly CapabilityProfileBinding[];
   /** Q deadlineに連動するclient側cancel。provider側課金停止を保証しない。 */
   readonly signal?: AbortSignal;
+}
+
+export interface CapabilityProfileBinding {
+  readonly profileRef: string;
+  readonly revisionRef: string;
+  readonly mediaType: string;
+  readonly roles: readonly ("generation-constraint" | "validation-ruler" | "presentation-ruler")[];
+  /** providerへ渡せるlossless profile projection。 */
+  readonly value: unknown;
+}
+
+export interface CapabilityProfileReceipt {
+  readonly profileRef: string;
+  readonly revisionRef: string;
+  readonly appliedStages: readonly ("generation-constraint" | "post-validation" | "presentation-projection")[];
 }
 
 export interface CapabilityResult {
@@ -90,6 +107,8 @@ export interface CapabilityResult {
   readonly outputStatus?: "accepted" | "invalid";
   readonly evidenceRefs?: readonly string[];
   readonly reason?: string;
+  /** 実際に適用した段階だけを記録する。意図されたrolesの宣言とは分離する。 */
+  readonly profileReceipts?: readonly CapabilityProfileReceipt[];
   /** source内容を生成せず、consumer profile所有の不変条件だけを補正したreceipt。 */
   readonly normalization?: {
     readonly profileRef: string;
@@ -138,6 +157,7 @@ export interface EvaluationContext {
   readonly bindings?: Readonly<Record<string, unknown>>;
   readonly queryResolver?: (queryRef: string) => QueryNode | undefined | Promise<QueryNode | undefined>;
   readonly pluginResolver?: PluginResolver;
+  readonly profileBindings?: readonly CapabilityProfileBinding[];
   readonly verifiers?: Readonly<Record<string, Verifier>>;
   readonly outputConnected?: boolean;
   readonly emit?: (event: CoreEvent) => void;

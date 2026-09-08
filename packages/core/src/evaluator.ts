@@ -148,7 +148,14 @@ async function invokeCapability(query: QueryNode, capability: string, value: unk
   let timer: ReturnType<typeof setTimeout> | undefined;
   let result: Awaited<ReturnType<NonNullable<EvaluationContext["pluginResolver"]>["invoke"]>>;
   try {
-    const invocation = context.pluginResolver.invoke({ queryRef: query.queryId, capability, input: value, sideEffect: query.policy.sideEffect, signal: controller.signal });
+    const invocation = context.pluginResolver.invoke({
+      queryRef: query.queryId,
+      capability,
+      input: value,
+      sideEffect: query.policy.sideEffect,
+      ...(context.profileBindings ? { profileBindings: context.profileBindings } : {}),
+      signal: controller.signal,
+    });
     const timed = new Promise<typeof timeout>((resolve) => {
       timer = setTimeout(() => { controller.abort("timeout-exceeded"); resolve(timeout); }, remainingMs);
     });
@@ -166,7 +173,7 @@ async function invokeCapability(query: QueryNode, capability: string, value: unk
     if (timer !== undefined) clearTimeout(timer);
   }
   if (!result) return pluginNotFound(query, context, capability);
-  emit(context, { eventType: "plugin-call-end", queryRef: query.queryId, status: result.transportStatus, detail: { capability, pluginId: result.pluginId, ...(result.outputStatus ? { outputStatus: result.outputStatus } : {}), ...(result.reason ? { reason: result.reason } : {}), ...(result.normalization ? { normalization: result.normalization } : {}), ...(result.execution ? { execution: result.execution } : {}) } });
+  emit(context, { eventType: "plugin-call-end", queryRef: query.queryId, status: result.transportStatus, detail: { capability, pluginId: result.pluginId, ...(result.outputStatus ? { outputStatus: result.outputStatus } : {}), ...(result.reason ? { reason: result.reason } : {}), ...(result.profileReceipts ? { profileReceipts: result.profileReceipts } : {}), ...(result.normalization ? { normalization: result.normalization } : {}), ...(result.execution ? { execution: result.execution } : {}) } });
   if (result.transportStatus === "failed") {
     const rejected = result.pluginStatus === "rejected";
     return {
