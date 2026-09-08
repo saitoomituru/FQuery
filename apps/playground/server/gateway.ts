@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { resolveCredential, standaloneCredentialSources } from "@fquery/config";
-import { evaluateQ, Q, toWireQueryResult, type CoreEvent, type PluginResolver } from "@fquery/core";
-import { createLiteralDecompositionFam, readAccessMapProfile, readFamJson } from "@fquery/fam-core";
+import { evaluateQ, Q, toWireQueryResult, type CapabilityProfileBinding, type CapabilityProfileReceipt, type CoreEvent, type PluginResolver } from "@fquery/core";
+import { createLiteralDecompositionFam, isFamJsonRecord, projectDecompositionUnits, readAccessMapProfile, readFamJson } from "@fquery/fam-core";
 import { discoverGeminiModels, GeminiFamPlugin } from "@fquery/plugin-gemini";
 import { discoverOllamaModels, OllamaFamPlugin } from "@fquery/plugin-ollama";
 
@@ -66,14 +66,59 @@ function orderGeminiTextModels(models: readonly string[]): readonly string[] {
 export async function decomposeText(request: DecomposeRequest, options: GatewayOptions): Promise<Readonly<Record<string, unknown>>> {
   assertDecomposeRequest(request);
   const events: CoreEvent[] = [];
+  // active refFAMはprovider候補完成後のsidecarではなく、呼出し前にrevision固定する。
+  const accessMapDocument = readFamJson(await readFile(join(options.repoRoot, "fixtures/test-cases/basic-commons-access-mapper/access-map.fam.json"), "utf8"));
+  const accessMap = readAccessMapProfile(accessMapDocument.value);
+  const profileBinding: CapabilityProfileBinding = Object.freeze({
+    profileRef: accessMap.famId,
+    revisionRef: accessMap.revisionId,
+    mediaType: "application/fam+json",
+    roles: Object.freeze(["generation-constraint", "validation-ruler", "presentation-ruler"] as const),
+    value: accessMapDocument.value,
+  });
   const resolver = options.resolverFactory?.(request) ?? createResolver(request, options);
   const result = await evaluateQ(Q(
     { kind: "literal", value: request.source },
     { queryId: `q://playground/${randomUUID()}`, operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: request.provider === "fixture" ? "none" : "network", limits: { maxDepth: 32, maxNodes: 10_000, timeoutMs: 45_000 } } },
-  ), { pluginResolver: resolver, outputConnected: true, emit: (event) => events.push(event) });
-  const accessMapDocument = readFamJson(await readFile(join(options.repoRoot, "fixtures/test-cases/basic-commons-access-mapper/access-map.fam.json"), "utf8"));
-  readAccessMapProfile(accessMapDocument.value);
-  return Object.freeze({ result: toWireQueryResult(result), events: Object.freeze(events), access_map: accessMapDocument.value });
+  ), { pluginResolver: resolver, profileBindings: Object.freeze([profileBinding]), outputConnected: true, emit: (event) => events.push(event) });
+  const postValidationReceipt = validateWithAccessMap(result.value, profileBinding);
+  if (postValidationReceipt) events.push(Object.freeze({ eventType: "semantic-check", queryRef: result.queryRef, status: "profile-accepted", detail: { profileReceipts: Object.freeze([postValidationReceipt]) } }));
+  const generationReceipt = findProfileReceipt(events, profileBinding, "generation-constraint");
+  return Object.freeze({
+    result: toWireQueryResult(result),
+    events: Object.freeze(events),
+    access_map: accessMapDocument.value,
+    ref_fam_receipt: Object.freeze({
+      profile_ref: profileBinding.profileRef,
+      revision_ref: profileBinding.revisionRef,
+      resolved_before_provider: true,
+      generation_constraint: generationReceipt ?? null,
+      post_validation: postValidationReceipt ?? null,
+      presentation_projection: Object.freeze({ status: "provided-to-host", profile_ref: profileBinding.profileRef, revision_ref: profileBinding.revisionRef }),
+    }),
+  });
+}
+
+function validateWithAccessMap(value: unknown, binding: CapabilityProfileBinding): CapabilityProfileReceipt | undefined {
+  if (!isFamJsonRecord(value)) return undefined;
+  const accessMap = readAccessMapProfile(binding.value as Parameters<typeof readAccessMapProfile>[0]);
+  const units = projectDecompositionUnits(value, accessMap);
+  if (units.some((unit) => unit.classification.accessMapFamRef !== binding.profileRef || unit.classification.accessMapRevisionRef !== binding.revisionRef)) throw new TypeError("access-map-revision-drift");
+  return Object.freeze({ profileRef: binding.profileRef, revisionRef: binding.revisionRef, appliedStages: Object.freeze(["post-validation"] as const) });
+}
+
+function findProfileReceipt(events: readonly CoreEvent[], binding: CapabilityProfileBinding, stage: CapabilityProfileReceipt["appliedStages"][number]): CapabilityProfileReceipt | undefined {
+  for (const event of events) {
+    const receipts = event.detail?.profileReceipts;
+    if (!Array.isArray(receipts)) continue;
+    const found = receipts.find((candidate): candidate is CapabilityProfileReceipt => {
+      if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) return false;
+      const receipt = candidate as unknown as CapabilityProfileReceipt;
+      return receipt.profileRef === binding.profileRef && receipt.revisionRef === binding.revisionRef && Array.isArray(receipt.appliedStages) && receipt.appliedStages.includes(stage);
+    });
+    if (found) return found;
+  }
+  return undefined;
 }
 
 function createResolver(request: DecomposeRequest, options: GatewayOptions): PluginResolver {
