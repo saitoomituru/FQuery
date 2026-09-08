@@ -41,14 +41,14 @@ export interface DecomposeOutcome {
 }
 
 /** gateway越しに分解を要求する。GUIはengineを実行しない。 */
-export async function requestDecompose(body: { provider: string; model: string; source: string }): Promise<DecomposeOutcome> {
+export async function requestDecompose(body: { provider: string; model: string; source: string }, options: { readonly signal?: AbortSignal } = {}): Promise<DecomposeOutcome> {
   try {
-    const fetched = await fetch("/api/decompose", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+    const fetched = await fetch("/api/decompose", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body), ...(options.signal ? { signal: options.signal } : {}) });
     const payload: unknown = await fetched.json();
     if (!fetched.ok) return { response: undefined, error: isRecord(payload) && typeof payload.error === "string" ? payload.error : `decompose-http-${fetched.status}` };
     return { response: payload };
   } catch (error) {
-    return { response: undefined, error: error instanceof Error ? error.message : "decompose-failed" };
+    return { response: undefined, error: error instanceof DOMException && error.name === "AbortError" ? "decompose-cancelled" : error instanceof Error ? error.message : "decompose-failed" };
   }
 }
 

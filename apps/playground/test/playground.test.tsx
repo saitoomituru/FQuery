@@ -115,6 +115,36 @@ describe("FQuery Playground", () => {
 });
 
 describe("FQuery Playground FAMVIM", () => {
+  it("Why連打を一実行へ直列化し、処理中表示と同一結果cacheで子node増殖を防ぐ", async () => {
+    const parentFam = createLiteralDecompositionFam("前提である。結論である。", "q://test/playground/recursive-chatter-parent");
+    const childFam = createLiteralDecompositionFam("理由Aである。理由Bである。", "q://test/playground/recursive-chatter-child");
+    let resolveRecursive!: (response: Response) => void;
+    const recursiveResponse = new Promise<Response>((resolve) => { resolveRecursive = resolve; });
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(json(fixtureRoutes))
+      .mockResolvedValueOnce(json(decompositionResponse(parentFam)))
+      .mockImplementationOnce(() => recursiveResponse);
+    const { container } = await mountWithGraph(fetcher);
+    await act(async () => { fireEvent.click(canvasNodes(container)[0]!.querySelector('[aria-label="route controls"] button')!); });
+    await waitFor(() => expect(canvasNodes(container)).toHaveLength(4));
+    const parentUnit = canvasNodes(container).find((node) => node.querySelector("[data-fold-ref]"))!;
+    const why = within(parentUnit).getByText("Whyを再分解") as HTMLButtonElement;
+    fireEvent.click(why);
+    await waitFor(() => expect(why.disabled).toBe(true));
+    expect(why.getAttribute("aria-busy")).toBe("true");
+    expect(why.textContent).toBe("Why分解中…");
+    fireEvent.click(why);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    await act(async () => { resolveRecursive(json(decompositionResponse(childFam))); await recursiveResponse; });
+    await waitFor(() => expect(container.querySelectorAll('[data-resolution-mode="atomic-resolution"]')).toHaveLength(1));
+    await waitFor(() => expect(why.disabled).toBe(false));
+    fireEvent.click(why);
+    await act(async () => { await Promise.resolve(); });
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(container.querySelectorAll('[data-resolution-mode="atomic-resolution"]')).toHaveLength(1);
+    expect(canvasNodes(container)).toHaveLength(6);
+  });
+
   it("選択unitのWhy再分解を子Foldとして追加し、親子identityをFoldLogへ残す", async () => {
     const parentFam = createLiteralDecompositionFam("前提である。結論である。", "q://test/playground/recursive-parent");
     const childFam = createLiteralDecompositionFam("理由Aである。理由Bである。", "q://test/playground/recursive-child");
@@ -128,13 +158,44 @@ describe("FQuery Playground FAMVIM", () => {
     const parentUnit = canvasNodes(container).find((node) => node.querySelector("[data-fold-ref]"))!;
     await act(async () => { fireEvent.click(within(parentUnit).getByText("Whyを再分解")); });
     await waitFor(() => expect(canvasNodes(container)).toHaveLength(6));
+    await waitFor(() => expect(container.querySelectorAll('[data-resolution-mode="atomic-resolution"]')).toHaveLength(1));
     const children = canvasNodes(container).filter((node) => node.querySelector('[data-fold-ref^="q://test/playground/recursive-child"]'));
     expect(children).toHaveLength(2);
+    const boundary = container.querySelector('[data-resolution-mode="atomic-resolution"]')!;
+    expect(boundary.getAttribute("data-dispatch-mode")).toBe("single-processing-unit");
+    expect(boundary.textContent).toContain("G=1/1/1 · D=1 · L=0/0/0/not-declared · mL=1/1/1 · child=2 · S=ready");
     openLeftTab(container, "outline");
-    expect(container.querySelectorAll('.fquery-outliner [data-depth="1"]')).toHaveLength(2);
+    expect(container.querySelectorAll('.fquery-outliner [data-depth="1"]')).toHaveLength(1);
+    expect(container.querySelectorAll('.fquery-outliner [data-depth="2"]')).toHaveLength(2);
     openLeftTab(container, "records");
     expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain('"operation": "recursive-decompose"');
     expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain("q://test/playground/recursive-parent/fam/unit/1");
+  });
+
+  it("親unit更新後のWhy再実行で旧generationを境界ごと交換しchainを残骸化しない", async () => {
+    const parentFam = createLiteralDecompositionFam("前提である。結論である。", "q://test/playground/recursive-replace-parent");
+    const firstChild = createLiteralDecompositionFam("旧理由Aである。旧理由Bである。", "q://test/playground/recursive-old-child");
+    const nextChild = createLiteralDecompositionFam("新理由である。", "q://test/playground/recursive-new-child");
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(json(fixtureRoutes))
+      .mockResolvedValueOnce(json(decompositionResponse(parentFam)))
+      .mockResolvedValueOnce(json(decompositionResponse(firstChild)))
+      .mockResolvedValueOnce(json(decompositionResponse(nextChild)));
+    const { container } = await mountWithGraph(fetcher);
+    await act(async () => { fireEvent.click(canvasNodes(container)[0]!.querySelector('[aria-label="route controls"] button')!); });
+    await waitFor(() => expect(canvasNodes(container)).toHaveLength(4));
+    let parentUnit = canvasNodes(container).find((node) => node.querySelector('[data-fold-ref^="q://test/playground/recursive-replace-parent"]'))!;
+    await act(async () => { fireEvent.click(within(parentUnit).getByText("Whyを再分解")); });
+    await waitFor(() => expect(container.textContent).toContain("旧理由Bである。"));
+    setText(parentUnit.querySelector("textarea")!, "更新した前提である。");
+    await act(async () => { fireEvent.click(parentUnit.querySelector("button")!); });
+    parentUnit = canvasNodes(container).find((node) => node.querySelector('[data-fold-ref^="q://test/playground/recursive-replace-parent"]'))!;
+    await act(async () => { fireEvent.click(within(parentUnit).getByText("Whyを再分解")); });
+    await waitFor(() => expect(container.textContent).toContain("新理由である。"));
+    expect(container.textContent).not.toContain("旧理由Aである。");
+    expect(container.textContent).not.toContain("旧理由Bである。");
+    expect(container.querySelectorAll('[data-resolution-mode="atomic-resolution"]')).toHaveLength(1);
+    expect(container.querySelector('[data-resolution-mode="atomic-resolution"]')?.textContent).toContain("generation 2");
   });
 
   it("TC2の38→0で取消gateを記録し、stale λを出力せず再構成待ちにする", async () => {
@@ -239,6 +300,22 @@ describe("FQuery Playground FAMVIM", () => {
     expect(leftPane(container).hasAttribute("hidden")).toBe(true);
     fireEvent.keyDown(container.querySelector(".shell textarea")!, { key: "t" });
     expect(leftPane(container).hasAttribute("hidden")).toBe(true);
+  });
+
+  it("降水確率の局所差替えをcommit後にλとFoldLog edit recordへ自動反映する", async () => {
+    const fam = createLiteralDecompositionFam("雨が降っている。傘を持って出かける。ただし降水量は未確認である。", "q://test/playground/precipitation-edit");
+    const fetcher = vi.fn().mockResolvedValueOnce(json(fixtureRoutes)).mockResolvedValueOnce(json(decompositionResponse(fam)));
+    const { container } = await mountWithGraph(fetcher);
+    await act(async () => { fireEvent.click(canvasNodes(container)[0]!.querySelector('[aria-label="route controls"] button')!); });
+    await waitFor(() => expect(canvasNodes(container)).toHaveLength(5));
+    const target = canvasNodes(container).filter((node) => node.querySelector("[data-fold-ref]")).find((node) => node.textContent?.includes("ただし降水量は未確認である。"))!;
+    setText(target.querySelector("textarea")!, "ただし降水確率68パーセントである");
+    await act(async () => { fireEvent.click(target.querySelector("button")!); });
+    const lambda = container.querySelector<HTMLElement>('[data-node-id="q://playground/node/3"]')!;
+    await waitFor(() => expect(lambda.textContent).toContain("ただし降水確率68パーセントである"));
+    openLeftTab(container, "records");
+    await waitFor(() => expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain('"operation": "edit"'));
+    expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain('"resultRevisionRef": "rev://playground/fam-edit/1"');
   });
 });
 

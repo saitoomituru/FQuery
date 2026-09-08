@@ -4,13 +4,14 @@ import { CORE_RENDERER_HINT, createPaneContext, findRegistrationByPresentation, 
 import { isFamJsonRecord, readAccessMapProfile, validateFamJson, type AccessMapProfile } from "@fquery/fam-core";
 import { createPlaygroundSession } from "./host/session.js";
 import { useCanonicalFam, useEditReceipts, useFoldLogRecords, useSessionState } from "./host/use-session.js";
-import { buildCoreGraph, placeUnplacedNodes, projectDecompositionGraph, projectRecursiveDecompositionGraph, refreshDecompositionNodes, type CoreNodeIds } from "./host/core-graph.js";
+import { buildCoreGraph, placeUnplacedNodes, projectDecompositionGraph, projectRecursiveDecompositionGraph, refreshDecompositionNodes, removeRecursiveFoldProjection, setRecursiveFoldStatus, type CoreNodeIds } from "./host/core-graph.js";
 import { DecomposerContext, FIXTURE_ROUTE, isRecord, projectLambdaNode, projectPsiNode, requestDecompose, resultRecord, type DecomposerContextValue, type PlaygroundRoute } from "./host/decomposer.js";
 import { PANE_COMPONENTS, createPlaygroundPaneRegistry } from "./host/pane-registry.js";
 import { PlaygroundPaneContext, type PlaygroundEditReceiptView, type PlaygroundPaneContextValue } from "./context.js";
 import { CoreNodeRenderer } from "./nodes/CoreNodeRenderer.js";
 import { reprojectWithAccessMap } from "./host/causal-projection.js";
 import { LocalizationContext, createLocalization, type PlaygroundLocale } from "./i18n.js";
+import { RecursiveFoldController, recursiveFoldFingerprint } from "./host/recursive-fold-controller.js";
 
 /** rendererHint -> canvas renderer。Core 3 nodeは最初のrenderer。pluginは同じ経路で登録する。 */
 const NODE_RENDERERS: NodeRendererMap = { [CORE_RENDERER_HINT]: CoreNodeRenderer };
@@ -30,6 +31,7 @@ export function App() {
   const coreIds = useRef<CoreNodeIds>({});
   const accessMap = useRef<AccessMapProfile | undefined>(undefined);
   const loggedCausalRevisions = useRef(new Set<string>());
+  const recursiveRuns = useRef(new RecursiveFoldController());
   // dev modeのStrictMode二重effectとFast Refreshのeffect再実行でCore graphを二重構築しないための同期guard
   const coreGraphBuilt = useRef(false);
   const [routes, setRoutes] = useState<readonly PlaygroundRoute[]>([FIXTURE_ROUTE]);
@@ -78,45 +80,100 @@ export function App() {
       return;
     }
     if (!isGuiRequest(event)) return;
+    if (event.type === "property.change.requested" && event.property === "unit.recursive-decompose") {
+      const parent = session.state.nodes.find((node) => node.nodeId === event.targetRef);
+      const payload = isRecord(event.value) ? event.value : {};
+      const sourceText = typeof payload.sourceText === "string" ? payload.sourceText : "";
+      if (!parent?.foldRef || !sourceText) { setError("recursive-parent-or-source-not-provided"); return; }
+      const parentFoldRef = parent.foldRef;
+      const started = recursiveRuns.current.start(parentFoldRef, recursiveFoldFingerprint({
+        parentFoldRef,
+        ...(parent.revisionRef ? { parentRevisionRef: parent.revisionRef } : {}),
+        sourceText,
+        provider,
+        model,
+      }));
+      if (!started.accepted) {
+        setLastEvent(JSON.stringify({ type: "recursive-fold.ignored", parentFoldRef, generation: started.run.generation, reason: started.reason }));
+        return;
+      }
+      setRecursiveFoldStatus(session, parent.nodeId, "running");
+      void (async () => {
+        const decided = await session.dispatch(event);
+        if (decided.decisions.at(-1)?.status !== "accepted") {
+          recursiveRuns.current.cancel(parentFoldRef);
+          setRecursiveFoldStatus(session, parent.nodeId, "failed");
+          return;
+        }
+        const outcome = await requestDecompose(
+          { provider, model, source: `なぜ: ${sourceText}` },
+          { signal: started.run.controller.signal },
+        );
+        if (!recursiveRuns.current.isCurrent(parentFoldRef, started.run.generation)) return;
+        if (outcome.error) {
+          recursiveRuns.current.fail(parentFoldRef, started.run.generation);
+          setRecursiveFoldStatus(session, parent.nodeId, outcome.error === "decompose-cancelled" ? "cancelled" : "failed");
+          if (outcome.error !== "decompose-cancelled") setError(outcome.error);
+          return;
+        }
+        const childValue = resultRecord(outcome.response)?.value;
+        const mapperValue = isRecord(outcome.response) ? outcome.response.access_map : undefined;
+        if (!isFamJsonRecord(childValue)) {
+          recursiveRuns.current.fail(parentFoldRef, started.run.generation);
+          setRecursiveFoldStatus(session, parent.nodeId, "failed");
+          setError("recursive-decomposition-fam-not-provided");
+          return;
+        }
+        const mapper = isFamJsonRecord(mapperValue) ? readAccessMapProfile(mapperValue) : accessMap.current;
+        if (!mapper) {
+          recursiveRuns.current.fail(parentFoldRef, started.run.generation);
+          setRecursiveFoldStatus(session, parent.nodeId, "failed");
+          setError("recursive-access-map-not-provided");
+          return;
+        }
+        if (started.previousProjection) await removeRecursiveFoldProjection(session, started.previousProjection);
+        const recursiveProjection = await projectRecursiveDecompositionGraph(session, parent.nodeId, childValue, mapper, started.run.generation);
+        if (!recursiveRuns.current.isCurrent(parentFoldRef, started.run.generation)) {
+          await removeRecursiveFoldProjection(session, recursiveProjection);
+          return;
+        }
+        fams.add(childValue);
+        recursiveRuns.current.complete(parentFoldRef, started.run.generation, recursiveProjection);
+        setRecursiveFoldStatus(session, parent.nodeId, "complete");
+        const q = childValue.Q as Record<string, unknown>;
+        const boundary = session.state.nodes.find((node) => node.nodeId === recursiveProjection.boundaryNodeId)?.foldBoundary;
+        logs.append({
+          traceId: `foldlog://playground/${fams.current?.value.fam_id ?? childValue.fam_id}`,
+          parentEventId: logs.last()?.eventId ?? null,
+          operation: "recursive-decompose",
+          sourceFoldRef: parentFoldRef,
+          affectedFoldRefs: [recursiveProjection.boundaryNodeId, ...recursiveProjection.childNodeIds].flatMap((nodeId) => session.state.nodes.find((node) => node.nodeId === nodeId)?.foldRef ?? []),
+          sourceFamRef: fams.current?.value.fam_id ?? childValue.fam_id,
+          sourceRevisionRef: fams.current?.value.revision_id ?? childValue.revision_id,
+          resultFamRef: childValue.fam_id,
+          resultRevisionRef: childValue.revision_id,
+          accessMapFamRef: mapper.famId,
+          accessMapRevisionRef: mapper.revisionId,
+          registryRef: typeof q.registry_ref === "string" ? q.registry_ref : mapper.registryRef,
+          roles: { observerRef: "observer://playground/user", recorderRef: "recorder://fquery/playground/foldlog", initiatorRef: "observer://playground/user", executorRef: `executor://fquery/provider/${provider}`, transformerRef: "transformer://fquery/recursive-why", causalContributorRefs: [parentFoldRef] },
+          semanticStatus: "unknown",
+          projectionStatus: "fresh",
+          cancelledEdgeRefs: [], selectedBranchRefs: [], recompositionRequired: false,
+          detail: { promptKind: "recursive-why", generation: started.run.generation, foldBoundaryNodeId: recursiveProjection.boundaryNodeId, resolutionMode: "atomic-resolution", dispatchMode: "single-processing-unit", closesAxes: ["G", "D", "L", "mL"], boundary_metrics: boundary?.boundaryMetrics, persistenceBoundary: "volatile-browser-memory" },
+        });
+      })().catch((reason: unknown) => {
+        recursiveRuns.current.fail(parentFoldRef, started.run.generation);
+        setRecursiveFoldStatus(session, parent.nodeId, "failed");
+        setError(reason instanceof Error ? reason.message : "recursive-fold-runner-failed");
+      });
+      return;
+    }
+    if (event.type === "property.change.requested" && event.property === "unit.replace") {
+      const parent = session.state.nodes.find((node) => node.nodeId === event.targetRef);
+      if (parent?.foldRef && recursiveRuns.current.cancel(parent.foldRef)) setRecursiveFoldStatus(session, parent.nodeId, "cancelled");
+    }
     void session.dispatch(event).then((next) => {
       if (event.type === "node.add.requested") return placeUnplacedNodes(session, next, canvas.current?.viewportCenter() ?? { x: 400, y: 200 });
-      if (event.type === "property.change.requested" && event.property === "unit.recursive-decompose" && next.decisions.at(-1)?.status === "accepted") {
-        const parent = session.state.nodes.find((node) => node.nodeId === event.targetRef);
-        const payload = isRecord(event.value) ? event.value : {};
-        const sourceText = typeof payload.sourceText === "string" ? payload.sourceText : "";
-        if (!parent?.foldRef || !sourceText) return undefined;
-        const parentFoldRef = parent.foldRef;
-        return requestDecompose({ provider, model, source: `なぜ: ${sourceText}` }).then(async (outcome) => {
-          if (outcome.error) { setError(outcome.error); return; }
-          const childValue = resultRecord(outcome.response)?.value;
-          const mapperValue = isRecord(outcome.response) ? outcome.response.access_map : undefined;
-          if (!isFamJsonRecord(childValue)) { setError("recursive-decomposition-fam-not-provided"); return; }
-          const mapper = isFamJsonRecord(mapperValue) ? readAccessMapProfile(mapperValue) : accessMap.current;
-          if (!mapper) { setError("recursive-access-map-not-provided"); return; }
-          fams.add(childValue);
-          const children = await projectRecursiveDecompositionGraph(session, parent.nodeId, childValue, mapper);
-          const q = childValue.Q as Record<string, unknown>;
-          logs.append({
-            traceId: `foldlog://playground/${fams.current?.value.fam_id ?? childValue.fam_id}`,
-            parentEventId: logs.last()?.eventId ?? null,
-            operation: "recursive-decompose",
-            sourceFoldRef: parentFoldRef,
-            affectedFoldRefs: children.flatMap((nodeId) => session.state.nodes.find((node) => node.nodeId === nodeId)?.foldRef ?? []),
-            sourceFamRef: fams.current?.value.fam_id ?? childValue.fam_id,
-            sourceRevisionRef: fams.current?.value.revision_id ?? childValue.revision_id,
-            resultFamRef: childValue.fam_id,
-            resultRevisionRef: childValue.revision_id,
-            accessMapFamRef: mapper.famId,
-            accessMapRevisionRef: mapper.revisionId,
-            registryRef: typeof q.registry_ref === "string" ? q.registry_ref : mapper.registryRef,
-            roles: { observerRef: "observer://playground/user", recorderRef: "recorder://fquery/playground/foldlog", initiatorRef: "observer://playground/user", executorRef: `executor://fquery/provider/${provider}`, transformerRef: "transformer://fquery/recursive-why", causalContributorRefs: [parentFoldRef] },
-            semanticStatus: "unknown",
-            projectionStatus: "fresh",
-            cancelledEdgeRefs: [], selectedBranchRefs: [], recompositionRequired: false,
-            detail: { promptKind: "recursive-why", persistenceBoundary: "volatile-browser-memory" },
-          });
-        });
-      }
       return undefined;
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "session-dispatch-failed"));
   }, [session, fams, logs, provider, model]);

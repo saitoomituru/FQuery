@@ -46,6 +46,7 @@ function IndependentFoldNode({ model, emit }: NodeRendererProps) {
   const [draft, setDraft] = useState(manifestation);
   useEffect(() => setDraft(manifestation), [manifestation]);
   const changed = draft !== manifestation && draft.trim().length > 0;
+  const recursiveRunning = model.badges.some((badge) => badge.axis === "recursive" && badge.value === "running");
   return (
     <div className="famvim-node fold-unit-node" data-fold-ref={model.foldRef} data-projection-freshness={model.projectionFreshness}>
       <p className="famvim-node-title"><strong>{manifestation}</strong></p>
@@ -64,13 +65,13 @@ function IndependentFoldNode({ model, emit }: NodeRendererProps) {
           property: "unit.replace",
           value: { replacementText: draft, claimKind: "world-fact", overrideObserverRef: "observer://playground/user", overrideSourceRef: `input://playground/user-override/${Date.now()}` },
         })}>{t("unit.replace")}</button>
-        <button type="button" className="nodrag" onClick={() => emit({
+        <button type="button" className="nodrag" disabled={recursiveRunning} aria-busy={recursiveRunning ? "true" : undefined} onClick={() => emit({
           type: "property.change.requested",
           requestId: `ui:recursive-decompose:${Date.now()}`,
           targetRef: model.nodeId,
           property: "unit.recursive-decompose",
           value: { sourceText: manifestation },
-        })}>{t("unit.why")}</button>
+        })}>{t(recursiveRunning ? "unit.whyRunning" : "unit.why")}</button>
         <button type="button" className="nodrag" onClick={() => emit({ type: "inspect", nodeId: model.nodeId })}>{t("unit.details")}</button>
       </div>
     </div>

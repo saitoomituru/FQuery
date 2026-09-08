@@ -1,8 +1,19 @@
 # Issue #35 Browser Playground引継ぎ票
 
-状態: `AUTOMATED-PASS / HUMAN-GUI-PENDING`
+状態: `AUTOMATED-PASS / SAFARI-RETEST-PENDING / CHROME-HUMAN-FAIL`
 
-対象revision: `7e37b71` 以降（実施時のHEADを記録すること）
+対象revision: `6e68470` 以降（実施時のHEADを記録すること）
+
+## 2026-09-08 Human Test観測
+
+- Chromeは初回decomposition時点で`transport failed`となり不合格。component testは実Browser testではなく、この不合格を覆さない。browser固有原因は`UNKNOWN`のまま保持する。
+- Safariではdecompositionとrecursive Whyの結果表示まで進行した。
+- Safariの左pane tabに横・縦scrollbarが発生した。
+- unitを「ただし降水確率68パーセントである」へ差替えた際、最終λへ自動反映されず、FoldLog edit recordも表示されなかった。
+- Why再分解にbusy表示とchattering防止がなく、連打で子nodeが増殖し、親子chainが千切れた。
+- 子graphを閉じるnested boundaryがなく、意味上一括解決すべき範囲がpresentationから失われていた。
+
+以上はUser提供screen captureと操作観測であり、修正後のHuman合格を意味しない。
 
 ## 自動検証済み
 
@@ -12,19 +23,26 @@
 - 選択unitだけの差替えで兄弟unit、親FAM拡張field、旧revisionを保持する
 - TC2の`38→68`はactive branchを保持し、`38→0`はfallbackを発明せず`needs-recomposition`としてstale λ出力を遮断する
 - recursive Whyが別の子decomposition FAMを生成し、親unitの下へdepth付き子Foldを投影する
+- recursive Whyの子graphを`atomic-resolution / single-processing-unit`のFold boundaryへネストする
+- Fold boundaryの`boundary_metrics`としてG、context D、tool L、context mL、SのLast Order／明示domain branch契約を分離する
+- 同一親のWhyを一実行へ直列化し、busy表示、同一fingerprint cache、generation更新、旧応答遮断、旧boundary一括交換を行う
+- FAM store通知をSession commit後へ移し、unit差替えをλとFoldLog edit recordへ同じ確定revisionから投影する
+- Safari pane tabを固定幅scroll領域にせず、pane幅内へ縮約する
 - decompose、edit、validate-edge、recursive-decomposeを`fold.log/0.1.0-alpha` / `oae.record/0.1.0-alpha`として生成し、secret redaction境界を保持する
 - `ja-JP`を既定にし、schema key・URIを翻訳せず`en-US`表示へ切替できる
 
 ## Human GUI Test
 
-1. `npm run dev`で`http://127.0.0.1:3000`を開く。
+1. Safariで`npm run dev`の`http://127.0.0.1:3000`を開く。Chromeは別の原因調査Issueが閉じるまで合格対象にしない。
 2. 「降水確率は38%である。不安である。傘を持つ。」をfixtureで分解し、3つの独立∇φ nodeと1つのλ nodeが見えることを確認する。
 3. 第1unitを「降水確率は68%である。」へ差替え、λが3行を保持することを確認する。
 4. 第1unitを「降水確率は0%である。」へ差替え、影響nodeがstale表示になり、λが「再構成待ち」で旧3行を表示しないことを確認する。
 5. Recordsで取消gate、affected Fold、`persistenceStatus: volatile`が読めることを確認する。
-6. unitの「Whyを再分解」で子Foldが生成され、階層paneでindentされることを確認する。
-7. Access Mapper / evidenceを開き、FAM IDとrevisionが読めることを確認する。
-8. localeをEnglishへ切替え、機械可読key・URI・`unit_ref`が変化しないことを確認する。
+6. unitの「Whyを再分解」を連打し、最初の1要求だけが走ること、処理中表示になること、子graphが1つのatomic Fold boundary内へ生成されることを確認する。
+7. 同じunitを再度Why分解してnodeが増殖しないこと、unit編集後の再実行では旧boundaryごと新generationへ交換されることを確認する。
+8. Access Mapper / evidenceを開き、FAM IDとrevisionが読めることを確認する。
+9. localeをEnglishへ切替え、機械可読key・URI・`unit_ref`が変化しないことを確認する。
+10. 左paneに不要なtab scrollbarが再発せず、tab操作とpane本文scrollが分離していることを確認する。
 
 ## 完了に含めない境界
 
@@ -32,3 +50,4 @@
 - IBDのvector graph DBとRDBへの二重永続化、取得、整合receiptは後続Issueである。
 - 実RAG/World provider、VS Code Host、Sphere Hostの確認は#35へ混ぜない。
 - この票の自動テストは、人間による配置、可読性、drag、操作感の確認を代替しない。
+- Playwright等の別browser engine試験も、実Safariまたは実ChromeのHuman Testを代替しない。

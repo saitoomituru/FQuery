@@ -13,6 +13,7 @@ import {
 import { selectionEquals, type ConnectionViewModel, type FQueryUiEvent, type LayoutValue, type NodeSelection, type NodeViewModel, type PresentationDecision, type PresentationProjection } from "@fquery/ui-core";
 import { CanvasContext, type CanvasContextValue, type NodeRendererMap } from "./canvas-context.js";
 import { FQueryFlowNode } from "./FQueryFlowNode.js";
+import { FQueryFoldBoundaryNode } from "./FQueryFoldBoundaryNode.js";
 import type { PresentationCanvasHandle } from "./model/canvas-handle.js";
 import { EMPTY_DRAFT_LAYOUT, clearDraft, markDraftRequested, reconcileDraft, setDraftPosition, type DraftLayoutState } from "./model/draft-layout.js";
 import { projectFlow } from "./model/flow-projection.js";
@@ -32,7 +33,7 @@ export interface FQueryFlowViewProps {
   readonly requestPrefix?: string | undefined;
 }
 
-const NODE_TYPES = { fquery: FQueryFlowNode };
+const NODE_TYPES = { fquery: FQueryFlowNode, foldBoundary: FQueryFoldBoundaryNode };
 const EMPTY_SELECTION: NodeSelection = Object.freeze({ nodeIds: Object.freeze([]) });
 const EMPTY_LAYOUT: readonly LayoutValue[] = Object.freeze([]);
 const EMPTY_DECISIONS: readonly PresentationDecision[] = Object.freeze([]);
@@ -92,6 +93,8 @@ function FlowSurface({ nodes, connections, layout, decisions, presentations, nod
           position,
           selected: node.selected,
           data: before?.data ?? { ...node.data },
+          ...(node.parentId ? { parentId: node.parentId, extent: node.extent } : {}),
+          ...(node.style ? { style: node.style } : {}),
           ...(before?.dragging ? { dragging: true } : {}),
           ...(node.unplaced ? { className: "fquery-flow-node-unplaced" } : {}),
         };

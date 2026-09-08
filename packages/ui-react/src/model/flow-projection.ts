@@ -6,12 +6,15 @@ import type { ConnectionViewModel, LayoutValue, NodeSelection, NodeViewModel } f
  */
 export interface FlowNodeProjection {
   readonly id: string;
-  readonly type: "fquery";
+  readonly type: "fquery" | "foldBoundary";
   readonly position: { readonly x: number; readonly y: number };
   readonly selected: boolean;
   /** layout write-backが未確定のnode。Hostが配置するまで既定位置に置く。 */
   readonly unplaced: boolean;
   readonly data: { readonly nodeId: string };
+  readonly parentId?: string;
+  readonly extent?: "parent";
+  readonly style?: { readonly width: number; readonly height: number };
 }
 
 export interface FlowEdgeProjection {
@@ -52,11 +55,13 @@ export function projectFlow(input: FlowProjectionInput): FlowProjection {
     const position = draft ?? (accepted ? { x: accepted.x, y: accepted.y } : UNPLACED_POSITION);
     return Object.freeze({
       id: node.nodeId,
-      type: "fquery",
+      type: node.foldBoundary ? "foldBoundary" : "fquery",
       position: Object.freeze({ x: position.x, y: position.y }),
       selected: selected.has(node.nodeId),
       unplaced: accepted === undefined,
       data: Object.freeze({ nodeId: node.nodeId }),
+      ...(node.parentNodeId ? { parentId: node.parentNodeId, extent: "parent" as const } : {}),
+      ...(node.foldBoundary ? { style: Object.freeze({ width: node.foldBoundary.width, height: node.foldBoundary.height }) } : {}),
     });
   });
 
