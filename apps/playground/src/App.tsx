@@ -4,7 +4,7 @@ import { CORE_RENDERER_HINT, createPaneContext, findRegistrationByPresentation, 
 import { isFamDecompositionRecord, isFamJsonRecord, readAccessMapProfile, validateFamJson, type AccessMapProfile } from "@fquery/fam-core";
 import { createPlaygroundSession } from "./host/session.js";
 import { useCanonicalFam, useEditReceipts, useFoldLogRecords, useSessionState } from "./host/use-session.js";
-import { buildCoreGraph, placeUnplacedNodes, projectDecompositionGraph, projectRecursiveDecompositionGraph, refreshDecompositionNodes, removeRecursiveFoldProjection, setFoldBoundaryCollapsed, setRecursiveFoldStatus, type CoreNodeIds } from "./host/core-graph.js";
+import { buildCoreGraph, placeUnplacedNodes, projectDecompositionGraph, projectRecursiveDecompositionGraph, refreshDecompositionNodes, removeRecursiveFoldProjection, setFoldBoundaryCollapsed, setRecursiveFoldStatus, setUnitEditStatus, type CoreNodeIds } from "./host/core-graph.js";
 import { DecomposerContext, FIXTURE_ROUTE, isRecord, projectFamvimNode, projectLambdaNode, projectPsiNode, requestDecompose, resultRecord, type DecomposerContextValue, type PlaygroundRoute } from "./host/decomposer.js";
 import { PANE_COMPONENTS, createPlaygroundPaneRegistry } from "./host/pane-registry.js";
 import { PlaygroundPaneContext, type PlaygroundEditReceiptView, type PlaygroundPaneContextValue } from "./context.js";
@@ -177,8 +177,19 @@ export function App() {
     if (event.type === "property.change.requested" && event.property === "unit.replace") {
       const parent = session.state.nodes.find((node) => node.nodeId === event.targetRef);
       if (parent?.foldRef && recursiveRuns.current.cancel(parent.foldRef)) setRecursiveFoldStatus(session, parent.nodeId, "cancelled");
+      setError("");
+      setUnitEditStatus(session, event.targetRef, "requested");
     }
     void session.dispatch(event).then((next) => {
+      if (event.type === "property.change.requested" && event.property === "unit.replace") {
+        const decision = next.decisions.at(-1);
+        if (decision?.requestId === event.requestId && decision.status === "accepted") {
+          setUnitEditStatus(session, event.targetRef, "accepted");
+        } else {
+          setUnitEditStatus(session, event.targetRef, "rejected");
+          setError(decision?.reason ?? "unit-replacement-rejected");
+        }
+      }
       if (event.type === "node.add.requested") return placeUnplacedNodes(session, next, canvas.current?.viewportCenter() ?? { x: 400, y: 200 });
       return undefined;
     }).catch((reason: unknown) => setError(reason instanceof Error ? reason.message : "session-dispatch-failed"));

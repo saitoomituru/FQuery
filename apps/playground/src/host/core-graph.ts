@@ -113,6 +113,19 @@ export function setRecursiveFoldStatus(session: PresentationSession, nodeId: str
   });
 }
 
+/** unit局所差替えの要求・採否をcanvas上へ返し、無反応に見える状態を作らない。 */
+export function setUnitEditStatus(session: PresentationSession, nodeId: string, status: "requested" | "accepted" | "rejected"): void {
+  const node = session.state.nodes.find((candidate) => candidate.nodeId === nodeId);
+  if (!node) return;
+  session.applyEngineEvent({
+    type: "fam.node.changed",
+    node: {
+      ...node,
+      badges: [...node.badges.filter((badge) => badge.axis !== "edit"), { axis: "edit", value: status, tone: statusTone(status) }],
+    },
+  });
+}
+
 /** Foldの意味構造を残したまま、canvas投影だけを縮約または再展開する。 */
 export function setFoldBoundaryCollapsed(session: PresentationSession, nodeId: string, collapsed: boolean): boolean {
   const node = session.state.nodes.find((candidate) => candidate.nodeId === nodeId);
@@ -240,6 +253,7 @@ export function refreshDecompositionNodes(session: PresentationSession, current:
         projectionFreshness: reprojection?.affectedFoldRefs.includes(unit.unitRef) ? (reprojection.stale ? "stale" : "fresh") : "fresh",
         value: { unit: unit.value, classification: unit.classification, sourcePointer: unit.sourcePointer },
         badges: [
+          ...node.badges.filter((badge) => badge.axis === "edit" || badge.axis === "recursive"),
           { axis: "classification", value: unit.classification.dimensionRef ?? "unmapped", tone: unit.classification.status === "mapped" ? "active" : "unknown" },
           ...(reprojection?.affectedFoldRefs.includes(unit.unitRef) ? [{ axis: "projection", value: reprojection.projectionStatus, tone: reprojection.stale ? "warning" as const : "active" as const }] : []),
         ],

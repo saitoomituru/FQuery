@@ -47,6 +47,8 @@ function IndependentFoldNode({ model, emit }: NodeRendererProps) {
   useEffect(() => setDraft(manifestation), [manifestation]);
   const changed = draft !== manifestation && draft.trim().length > 0;
   const recursiveRunning = model.badges.some((badge) => badge.axis === "recursive" && badge.value === "running");
+  const editStatus = model.badges.find((badge) => badge.axis === "edit");
+  const stopCanvasGesture = (event: { stopPropagation: () => void }) => event.stopPropagation();
   return (
     <div className="famvim-node fold-unit-node" data-fold-ref={model.foldRef} data-projection-freshness={model.projectionFreshness}>
       <p className="famvim-node-title"><strong>{manifestation}</strong></p>
@@ -54,25 +56,26 @@ function IndependentFoldNode({ model, emit }: NodeRendererProps) {
       <p className="famvim-node-meta">revision: <code>{model.revisionRef ?? String(q?.unit_revision_ref ?? "unknown")}</code></p>
       <p className="famvim-node-meta">{t("unit.dimension")}: <code>{String(classification?.dimensionRef ?? "unmapped")}</code></p>
       <details className="fold-unit-evidence nowheel"><summary>{t("unit.evidence")}</summary><ul>{model.evidenceRefs.map((ref) => <li key={ref}><code>{ref}</code></li>)}</ul></details>
-      <label className="fold-unit-editor nowheel">意味単位を局所差替え
-        <textarea className="nodrag" rows={3} value={draft} onChange={(event) => setDraft(event.target.value)} />
+      <label className="fold-unit-editor nodrag nopan nowheel" onPointerDown={stopCanvasGesture}>意味単位を局所差替え
+        <textarea className="nodrag nopan nowheel" rows={3} value={draft} onPointerDown={stopCanvasGesture} onChange={(event) => setDraft(event.target.value)} />
       </label>
       <div className="famvim-node-actions">
-        <button type="button" className="nodrag" disabled={!changed} onClick={() => emit({
+        <button type="button" className="nodrag nopan nowheel" disabled={!changed || editStatus?.value === "requested"} aria-busy={editStatus?.value === "requested" ? "true" : undefined} onPointerDown={stopCanvasGesture} onClick={() => emit({
           type: "property.change.requested",
           requestId: `ui:unit-replace:${Date.now()}`,
           targetRef: model.nodeId,
           property: "unit.replace",
           value: { replacementText: draft, claimKind: "world-fact", overrideObserverRef: "observer://playground/user", overrideSourceRef: `input://playground/user-override/${Date.now()}` },
         })}>{t("unit.replace")}</button>
-        <button type="button" className="nodrag" disabled={recursiveRunning} aria-busy={recursiveRunning ? "true" : undefined} onClick={() => emit({
+        <button type="button" className="nodrag nopan nowheel" disabled={recursiveRunning} aria-busy={recursiveRunning ? "true" : undefined} onPointerDown={stopCanvasGesture} onClick={() => emit({
           type: "property.change.requested",
           requestId: `ui:recursive-decompose:${Date.now()}`,
           targetRef: model.nodeId,
           property: "unit.recursive-decompose",
           value: { sourceText: manifestation },
         })}>{t(recursiveRunning ? "unit.whyRunning" : "unit.why")}</button>
-        <button type="button" className="nodrag" onClick={() => emit({ type: "inspect", nodeId: model.nodeId })}>{t("unit.details")}</button>
+        <button type="button" className="nodrag nopan nowheel" onPointerDown={stopCanvasGesture} onClick={() => emit({ type: "inspect", nodeId: model.nodeId })}>{t("unit.details")}</button>
+        {editStatus && <span className="fquery-badge" data-axis="edit" data-tone={editStatus.tone} role="status"><small>差替え</small>{editStatus.value}</span>}
       </div>
     </div>
   );

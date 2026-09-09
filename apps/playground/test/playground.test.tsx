@@ -285,9 +285,15 @@ describe("FQuery Playground FAMVIM", () => {
     const unitNodes = canvasNodes(container).filter((node) => node.querySelector("[data-fold-ref]"));
     const untouchedText = unitNodes[1]!.textContent;
     const unitEditor = unitNodes[0]!.querySelector("textarea")!;
+    expect(unitEditor.classList.contains("nodrag")).toBe(true);
+    expect(unitEditor.classList.contains("nopan")).toBe(true);
+    expect(unitEditor.classList.contains("nowheel")).toBe(true);
     setText(unitEditor, "差替えた意味単位。");
-    await act(async () => { fireEvent.click(unitNodes[0]!.querySelector("button")!); });
+    const replaceButton = unitNodes[0]!.querySelector("button")!;
+    fireEvent.pointerDown(replaceButton);
+    await act(async () => { fireEvent.click(replaceButton); });
     await waitFor(() => expect(unitNodes[0]!.textContent).toContain("差替えた意味単位。"));
+    await waitFor(() => expect(unitNodes[0]!.querySelector('[data-axis="edit"]')?.textContent).toContain("accepted"));
     expect(unitNodes[1]!.textContent).toBe(untouchedText);
     await waitFor(() => expect(container.querySelector('[data-node-id="q://playground/node/3"]')?.textContent).toContain("差替えた意味単位。"));
     openLeftTab(container, "records");
