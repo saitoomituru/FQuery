@@ -1,46 +1,126 @@
-# atomic Fold boundary RunnerとG/D/L/mL/S構造座標
+# atomic Fold reference RunnerとG/D/L/mL/S構造座標
 
-状態: `DRAFT-IMPLEMENTED-PROFILE / HUMAN-RETEST-PENDING`
+状態: `DESIGN-CORRECTIVE / LEGACY-NESTED-IMPLEMENTATION / HUMAN-RETEST-PENDING`
+
+正本思想: [ZeroRoomLab-manifest `f27903a`](https://github.com/saitoomituru/ZeroRoomLab-manifest/blob/f27903abd3e2c69732dfcbec91d948b1d3801808/docs/theory/fam-infoton-reference-boundary.ja.md)
+
+Machine contract: [`fam-reference-boundary.ja.md`](fam-reference-boundary.ja.md)
 
 ## 目的
 
-分解した子node群を互いに無関係なGUI部品として放出せず、意味を保ったまま一括解決し、一つの処理単位として出口へ渡す。Fold boundaryは装飾的なgroupではなく、次の実行契約を持つ。
+分解した意味単位を互いに無関係なGUI部品として放出せず、一括解決すべき境界をatomic Foldとして扱う。ただしFoldを**同一FAM JSON内のhidden child graph / group**としてcanonical所有しない。
+
+Fold boundaryは、独立したchild FAM identityへの参照境界である。
 
 ```text
 resolution_mode = atomic-resolution
 dispatch_mode   = single-processing-unit
+ownership       = independent-fam-reference
 ```
 
-同じ親Foldの実行中は次の再帰分解要求を受理しない。親revision、入力、providerまたはmodelが変わった再実行ではgenerationを進め、旧boundaryとその子を一括交換する。中止済み旧generationの遅延応答はgraphへ接続しない。
+概念形:
+
+```text
+FAM-A
+  ψ
+  ├─ node-1
+  ├─ Fold-X -> fam_ref: FAM-X
+  └─ node-3
+  λ
+
+FAM-X
+  ψ
+  ├─ ∇φ-X1
+  ├─ ∇φ-X2
+  └─ ∇φ-X3
+  λ
+  Q
+```
+
+RunnerはFold-Xへ到達すると`fam_ref`をresolveし、FAM-Xを一つの処理単位として実行する。
+
+同じ親Foldの実行中は同一boundaryへの再帰分解要求を重複受理しない。親revision、入力、provider、model、active refFAM等が変わった再実行ではgenerationを進め、旧projectionと新projectionを区別する。中止済みgenerationの遅延応答を新revisionへ接続しない。
 
 ## Fold操作語彙
 
 日本語UIを正本とし、次の3操作を混同しない。
 
-| 操作 | 日本語UI | 中間表現・来歴 | 用途 |
+| 操作 | 日本語UI | semantic boundary | 用途 |
 |---|---|---|---|
-| `DeFold` | `なんで？-DeFold-` | 保持する | Meaning anchorから子Fold、説明、低G操作面を非破壊に展開する |
-| `Fold` | `まとめる-Fold-` | 保持する | atomic boundary配下の描画だけを縮約し、一つの縮小nodeとして扱う |
-| `unFold` | 現時点でUI未実装 | 破棄し得る | modelへのbakeや生成結果への置換など、破壊的結合を明示する |
+| `DeFold` | `なんで？-DeFold-` / `ひらく-DeFold-` | 保持 | `fam_ref`をresolveし、参照先FAMの内部projectionを開く |
+| `Fold` | `まとめる-Fold-` | 保持 | 参照先FAMを削除せず内部projectionだけを畳む |
+| `unFold` | 現時点でUI未実装 | 破壊し得る | FAM境界をbake / merge / replaceし、中間表現を破棄し得る |
 
-`Fold`はchildren、edge、G/D/L/mL/S、revision、FoldLogを削除しない。canvas rendererから子孫を外し、boundaryを縮小投影するpresentation accelerationである。縮小nodeの`ひらく-DeFold-`で同じ中間表現を再描画できる。
+### DeFold
 
-`unFold`は将来の予約語とする。既存のAtlantis/Manifest文書で`UnFold`と記された「変換前の表現を破棄し、生成結果へ置換する系」と同じ概念を指し、FQueryの機械可読operation tokenでは`unFold`と綴る。`DeFold`や描写上の`Fold`を、暗黙に`unFold`へ昇格させない。
+`DeFold`はchild FAMをparent JSONへinline copyする操作ではない。
 
-初回Foldは完全・網羅・唯一の分解である必要はない。意味的に一括処理すべき最小boundaryを保持し、必要になった箇所だけを`なんで？-DeFold-`で段階的に掘る。空欄、`unknown`、未分類を一括展開で埋めることより、後から手直し可能なstable ref、revision、parentageを優先する。
+GUIが複数FAMを一つのviewportへ合成表示する。
 
-`なんで？-DeFold-`は実際に使った暗黙Context、refFAM、Access Mapper、corpus、tool、Observer、ruleを辿る操作である。解決receiptが存在しない場合は事後的にもっともらしい理由を生成せず、`resolution-provenance-unavailable`のLast Orderを返す。
+```text
+FAM-A view
+  └─ Fold-X
+       └─ projected FAM-X view
+            └─ Fold-Y
+                 └─ projected FAM-Y view
+```
+
+`なんで？-DeFold-`は、参照先FAMを新規生成する場合と、既存`fam_ref`を開く場合を区別する。新規分解でboundaryが発見された場合、独立FAM extraction candidateを作り、parentへrefを戻す。
+
+暗黙Context、refFAM、Access Mapper、corpus、tool、Observer、ruleを実際に使った場合はreceiptから辿れるようにする。receiptが存在しない理由を後から生成せず、`resolution-provenance-unavailable`を返す。
+
+### Fold
+
+`まとめる-Fold-`はpresentation accelerationである。
+
+次を削除しない。
+
+- child FAM identity
+- child revision
+- child Q / provenance / OAE / FAMLog
+- parentの`fam_ref`
+- G/D/L/mL/Sのsemantic measurement source
+
+canvasから参照先FAMの内部projectionだけを外し、boundary nodeを縮小表示する。
+
+### unFold
+
+`unFold`は独立FAM境界そのものを破壊し得る予約操作である。既存Atlantis/Manifest文書で記された「変換前の表現を破棄し生成結果へ置換する系」と同じ概念を継承する。
+
+`Fold` / `DeFold`を暗黙に`unFold`へ昇格させない。
+
+## FAM extraction
+
+同一FAM内の`∇φ` / subtree / Foldを複数semantic consumerが必要とした場合、同一document内shared node / DAGへ拡張しない。
+
+```text
+legacy / non-canonical
+
+Fold-A ─┐
+        ├─ shared X
+Fold-B ─┘
+
+canonical candidate
+
+Fold-A -> ref ─┐
+               ├─ FAM-X
+Fold-B -> ref ─┘
+```
+
+複数参照は純粋な叡智の証明ではなく、まず経験価値の可搬性signalである。独立FAM identityへ抽出した後、内容がfact / 合意 / 業務 / 個別経験を含むなら通常FAM、fact-freeな問い・方法・定規ならrefFAM candidateとして扱える。
+
+具体的な抽出手順は[`../architecture/fam-reference-extraction.ja.md`](../architecture/fam-reference-extraction.ja.md)を参照する。
 
 ## `fold_boundary.boundary_metrics` namespace
 
-短縮表示はG/D/L/mL/Sを使うが、機械契約では必ずFold boundaryの`boundary_metrics`配下へ閉じる。完全pathは`fold_boundary.boundary_metrics`である。Dは`context_dimension_count`、Lは`technical_layer_ref`／tool chainの系譜を維持し、判断を含むcontext chainだけをmLへ分離する。
+短縮表示はG/D/L/mL/Sを使う。機械契約ではFold boundaryの`boundary_metrics`配下へ閉じる。
 
-| 軸 | 名称 | coreが返す値 |
+| 軸 | 名称 | canonical measurement source |
 |---|---|---|
-| G | Gravity | boundaryを跨いだFold-on-Fold path深度の`max/median/min` |
-| D | Dimension | Fold内で明示された一意なcontext dimension数 |
+| G | Gravity | FAM reference pathの深度 |
+| D | Dimension | 対象FAM内で明示された一意なcontext dimension数 |
 | L | Layer | API、adapter、tool等のtechnology/tool chain長と接続状態 |
-| mL | meta Layer | 判断・解釈を含むcontext/meta chain長。Machine Learningの`ML`と区別するため小文字`m`を保持 |
+| mL | meta Layer | 判断・解釈を含むcontext/meta chain長 |
 | S | Socket/SDK | 専用node pluginと出口adapterによる外部接続契約 |
 
 ```json
@@ -66,58 +146,156 @@ dispatch_mode   = single-processing-unit
 }
 ```
 
-`max`と`min`は整数である。要素数が偶数の`median`は中間2値の平均であり、小数を取り得る。平均、分散、percentile等はcoreへ追加しない。pluginが必要とする場合は、生のnest path深度またはchain長を入力として受けて算出する。直下node数はDへ混ぜず`direct_child_count`として分離する。
+このJSONはprofile例でありFAM Core base必須fieldではない。
+
+### G
+
+GはReact Flowの`parentId`、DOM nesting、canvas group数ではなく、semanticなFAM reference pathを測る。
+
+```text
+FAM-A -> FAM-B -> FAM-C
+
+CをAから開いたview
+  G path depth = 2
+```
+
+同じFAMへ複数pathが存在する場合、`max / median / min`を返せる。cycleは正常な深度として数えず、reference topology error / unresolvedとして分離する。
+
+### D
+
+Dは対象FAM内の一意な`context_dimension_ref`数。直下node数をDへ混ぜず、必要なら`direct_child_count`へ分離する。
+
+### L
+
+Lはtechnology / tool chain。API、adapter、device、plugin、external service等の実行chainを測る。
+
+必須routeが切れていれば`continuity=disconnected`。
+
+### mL
+
+mLは判断、解釈、context transition等のmeta chain。Lの実行成功と混同しない。
+
+### S
+
+Sは外部接続契約。必要なplugin / adapter / socketが無い場合、使えたことにせずLast Orderを返す。
 
 ## 境界判定
 
-1. Fold boundaryを一つ跨ぐたび、そのpathのGを`+1`する。
-2. DはFold内の一意な`context_dimension_ref`数とする。同じdimensionを複数nodeが共有しても一度だけ数える。
-3. Lは宣言済みのtechnology/tool edgeだけからroot-to-leaf pathごとのnode数を測る。必須entry→exit routeが切れていれば`continuity=disconnected`とする。
-4. mLは判断・解釈を含むcontext/meta edgeだけから測る。mLの連続を、切れたLの実行成功へ流用しない。
-5. 欠落nodeを参照するedge、重複edge、cycleは閉じたchainとして成功扱いしない。
-6. Sは専用node pluginと出口adapterの両方が揃った場合だけ`socket_present=true`とする。
+1. 独立FAM reference boundaryを一つ跨ぐごとに、そのsemantic pathのGを`+1`する。
+2. Dは現在resolveしたFAM内の一意なcontext dimensionを数える。
+3. Lは宣言済みtechnology/tool edgeだけを測る。
+4. mLは判断・解釈edgeだけを測る。
+5. 欠落ref、未解決revision、cycle、dangling edgeを成功routeへ数えない。
+6. Sはactive profileが要求するsocket/adapterを満たした場合だけ成立とする。
+7. renderer内のhidden node数やgroup nestingからG/D/L/mLを逆算しない。
 
-Sが不成立なら`FOLD-SOCKET-MISSING`、必須L routeが切れた場合は`FOLD-TOOL-CHAIN-DISCONNECTED`のLast Orderを元経路へ返す。これは想像や信頼による続行そのものを否定しない。明示的に別branchへ分け、`domain_ref`、`claimant_ref`、`spiritual-trust`または`imaginative-hypothesis`、`not-verified`／`verification-not-applicable`／`verification-prohibited`を保持すれば続行できる。ただし元のLは`disconnected`のままとし、別domainの信頼を検証成功receiptへ変換しない。
+S不成立なら`FOLD-SOCKET-MISSING`、必須L route切断なら`FOLD-TOOL-CHAIN-DISCONNECTED`等のLast Orderを元経路へ返す。
 
-完全検証が無意味、射程外、またはRed Hat化を招くため実行してはならない場合、`verification-prohibited`は正規の停止境界である。「検証できないので霊的に信用して進める」は、明示されたspiritual domainの`declared-belief`として有効であり、World-global factやtool verification passではない。
+これは想像や信仰・信頼による別branch継続そのものを禁止しない。明示的に別domainへ分け、`spiritual-trust` / `imaginative-hypothesis` / `not-verified` / `verification-not-applicable` / `verification-prohibited`等をactive profileで表現できる。ただし元のLを検証済みに偽装しない。
 
-## semantic topologyとexecution topology
+完全検証が射程外またはそのWorldのrule上不適切な場合、`verification-prohibited` / `not-evaluable`を正規状態として保持できる。FQuery Core自身が特定宗教・科学・法・ゲームWorldの成立条件をhard-codeしない。
 
-Foldの包含・親子・依存を表すsemantic topologyと、resourceへ仕事を配るexecution topologyを
-別projectionとして保持する。
-
-```text
-semantic topology != execution topology
-
-sibling Fold MAY execute in parallel on independent resources
-without rewriting semantic parentage
-```
-
-同一parent配下の独立sibling Foldは別model、human、API、rule engineへ並列dispatchできる。ただし
-実行fan-outを理由に、canonical FAM上のchildをroot直下へ移動してはならない。parent-child、shared ref、
-OAE gateはexecution projectionのdependency／join／validation barrierへ写す。
+## semantic reference topologyとexecution topology
 
 ```text
-sibling Fold  -> parallelizable candidate
-parent-child  -> execution dependency
-shared ref    -> join dependency
-OAE required  -> validation barrier
+semantic reference topology != execution topology
 ```
 
-resource選択とscheduler policyはFAM Coreへ固定しない。revision固定ref FAM、Execution Adapter、
-Infinite Core等がactive ruleとresource availabilityに基づいて決める。並列結果はstable Fold ref、
-input revision、output revision、dispatch receiptにより元のsemantic topologyへ戻す。dispatch失敗を
-semantic parentageの変更で隠さない。
+semantic側は、どのFAMがどのFAMをどの関係で参照するかを保持する。
 
-G/D/L/mL/SはFold構造と接続契約を記述する座標であり、CPU数や同時実行数ではない。必要な
-parallelism、queue、resource affinity等は別execution projectionに置く。
+execution側は、そのFAMをどのmodel、human、API、device、processへdispatchするかを決める。
 
-同一sourceに複数のsemantic topologyが成立する場合、それぞれを別Fold branchとして保持できる。一つのbranchの採用やOAE拘束成立は、他branchを削除するglobal truthではない。どのbranchを処理装置へ渡すかは上位Systemから注入されたauthority／adoption scopeが決め、Coreはそのrefとrevisionを検査する。
+```text
+semantic
+FAM-A
+  ├─ ref -> FAM-B
+  └─ ref -> FAM-C
 
-G/D/L/mL/Sの数値は構造の記述であり、正解度、権威、成果量ではない。node数や深さを増やすこと自体を成功指標にせず、意味boundary、chain continuity、修正可能性、停止理由を比較する。
+execution example
+FAM-B -> local model
+FAM-C -> remote tool
+```
 
-## #35での実装境界
+B/Cを並列実行してもsemantic parentageをroot siblingへ書き換えない。
 
-#35では「なんで？-DeFold-」の子graphをboundaryへネストし、busy状態、chattering防止、generation直列化、旧応答遮断、FoldLog alphaへの`boundary_metrics`記録までを扱う。`まとめる-Fold-`は意味構造を保持したcanvas縮約として扱う。Playground上の境界表示はHuman Testに必要な最小debug表示であり、Gの視覚的な深度表現やD/L/mLの本表示設計は後続Issueとする。
+同じFAM-Xを複数consumerが参照する場合、executionではcache / dedupe / memoize / parallel dispatchできるが、それを理由にFAM-Xを複製した別semantic identityへ変えない。
 
-IBDでの永続化、索引、revision管理は本仕様の実装済み範囲に含めない。BrowserのFoldLog alphaはOAE recordを生成できるが、永続OAE管理システムではない。
+parent-child referenceはexecution dependency、shared refはjoin / shared dependency、OAE requiredはvalidation barrier等へ投影できる。
+
+resource選択とscheduler policyはCoreへ固定しない。Execution Adapter、Host、active authority/refFAM等が決める。
+
+## 複数topology / Observer
+
+同一sourceに複数semantic reference topologyが成立し得る。
+
+```text
+branch A
+  FAM-A -> FAM-X
+
+branch B
+  FAM-A -> FAM-Y -> FAM-X
+```
+
+一つのbranchを採用しても他branchをglobal falseとして削除しない。生成者、Observer、active refFAM、rule、revision、adoption scopeを保持する。
+
+G/D/L/mL/Sは構造座標であり、正解度、権威、成果量ではない。深いほど偉い、nodeが多いほど成功、ref countが多いほど真理、というmetricにしない。
+
+## fact / refFAM境界
+
+refFAMは共有fact tableではなく、旧AQC SchemerをFAMへ統合したmethod / metaphysical schemaである。
+
+```text
+りんごが落ちた
+  -> normal FAM + Q evidence
+
+なぜ？
+他でも試す？
+条件を変える？
+別Observerでも追試する？
+  -> refFAM candidate
+```
+
+factを扱う通常FAMではprofileに応じてQへevidence取得方法、Observer、対象revision、verifier、hash receipt等を持てる。
+
+## #35 legacy実装との境界
+
+#35で実装されたnested Fold UIには、同一session graph内にboundaryとchild nodeを保持するlegacy pathがある。
+
+これはHuman Testで得た重要な試作実績だが、現行参照境界契約のcanonical ownershipとは一致しない。
+
+migrationは次の順で行う。
+
+```text
+legacy nested subtree
+  -> detect Fold semantic boundary
+  -> create independent child FAM
+  -> assign fam_ref / revision
+  -> replace parent ownership with reference boundary
+  -> keep compatibility projection
+  -> Human Test
+```
+
+既存node / edge / unknown fieldを即削除しない。migration receiptを残す。
+
+## 自動検証とHuman Test
+
+自動testでは少なくとも次を分ける。
+
+```text
+base FAM read/write
+reference profile conformance
+FAM extraction losslessness
+reference resolver
+Runner atomic dispatch
+GUI composed projection
+```
+
+Human Testは[`../testing/fam-reference-boundary-human-acceptance.ja.md`](../testing/fam-reference-boundary-human-acceptance.ja.md)を正本とする。
+
+`AUTOMATED-REFERENCE-CONTRACT-PASS`を`HUMAN-REFERENCE-BOUNDARY-PASS`へ自動昇格しない。
+
+## IBD境界
+
+IBDでのvector graph DB / RDB永続化、索引、cross-session resolve、revision lineage persistenceは本仕様の実装済み範囲に含めない。
+
+Browser / in-memory registryでreference contractを検証できるが、永続参照が無い状態をpersistent OAE / FAM management systemと呼ばない。
