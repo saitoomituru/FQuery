@@ -11,12 +11,13 @@ describe("Basic Commons Access Mapper FAM", () => {
   it("FAM identityとrevisionを保持した注入profileとして読める", () => {
     expect(profile).toMatchObject({
       famId: "fam://fquery/test/basic-commons-access-mapper",
-      revisionId: "rev://fquery/test/basic-commons-access-mapper/1",
+      revisionId: "rev://fquery/test/basic-commons-access-mapper/2",
       unknownPolicy: "retain",
       unmappedPolicy: "retain-unmapped",
     });
     expect(profile.factExtractors[0]).toMatchObject({ sourceUnitOrder: 0, factKey: "precipitationProbability", valueType: "number" });
     expect(profile.causalGates[0]).toMatchObject({ threshold: 38, activeUnitOrders: [1, 2], fallbackUnitOrders: [] });
+    expect(profile.semanticTopologyContract).toMatchObject({ branchesPointer: "/Q/semantic_topology_branches", selectedBranchRef: "branch://fquery/decomposition/primary", selectionScopeRef: "scope://fquery/playground/presentation-only" });
   });
 
   it("Astral factをactor/action-local scopeへ明示写像する", () => {
@@ -66,6 +67,10 @@ describe("Basic Commons Access Mapper FAM", () => {
   });
 
   it("topology未宣言をunit順の暗黙chainへ変換しない", () => {
-    expect(projectSemanticTopology(createLiteralDecompositionFam("A。B。", "q://test/no-topology"), profile)).toEqual({ status: "contract-not-declared", branches: [] });
+    expect(projectSemanticTopology(createLiteralDecompositionFam("A。B。", "q://test/no-topology"), profile)).toEqual({
+      status: "topology-not-declared",
+      branches: [],
+      selectionScopeRef: "scope://fquery/playground/presentation-only",
+    });
   });
 });

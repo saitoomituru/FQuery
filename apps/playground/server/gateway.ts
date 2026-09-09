@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { resolveCredential, standaloneCredentialSources } from "@fquery/config";
 import { evaluateQ, Q, toWireQueryResult, type CapabilityProfileBinding, type CapabilityProfileReceipt, type CoreEvent, type PluginResolver } from "@fquery/core";
-import { createLiteralDecompositionFam, isFamDecompositionRecord, projectDecompositionUnits, readAccessMapProfile, readFamJson } from "@fquery/fam-core";
+import { createLiteralDecompositionFam, isFamDecompositionRecord, projectDecompositionUnits, projectSemanticTopology, readAccessMapProfile, readFamJson } from "@fquery/fam-core";
 import { discoverGeminiModels, GeminiFamPlugin } from "@fquery/plugin-gemini";
 import { discoverOllamaModels, OllamaFamPlugin } from "@fquery/plugin-ollama";
 
@@ -84,6 +84,7 @@ export async function decomposeText(request: DecomposeRequest, options: GatewayO
   const postValidationReceipt = validateWithAccessMap(result.value, profileBinding);
   if (postValidationReceipt) events.push(Object.freeze({ eventType: "semantic-check", queryRef: result.queryRef, status: "profile-accepted", detail: { profileReceipts: Object.freeze([postValidationReceipt]) } }));
   const generationReceipt = findProfileReceipt(events, profileBinding, "generation-constraint");
+  const topologyProjection = isFamDecompositionRecord(result.value) ? projectSemanticTopology(result.value, accessMap) : undefined;
   return Object.freeze({
     result: toWireQueryResult(result),
     events: Object.freeze(events),
@@ -94,7 +95,15 @@ export async function decomposeText(request: DecomposeRequest, options: GatewayO
       resolved_before_provider: true,
       generation_constraint: generationReceipt ?? null,
       post_validation: postValidationReceipt ?? null,
-      presentation_projection: Object.freeze({ status: "provided-to-host", profile_ref: profileBinding.profileRef, revision_ref: profileBinding.revisionRef }),
+      presentation_projection: Object.freeze({
+        status: "provided-to-host",
+        profile_ref: profileBinding.profileRef,
+        revision_ref: profileBinding.revisionRef,
+        semantic_topology_status: topologyProjection?.status ?? "not-evaluable",
+        selected_branch_ref: topologyProjection?.selectedBranch?.branchRef ?? null,
+        branch_refs: Object.freeze(topologyProjection?.branches.map((branch) => branch.branchRef) ?? []),
+        selection_scope_ref: topologyProjection?.selectionScopeRef ?? null,
+      }),
     }),
   });
 }

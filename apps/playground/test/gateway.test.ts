@@ -16,11 +16,11 @@ describe("Playground gateway", () => {
     expect(response.access_map).toMatchObject({ kind: "access-map", Q: { authority_ref: "authority://fquery/test-fixture-only" } });
     expect(response.ref_fam_receipt).toMatchObject({
       profile_ref: "fam://fquery/test/basic-commons-access-mapper",
-      revision_ref: "rev://fquery/test/basic-commons-access-mapper/1",
+      revision_ref: "rev://fquery/test/basic-commons-access-mapper/2",
       resolved_before_provider: true,
       generation_constraint: null,
       post_validation: { appliedStages: ["post-validation"], validationScope: "fam-shape-and-classification-binding", oaeConstraintEvaluations: [] },
-      presentation_projection: { status: "provided-to-host" },
+      presentation_projection: { status: "provided-to-host", semantic_topology_status: "topology-not-declared", selected_branch_ref: null, branch_refs: [], selection_scope_ref: "scope://fquery/playground/presentation-only" },
     });
   });
 
@@ -44,12 +44,13 @@ describe("Playground gateway", () => {
     );
     expect(generate).toHaveBeenCalledOnce();
     const prompt = JSON.parse(generate.mock.calls[0]![0].prompt) as { ref_profiles: Array<Record<string, unknown>> };
-    expect(prompt.ref_profiles).toEqual([expect.objectContaining({ profileRef: "fam://fquery/test/basic-commons-access-mapper", revisionRef: "rev://fquery/test/basic-commons-access-mapper/1", value: expect.objectContaining({ kind: "access-map" }) })]);
+    expect(prompt.ref_profiles).toEqual([expect.objectContaining({ profileRef: "fam://fquery/test/basic-commons-access-mapper", revisionRef: "rev://fquery/test/basic-commons-access-mapper/2", value: expect.objectContaining({ kind: "access-map" }) })]);
+    expect(prompt.ref_profiles[0]?.value).toMatchObject({ "∇φ": { semantic_topology_contract: { branches_pointer: "/Q/semantic_topology_branches" } } });
     expect(response.result).toMatchObject({ transport_status: "succeeded", control_status: "result", value: { Q: { unknown_is_absence: false } } });
     expect(response.ref_fam_receipt).toMatchObject({
       generation_constraint: { appliedStages: ["generation-constraint"] },
       post_validation: { appliedStages: ["post-validation"] },
-      presentation_projection: { profile_ref: "fam://fquery/test/basic-commons-access-mapper", revision_ref: "rev://fquery/test/basic-commons-access-mapper/1" },
+      presentation_projection: { profile_ref: "fam://fquery/test/basic-commons-access-mapper", revision_ref: "rev://fquery/test/basic-commons-access-mapper/2", semantic_topology_status: "topology-not-declared" },
     });
     expect(response.events).toEqual(expect.arrayContaining([
       expect.objectContaining({ eventType: "plugin-call-end", detail: expect.objectContaining({ normalization: expect.objectContaining({ repairedPaths: expect.arrayContaining(["$.kind", "$.Q.unknown_is_absence", "$.λ.output_units[0].Q.unknown_is_absence"]) }) }) }),

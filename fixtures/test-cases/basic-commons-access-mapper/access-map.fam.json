@@ -1,7 +1,7 @@
 {
   "schema_version": "fam.json/0.1.0-draft",
   "fam_id": "fam://fquery/test/basic-commons-access-mapper",
-  "revision_id": "rev://fquery/test/basic-commons-access-mapper/1",
+  "revision_id": "rev://fquery/test/basic-commons-access-mapper/2",
   "kind": "access-map",
   "title": "テスト用Basic Commons Access Mapper",
   "title_language": "ja",
@@ -64,6 +64,21 @@
         "condition_scope_ref": "scope://fixture/issue-35/author-defined-38"
       }
     ],
+    "semantic_topology_contract": {
+      "branches_pointer": "/Q/semantic_topology_branches",
+      "selected_branch_ref": "branch://fquery/decomposition/primary",
+      "selection_scope_ref": "scope://fquery/playground/presentation-only",
+      "fields": {
+        "branch_ref": "branch_ref",
+        "observer_ref": "observer_ref",
+        "relations": "relations",
+        "from_unit_ref": "from_unit_ref",
+        "to_unit_ref": "to_unit_ref",
+        "axis": "axis",
+        "relation_kind": "relation_kind",
+        "evidence_refs": "evidence_refs"
+      }
+    },
     "loss_declarations": [],
     "source_mutation": false
   },
