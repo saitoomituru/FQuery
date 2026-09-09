@@ -155,6 +155,29 @@ describe("FQuery Playground", () => {
 });
 
 describe("FQuery Playground FAMVIM", () => {
+  it("別文章を続けて分解したとき旧unitを撤去し新revisionだけをλへ投影する", async () => {
+    const firstFam = createLiteralDecompositionFam("旧い前提。旧い結論。", "q://test/playground/repeat-first");
+    const secondFam = createLiteralDecompositionFam("新しい観測。新しい判断。新しい結論。", "q://test/playground/repeat-second");
+    const fetcher = vi.fn()
+      .mockResolvedValueOnce(json(fixtureRoutes))
+      .mockResolvedValueOnce(json(decompositionResponse(firstFam)))
+      .mockResolvedValueOnce(json(decompositionResponse(secondFam)));
+    const { container } = await mountWithGraph(fetcher);
+    const controls = canvasNodes(container)[0]!.querySelector('[aria-label="route controls"]')!;
+
+    await act(async () => { fireEvent.click(controls.querySelector("button")!); });
+    await waitFor(() => expect(container.querySelector('[data-node-id="q://playground/node/3"]')?.textContent).toContain("旧い結論。"));
+    expect(canvasNodes(container).filter((node) => node.querySelector('[data-fold-ref^="q://test/playground/repeat-first"]'))).toHaveLength(2);
+
+    setText(controls.querySelector("textarea")!, "新しい観測。新しい判断。新しい結論。");
+    await act(async () => { fireEvent.click(controls.querySelector("button")!); });
+    await waitFor(() => expect(container.querySelector('[data-node-id="q://playground/node/3"]')?.textContent).toContain("新しい結論。"));
+    expect(container.textContent).not.toContain("旧い前提。");
+    expect(canvasNodes(container).filter((node) => node.querySelector('[data-fold-ref^="q://test/playground/repeat-first"]'))).toHaveLength(0);
+    expect(canvasNodes(container).filter((node) => node.querySelector('[data-fold-ref^="q://test/playground/repeat-second"]'))).toHaveLength(3);
+    expect(fetcher).toHaveBeenCalledTimes(3);
+  });
+
   it("「なんで？-DeFold-」連打を一実行へ直列化し、処理中表示と同一結果cacheで子node増殖を防ぐ", async () => {
     const parentFam = createLiteralDecompositionFam("前提である。結論である。", "q://test/playground/recursive-chatter-parent");
     const childFam = createLiteralDecompositionFam("理由Aである。理由Bである。", "q://test/playground/recursive-chatter-child");
