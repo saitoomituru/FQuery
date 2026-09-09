@@ -21,14 +21,15 @@
 - 追加retestでは1段目のdecomposition表示までは成功した。ただしunitを降水確率へ差し替えてもλ再投影が起きず、Human Testは継続して不合格である。
 - 2段目の「なんで？-DeFold-」では、対象∇φ nodeが撤去・Fold化されず旧panelが残り、その外側に別Fold boundaryが追加された。新boundaryはdrag不能で、外Ψ／内Ψ／内λ／外λを中継するpatch-bayも無かった。
 - 同retestで`decomposition-kind-required` Last Orderを観測した。`fam.decompose` provider候補のprofile-owned `kind`が投影前に固定されていない経路と判定し、本文を発明せず`kind: decomposition`へ補正してreceiptへ`$.kind`を残す修正対象とした。
-- Issue #41の長文観測では、ほぼ全unitをroot Ψとλへ直接接続する巨大fan-out/fan-inを確認した。これはGUI描画だけの問題ではなく、active refFAMをprovider生成前へ渡さずflat canonical topologyを先に完成させるgateway／Core責務配線のBugである。#35側で見た目だけを偽nested化せず、refFAM前段注入・検証・投影は#41で扱う。
+- Issue #41の長文観測では、ほぼ全unitをroot Ψとλへ直接接続する巨大fan-out/fan-inを確認した。原因候補は、active refFAMのprovider前段未注入、refFAM自体の一括平坦化前提、Core/profile validatorの過剰拘束、projectionのparentage欠落のいずれか、または複合であり、画面証拠だけでは単一原因を確定しない。#35側で見た目だけを偽nested化せず、生成・検証・投影の各revisionを#41で切り分ける。
+- User実文のHuman Testでは、因果鎖を持つ4要素が全てroot直下へ平坦化された。少なくとも「事実domainで1・2が並列、その後3→4」または「Element観測1・2、その後3・4を暫定Astral Foldとして保持し後でDeFold」という複数の非排他的候補を比較できる必要がある。一つの期待解へ固定するのでなく、L/mL/G/Dを保つ候補branchとObserver verdictを記録する。
 
 以上はUser提供screen captureと操作観測であり、修正後のHuman合格を意味しない。
 
 ## 自動検証済み
 
 - decomposition FAMの各unitがstable `Q.unit_ref`、unit revision、親FAM revisionを持つ
-- provider候補でprofile所有のstable identityまたは`unknown_is_absence=false`が欠けても本文や`unknowns`を発明せず局所補正し、補正pathを`plugin-call-end.normalization`へ記録する
+- 現行testはprovider候補で欠けたstable identityまたは`unknown_is_absence=false`を局所補正し、補正pathを`plugin-call-end.normalization`へ記録する経路を検証する。ただしbase FAMとdecomposition profileの適合状態分離は未実装であり、このtest passを新しい#22 acceptanceの達成とは数えない
 - `fam.decompose` provider候補の`kind`欠落／逸脱をFQuery decomposition profile境界で`decomposition`へ補正し、`$.kind`をnormalization receiptへ記録する
 - gatewayからGemini adapter、profile正規化、Core wire resultまでを一本で通すref FAM結合testを持つ
 - backend runtimeのbuild artifact更新時にVite serverを再起動し、frontendとgatewayの新旧split-brainを防ぐ
@@ -51,6 +52,12 @@
 - decompose、edit、validate-edge、recursive-decomposeを`fold.log/0.1.0-alpha` / `oae.record/0.1.0-alpha`として生成し、secret redaction境界を保持する
 - `ja-JP`を既定にし、schema key・URIを翻訳せず`en-US`表示へ切替できる
 
+## 自動検証待ち
+
+- provider候補にstable identity、`kind`、`unknown_is_absence`等のprofile fieldが無くても、4軸base FAM候補を失わず`profile_conformance=not-satisfied`または`not-evaluable`として返す
+- Schema未登録fieldを追加したFAMをlosslessに読書きし、追加fieldの存在だけではbase／profileのいずれもrejectしない
+- 同一sourceに複数topology候補を持たせ、一方の採用scopeが他branchを削除しない
+
 ## Human GUI Test
 
 1. SafariとChromeでそれぞれ`npm run dev`の`http://127.0.0.1:3000`を開き、初回からheaderと初期graphが表示されることを確認する。失敗時は黒画面ではなく起動失敗理由が表示されることを確認する。
@@ -65,7 +72,7 @@
 10. Access Mapper / evidenceを開き、FAM IDとrevisionが読めることを確認する。
 11. localeをEnglishへ切替え、機械可読key・URI・`unit_ref`が変化しないことを確認する。
 12. 左paneに不要なtab scrollbarが再発せず、tab操作とpane本文scrollが分離していることを確認する。
-13. Geminiで3unitを分解し、provider候補に`unknown_is_absence`または`kind`の逸脱があっても1回のprovider応答から3unitとλが表示され、Recordsの`plugin-call-end.normalization.repairedPaths`で補正箇所を確認できることを確認する。
+13. Geminiで3unitを分解し、provider候補に`unknown_is_absence`または`kind`が無くても4軸base構造の表示を失わず、decomposition profileの非適合を別状態で確認できることを確認する。FQueryが機械的に確定できるfieldを局所補正した場合だけ、Recordsの`plugin-call-end.normalization.repairedPaths`で補正箇所を確認する。
 14. Xのtimeline、小説、Web記事等から権利・個人情報の扱える範囲で無作為に選んだ実文と、日本語・英語・codeが混在する実文を投入する。機械的な言語分割や全unitのflat fan-outに逃げず、人間から見てcontext、包含、順序、Fold boundaryが妥当かを観測する。本文の恒久複製を既定にせず、source URLまたは投入ref、取得時刻、対象範囲、subject revision、observer ref/domain、適用したOAE rule ref、verdict、evidence refを記録する。別observerの相反するverdictは上書きせず、別OAEとして併記する。
 15. 公式game／映画／作品情報や制作者interviewでは、現実のpublisher／studio、公開行為、製品、作品World、game build、作中Event、制作者の制作経験、登場人物の経験、受け手の心象を別refとして観測する。同じ公式sourceや同じ「苦労」等の語彙だけを理由に同一Worldへmergeしていないことを確認する。
 

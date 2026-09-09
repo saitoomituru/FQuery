@@ -22,7 +22,8 @@ Editor GUI
 - 新revision IDは呼出側が明示する
 - 元documentを変更しない
 - 未知fieldを既知Schema外という理由で削除しない
-- validatorに適合しない候補を保存成功へ昇格しない
+- base構造に適合しない候補をcanonical FAM revisionへ無言で昇格しない。ただしraw draftとreject receiptは保持する
+- 拡張profileの不適合だけを理由に、base構造が有効な候補や未知fieldを破棄しない。`profile_conformance`として別記録する
 - profile固有制約はvalidator注入で追加し、FAM Core既定値へ暗黙統合しない
 - receiptをFAM本文へ混入させない
 
@@ -46,13 +47,17 @@ pathはRFC 6901形式のJSON Pointerを使用する。
 - `remove`: propertyまたはarray elementを削除する
 - `insert`: pathが示すarrayへ指定indexで挿入する
 
-root全体の置換とidentity fieldの直接変更は禁止する。必須4軸の削除等は最終validatorがrejectし、検出したfield単位のissueをreceiptへ残す。
+root全体の置換とidentity fieldの直接変更は禁止する。最小4軸keyの削除等はbase validatorがcanonical採用をrejectし、検出したfield単位のissueをreceiptへ残す。追加profile fieldの欠落・規定外fieldの存在はbase rejectへ短絡させない。
 
 ## Receipt
 
 accepted／rejectedの双方が、operation ID、base／result revision、patch、before／after SHA-256、validation issue、loss、観測時刻を持つ。reject時の`afterSha256`は`null`であり、元documentを返す。
 
 `sourceMutation: false`は過去revisionを上書きしないことを表す。編集結果が意味的に正しい、Human review済み、永続化済み、公開済みであることは意味しない。
+
+編集receiptは、誰または何が修正を要求したかを`observer_ref`／`actor_ref`、どの定規で採用したかを`rule_ref`／`profile_ref`、どのscopeで採用したかを`adoption_scope_ref`として外部参照可能にする。これらの未接続は修正履歴を削除する理由ではなく、`unknown`または`not-evaluable`として残す。
+
+編集可能性は失敗の隠蔽ではない。初回候補が不完全でも、局所修正、branch、revision、差分、receiptから回復できることをCoreのresilience要件とする。修正不能な完全回答を一回で生成することを成功条件にしない。
 
 ## Parent patchとchild再検証
 

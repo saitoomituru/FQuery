@@ -1,3 +1,3 @@
 # Valid fixtures
 
-FQuery ResultおよびFAM JSON contractへ適合する正例を置く。
+FQuery Result、4軸base構造、または明示されたprofileへ適合する例を置く。ここにあるfixtureは普遍的な正解や唯一の解釈ではなく、各fixtureが宣言したcontract revision下のconformance sampleである。

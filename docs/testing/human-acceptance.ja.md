@@ -12,7 +12,7 @@
 - 長いquery ID、Last Order、evidence参照でも崩れない
 - `npm run dev`で`http://127.0.0.1:3000`を開き、hero、route controls、Q nodeが意図した配置で見える
 - ProviderをFixture、Gemini、Ollamaへ切り替えると、それぞれ独立したmodel候補が表示される
-- 自然言語を分解し、入力言語の再帰的な `ψ / ∇φ / λ / Q`、`Q.unknowns`、provider/model/plugin revisionが読める
+- 自然言語を分解し、入力言語の再帰的な `ψ / ∇φ / λ / Q`が読める。選択したprofileが提供する場合は`Q.unknowns`、provider/model/plugin revisionも読め、未提供時はbase FAM不正と混同されない
 - 翻訳命令がある場合だけ、翻訳写本が対象contextを置換せず `λ.sub_splitters` にあり、翻訳誤差が`not-evaluated`または測定receiptとして追跡できる。翻訳命令のない混在言語・code入力は機械的に単一言語へ分割されない
 - 旧 `blocks[]` 候補がFAM paneへ表示されない
 - Gemini routeでBrowserのNetwork payload／画面／consoleへcredentialの`key / secret`が出ず、表示用`name`だけが見える
@@ -66,7 +66,9 @@ Issue #35の分解後`1 + N + 1` graph、局所因果再投影、「なんで？
 - 「編集をrequest」後、FAM record paneの内容が更新され、FAM edit receiptsに`applied ops=1 touched=/λ/purpose`のように読める
 - 編集前後で`x-plugin-extension`のような未知fieldがFAM record paneから消えない
 - textを壊してrequestすると`draft unparsed（保持中）`が表示され、Session decisionsに`rejected — fam-text-unparsed`が残り、canonical FAMは前の状態のまま
-- `ψ`を丸ごと削除してrequestすると、validatorが`axis-required`を出しつつ編集自体は通り、FAMVIM nodeのsemantic badgeが`semantic-unsatisfied`になる（editableとvalidが別軸）
+- `ψ`を丸ごと削除してrequestすると、draftと編集request receiptは保持されるが、base validatorが`axis-required`を返してcanonical FAM revisionへの採用は行わない（editable、base valid、canonical adoptionが別軸）
+- `title`、language lineage、`Q.unknown_is_absence`等の選択profile fieldを削除しても、4軸base FAMは保持され、`profile_conformance=not-satisfied`または`not-evaluable`として表示される
+- Schema未登録のfieldを追加して編集requestしてもreject・削除されず、新revisionへlosslessに残る
 - 右paneの`Node` tab「接続」sectionで`切断をrequest`すると接続が消え、portが`unconnected`へ戻る
 - canvas上の`Ψ.NL`本体の`inspector`ボタンで右paneの対象が切り替わり、`fquery.core@0.1.0-draft`が`設定`sectionに出る
 - 各tab、path button、「編集をrequest」までkeyboardだけで到達できる

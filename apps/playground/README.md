@@ -25,4 +25,4 @@ npm run dev      # http://127.0.0.1:3000
 - Node Panel 5 tab、FAMVIM RAW編集、Unsupported→RAWのjump
 - `T`／`N`／`Home` key、pane開閉・tab・折り畳みのlocalStorage便宜状態
 
-human test項目は`docs/testing/human-acceptance.ja.md`を参照する。
+human test項目は`docs/testing/human-acceptance.ja.md`を参照する。React Flow renderer比較のHuman Test通過は、decomposition／局所編集／λ再投影／nested Foldの合格を意味しない。Chrome／Safariの現在の不合格と停止点は`docs/testing/issue-35-human-acceptance.ja.md`およびIssue #35／#38／#41で追跡する。

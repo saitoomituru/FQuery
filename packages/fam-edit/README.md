@@ -15,7 +15,8 @@ canonical FAMの編集を、GUI向けdraft操作とCoreのrevision確定へ分�
 - `fam_id`、`schema_version`、`revision_id`はpatchで変更しない
 - base revisionの一致を検査し、新revision候補を生成する
 - 元documentと未知fieldを保持する
-- validatorがrejectした候補をacceptedへ昇格しない
+- base validatorがrejectした候補をcanonical FAMへ昇格しない。raw draftとreject receiptは保持する
+- 拡張profile不適合はbase不正と分け、未知fieldを理由にreject・削除しない
 - before/after hash、validation issue、loss、source非変更をreceiptへ残す
 - parent patchはreview後だけ適用し、影響childを再検証対象へ返す
 

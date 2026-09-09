@@ -27,6 +27,10 @@ dispatch_mode   = single-processing-unit
 
 `unFold`は将来の予約語とする。既存のAtlantis/Manifest文書で`UnFold`と記された「変換前の表現を破棄し、生成結果へ置換する系」と同じ概念を指し、FQueryの機械可読operation tokenでは`unFold`と綴る。`DeFold`や描写上の`Fold`を、暗黙に`unFold`へ昇格させない。
 
+初回Foldは完全・網羅・唯一の分解である必要はない。意味的に一括処理すべき最小boundaryを保持し、必要になった箇所だけを`なんで？-DeFold-`で段階的に掘る。空欄、`unknown`、未分類を一括展開で埋めることより、後から手直し可能なstable ref、revision、parentageを優先する。
+
+`なんで？-DeFold-`は実際に使った暗黙Context、refFAM、Access Mapper、corpus、tool、Observer、ruleを辿る操作である。解決receiptが存在しない場合は事後的にもっともらしい理由を生成せず、`resolution-provenance-unavailable`のLast Orderを返す。
+
 ## `fold_boundary.boundary_metrics` namespace
 
 短縮表示はG/D/L/mL/Sを使うが、機械契約では必ずFold boundaryの`boundary_metrics`配下へ閉じる。完全pathは`fold_boundary.boundary_metrics`である。Dは`context_dimension_count`、Lは`technical_layer_ref`／tool chainの系譜を維持し、判断を含むcontext chainだけをmLへ分離する。
@@ -107,6 +111,10 @@ semantic parentageの変更で隠さない。
 
 G/D/L/mL/SはFold構造と接続契約を記述する座標であり、CPU数や同時実行数ではない。必要な
 parallelism、queue、resource affinity等は別execution projectionに置く。
+
+同一sourceに複数のsemantic topologyが成立する場合、それぞれを別Fold branchとして保持できる。一つのbranchの採用やOAE拘束成立は、他branchを削除するglobal truthではない。どのbranchを処理装置へ渡すかは上位Systemから注入されたauthority／adoption scopeが決め、Coreはそのrefとrevisionを検査する。
+
+G/D/L/mL/Sの数値は構造の記述であり、正解度、権威、成果量ではない。node数や深さを増やすこと自体を成功指標にせず、意味boundary、chain continuity、修正可能性、停止理由を比較する。
 
 ## #35での実装境界
 
