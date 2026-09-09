@@ -155,6 +155,22 @@ describe("FQuery Playground", () => {
 });
 
 describe("FQuery Playground FAMVIM", () => {
+  it("選択semantic branchを普遍的正解へ昇格せずFoldLogへscope付き記録する", async () => {
+    const fam = structuredClone(createLiteralDecompositionFam("前提である。結論である。", "q://test/playground/branch-receipt"));
+    (fam.Q as Record<string, unknown>).semantic_topology_branches = [{
+      branch_ref: "branch://fquery/decomposition/primary",
+      observer_ref: "observer://test/human-reading",
+      relations: [],
+    }];
+    const fetcher = vi.fn().mockResolvedValueOnce(json(fixtureRoutes)).mockResolvedValueOnce(json(decompositionResponse(fam)));
+    const { container } = await mountWithGraph(fetcher);
+    await act(async () => { fireEvent.click(canvasNodes(container)[0]!.querySelector('[aria-label="route controls"] button')!); });
+    openLeftTab(container, "records");
+    await waitFor(() => expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain("branch://fquery/decomposition/primary"));
+    expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain('"semanticTopologyStatus": "selected"');
+    expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain('"selectionScopeRef": "scope://fquery/playground/presentation-only"');
+  });
+
   it("別文章を続けて分解したとき旧unitを撤去し新revisionだけをλへ投影する", async () => {
     const firstFam = createLiteralDecompositionFam("旧い前提。旧い結論。", "q://test/playground/repeat-first");
     const secondFam = createLiteralDecompositionFam("新しい観測。新しい判断。新しい結論。", "q://test/playground/repeat-second");
@@ -213,7 +229,12 @@ describe("FQuery Playground FAMVIM", () => {
 
   it("選択unitの「なんで？-DeFold-」を同一IDのFoldへ置換し、親子identityをFoldLogへ残す", async () => {
     const parentFam = createLiteralDecompositionFam("前提である。結論である。", "q://test/playground/recursive-parent");
-    const childFam = createLiteralDecompositionFam("理由Aである。理由Bである。", "q://test/playground/recursive-child");
+    const childFam = structuredClone(createLiteralDecompositionFam("理由Aである。理由Bである。", "q://test/playground/recursive-child"));
+    (childFam.Q as Record<string, unknown>).semantic_topology_branches = [{
+      branch_ref: "branch://fquery/decomposition/primary",
+      observer_ref: "observer://test/recursive-reading",
+      relations: [],
+    }];
     const fetcher = vi.fn()
       .mockResolvedValueOnce(json(fixtureRoutes))
       .mockResolvedValueOnce(json(decompositionResponse(parentFam)))
@@ -249,6 +270,7 @@ describe("FQuery Playground FAMVIM", () => {
     openLeftTab(container, "records");
     expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain('"operation": "recursive-decompose"');
     expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain("q://test/playground/recursive-parent/fam/unit/1");
+    expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain("branch://fquery/decomposition/primary");
   });
 
   it("2段目DeFoldで対象childを同一IDのnested Foldへ置換し外内gateを保持する", async () => {

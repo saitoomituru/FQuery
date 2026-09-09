@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { FQueryFlowView, FQueryPane, type NodeRendererMap, type PresentationCanvasHandle } from "@fquery/ui-react";
 import { CORE_RENDERER_HINT, createPaneContext, findRegistrationByPresentation, type FQueryUiEvent, type GuiEventAbi } from "@fquery/ui-core";
-import { isFamDecompositionRecord, isFamJsonRecord, readAccessMapProfile, validateFamJson, type AccessMapProfile } from "@fquery/fam-core";
+import { isFamDecompositionRecord, isFamJsonRecord, projectSemanticTopology, readAccessMapProfile, validateFamJson, type AccessMapProfile } from "@fquery/fam-core";
 import { createPlaygroundSession } from "./host/session.js";
 import { useCanonicalFam, useEditReceipts, useFoldLogRecords, useSessionState } from "./host/use-session.js";
 import { buildCoreGraph, placeUnplacedNodes, projectDecompositionGraph, projectRecursiveDecompositionGraph, refreshDecompositionNodes, removeRecursiveFoldProjection, setFoldBoundaryCollapsed, setRecursiveFoldStatus, setUnitEditStatus, type CoreNodeIds } from "./host/core-graph.js";
@@ -147,6 +147,7 @@ export function App() {
         recursiveRuns.current.complete(parentFoldRef, started.run.generation, recursiveProjection);
         setRecursiveFoldStatus(session, parent.nodeId, "complete");
         const q = childValue.Q as Record<string, unknown>;
+        const semanticTopology = projectSemanticTopology(childValue, mapper);
         const boundary = session.state.nodes.find((node) => node.nodeId === recursiveProjection.boundaryNodeId)?.foldBoundary;
         logs.append({
           traceId: `foldlog://playground/${fams.current?.value.fam_id ?? childValue.fam_id}`,
@@ -164,8 +165,8 @@ export function App() {
           roles: { observerRef: "observer://playground/user", recorderRef: "recorder://fquery/playground/foldlog", initiatorRef: "observer://playground/user", executorRef: `executor://fquery/provider/${provider}`, transformerRef: "transformer://fquery/recursive-why", causalContributorRefs: [parentFoldRef] },
           semanticStatus: "unknown",
           projectionStatus: "fresh",
-          cancelledEdgeRefs: [], selectedBranchRefs: [], recompositionRequired: false,
-          detail: { promptKind: "recursive-why", generation: started.run.generation, foldBoundaryNodeId: recursiveProjection.boundaryNodeId, resolutionMode: "atomic-resolution", dispatchMode: "single-processing-unit", closesAxes: ["G", "D", "L", "mL"], boundary_metrics: boundary?.boundaryMetrics, persistenceBoundary: "volatile-browser-memory" },
+          cancelledEdgeRefs: [], selectedBranchRefs: semanticTopology.selectedBranch ? [semanticTopology.selectedBranch.branchRef] : [], recompositionRequired: false,
+          detail: { promptKind: "recursive-why", generation: started.run.generation, foldBoundaryNodeId: recursiveProjection.boundaryNodeId, resolutionMode: "atomic-resolution", dispatchMode: "single-processing-unit", closesAxes: ["G", "D", "L", "mL"], boundary_metrics: boundary?.boundaryMetrics, semanticTopologyStatus: semanticTopology.status, selectionScopeRef: semanticTopology.selectionScopeRef ?? null, persistenceBoundary: "volatile-browser-memory" },
         });
       })().catch((reason: unknown) => {
         recursiveRuns.current.fail(parentFoldRef, started.run.generation);
@@ -214,6 +215,7 @@ export function App() {
       fams.set(famValue);
       coreIds.current = await projectDecompositionGraph(session, coreIds.current, famValue, accessMap.current);
       const reprojection = reprojectWithAccessMap(famValue, accessMap.current);
+      const semanticTopology = projectSemanticTopology(famValue, accessMap.current);
       refreshDecompositionNodes(session, coreIds.current, famValue, accessMap.current, reprojection);
       projectLambdaNode(session, coreIds.current, famValue, reprojection?.projectionStatus ?? "fresh", reprojection?.manifestations);
       const q = famValue.Q as Record<string, unknown>;
@@ -233,8 +235,8 @@ export function App() {
         roles: { observerRef: "observer://playground/user", recorderRef: "recorder://fquery/playground/foldlog", initiatorRef: "observer://playground/user", executorRef: `executor://fquery/provider/${provider}`, transformerRef: "transformer://fquery/fam-decompose", causalContributorRefs: [] },
         semanticStatus: String(resultRecord(outcome.response)?.semantic_status ?? "unknown"),
         projectionStatus: "fresh",
-        cancelledEdgeRefs: [], selectedBranchRefs: [], recompositionRequired: false,
-        detail: { provider, model, persistenceBoundary: "volatile-browser-memory", oaeManagementSystem: false },
+        cancelledEdgeRefs: [], selectedBranchRefs: semanticTopology.selectedBranch ? [semanticTopology.selectedBranch.branchRef] : [], recompositionRequired: false,
+        detail: { provider, model, semanticTopologyStatus: semanticTopology.status, selectionScopeRef: semanticTopology.selectionScopeRef ?? null, persistenceBoundary: "volatile-browser-memory", oaeManagementSystem: false },
       });
     }
     setRunning(false);
