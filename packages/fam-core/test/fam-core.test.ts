@@ -5,6 +5,9 @@ import {
   FAM_BASE_RESPONSE_SCHEMA,
   FAM_JSON_RESPONSE_SCHEMA,
   inferSourceLanguage,
+  isFamBaseRecord,
+  isFamDecompositionRecord,
+  isFamJsonRecord,
   serializeFamJson,
   validateFamJson,
   validateFamDecomposition,
@@ -68,6 +71,15 @@ describe("FAM JSON Core", () => {
       baseStructureStatus: "valid",
       profileConformance: "not-satisfied",
     });
+    expect(isFamBaseRecord(candidate)).toBe(true);
+    expect(isFamJsonRecord(candidate)).toBe(false);
+    expect(isFamDecompositionRecord(candidate)).toBe(false);
+  });
+
+  it("generic envelopeとdecomposition profileの型ガードを分離する", () => {
+    expect(isFamJsonRecord(nested)).toBe(true);
+    expect(isFamDecompositionRecord(nested)).toBe(false);
+    expect(isFamDecompositionRecord(createLiteralDecompositionFam("雨が降る。", "q://test/guard"))).toBe(true);
   });
 
   it("未知拡張fieldの単独Qをnested FAMと誤認せず保持する", () => {

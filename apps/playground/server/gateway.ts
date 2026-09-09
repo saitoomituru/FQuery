@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { resolveCredential, standaloneCredentialSources } from "@fquery/config";
 import { evaluateQ, Q, toWireQueryResult, type CapabilityProfileBinding, type CapabilityProfileReceipt, type CoreEvent, type PluginResolver } from "@fquery/core";
-import { createLiteralDecompositionFam, isFamJsonRecord, projectDecompositionUnits, readAccessMapProfile, readFamJson } from "@fquery/fam-core";
+import { createLiteralDecompositionFam, isFamDecompositionRecord, projectDecompositionUnits, readAccessMapProfile, readFamJson } from "@fquery/fam-core";
 import { discoverGeminiModels, GeminiFamPlugin } from "@fquery/plugin-gemini";
 import { discoverOllamaModels, OllamaFamPlugin } from "@fquery/plugin-ollama";
 
@@ -100,7 +100,7 @@ export async function decomposeText(request: DecomposeRequest, options: GatewayO
 }
 
 function validateWithAccessMap(value: unknown, binding: CapabilityProfileBinding): CapabilityProfileReceipt | undefined {
-  if (!isFamJsonRecord(value)) return undefined;
+  if (!isFamDecompositionRecord(value)) return undefined;
   const accessMap = readAccessMapProfile(binding.value as Parameters<typeof readAccessMapProfile>[0]);
   const units = projectDecompositionUnits(value, accessMap);
   if (units.some((unit) => unit.classification.accessMapFamRef !== binding.profileRef || unit.classification.accessMapRevisionRef !== binding.revisionRef)) throw new TypeError("access-map-revision-drift");

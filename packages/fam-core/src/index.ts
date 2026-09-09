@@ -18,6 +18,9 @@ export interface FamNode extends JsonObject {
   readonly Q: JsonValue;
 }
 
+/** metadata profileを要求しないFAM base handshake済みrecord。 */
+export type FamBaseRecord = FamNode;
+
 export interface FamJsonRecord extends FamNode {
   readonly schema_version: typeof FAM_JSON_SCHEMA_VERSION;
   readonly fam_id: string;
@@ -86,7 +89,26 @@ export function serializeFamJson(value: FamJsonRecord): string {
 }
 
 export function isFamJsonRecord(value: unknown): value is FamJsonRecord {
+  if (!isFamBaseRecord(value)) return false;
+  return value.schema_version === FAM_JSON_SCHEMA_VERSION
+    && typeof value.fam_id === "string" && value.fam_id.length > 0
+    && typeof value.revision_id === "string" && value.revision_id.length > 0
+    && typeof value.kind === "string" && value.kind.length > 0
+    && typeof value.title === "string" && value.title.length > 0
+    && Array.isArray(value.index_subjects)
+    && Array.isArray(value.pointers)
+    && isRecord(value.provenance)
+    && isRecord(value.Q);
+}
+
+/** 最小4軸だけを満たすcandidateを、profile済みrecordと混同せず識別する。 */
+export function isFamBaseRecord(value: unknown): value is FamBaseRecord {
   return validateFamJson(value).valid;
+}
+
+/** decomposition profileまで成立したcanonical候補だけを識別する。 */
+export function isFamDecompositionRecord(value: unknown): value is FamJsonRecord {
+  return validateFamDecomposition(value).valid;
 }
 
 export function validateFamDecomposition(value: unknown): FamValidationResult {

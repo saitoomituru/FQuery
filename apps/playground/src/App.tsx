@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { FQueryFlowView, FQueryPane, type NodeRendererMap, type PresentationCanvasHandle } from "@fquery/ui-react";
 import { CORE_RENDERER_HINT, createPaneContext, findRegistrationByPresentation, type FQueryUiEvent, type GuiEventAbi } from "@fquery/ui-core";
-import { isFamJsonRecord, readAccessMapProfile, validateFamJson, type AccessMapProfile } from "@fquery/fam-core";
+import { isFamDecompositionRecord, isFamJsonRecord, readAccessMapProfile, validateFamJson, type AccessMapProfile } from "@fquery/fam-core";
 import { createPlaygroundSession } from "./host/session.js";
 import { useCanonicalFam, useEditReceipts, useFoldLogRecords, useSessionState } from "./host/use-session.js";
 import { buildCoreGraph, placeUnplacedNodes, projectDecompositionGraph, projectRecursiveDecompositionGraph, refreshDecompositionNodes, removeRecursiveFoldProjection, setFoldBoundaryCollapsed, setRecursiveFoldStatus, type CoreNodeIds } from "./host/core-graph.js";
@@ -124,7 +124,7 @@ export function App() {
         }
         const childValue = resultRecord(outcome.response)?.value;
         const mapperValue = isRecord(outcome.response) ? outcome.response.access_map : undefined;
-        if (!isFamJsonRecord(childValue)) {
+        if (!isFamDecompositionRecord(childValue)) {
           recursiveRuns.current.fail(parentFoldRef, started.run.generation);
           setRecursiveFoldStatus(session, parent.nodeId, "failed");
           setError("recursive-decomposition-fam-not-provided");
@@ -198,7 +198,7 @@ export function App() {
     projectFamvimNode(session, coreIds.current, outcome.response);
     const famValue = resultRecord(outcome.response)?.value;
     const accessMapValue = isRecord(outcome.response) ? outcome.response.access_map : undefined;
-    if (isFamJsonRecord(famValue) && isFamJsonRecord(accessMapValue)) {
+    if (isFamDecompositionRecord(famValue) && isFamJsonRecord(accessMapValue)) {
       accessMap.current = readAccessMapProfile(accessMapValue);
       fams.set(famValue);
       coreIds.current = await projectDecompositionGraph(session, coreIds.current, famValue, accessMap.current);

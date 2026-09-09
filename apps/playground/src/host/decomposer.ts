@@ -1,6 +1,6 @@
 import { createContext, useContext } from "react";
 import { corePortId, statusTone, type PresentationSession, type StatusBadgeViewModel } from "@fquery/ui-core";
-import { isFamJsonRecord } from "@fquery/fam-core";
+import { isFamBaseRecord } from "@fquery/fam-core";
 import type { CoreNodeIds } from "./core-graph.js";
 
 export interface PlaygroundRoute {
@@ -94,7 +94,7 @@ export function projectFamvimNode(session: PresentationSession, ids: CoreNodeIds
   if (!node) return;
   const result = resultRecord(response);
   const value = result?.value ?? result?.candidate;
-  const fam = isFamJsonRecord(value) ? value : undefined;
+  const fam = isFamBaseRecord(value) ? value : undefined;
   const validation = isRecord(result?.profile_validation) ? result.profile_validation : undefined;
   const semantic = typeof validation?.profileConformance === "string"
     ? validation.profileConformance
