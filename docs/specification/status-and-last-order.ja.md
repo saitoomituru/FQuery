@@ -12,6 +12,17 @@ unknown != pass
 
 状態は単一enumではなく直交軸で保持する。これにより「plugin callは成功したが目的未達」「capabilityはあるがport未接続」「接続はないがエラーではない」を表現できる。
 
+FAM自体の受理でも、次を分離する。
+
+| Axis | 問い | 例 |
+|---|---|---|
+| `base_structure_status` | 最小`ψ / ∇φ / λ / Q`構造として読めるか | `valid`, `invalid` |
+| `profile_conformance` | 選択した拡張profileの要求を満たすか | `not-evaluated`, `satisfied`, `not-satisfied`, `not-evaluable` |
+| `service_negotiation` | 要求したplugin／adapter／socketを使えるか | `not-requested`, `resolved`, `unavailable` |
+| `observer_verdict` | 指定OAE rule下でObserverが何と評価したか | rule固有語彙、`indeterminate` |
+
+追加fieldやprofile fieldの欠落を`base_structure_status=invalid`へ短絡させない。相反する`observer_verdict`は別OAEとして併存でき、一つの採用scopeから他recordの削除を導出しない。
+
 ## 遷移
 
 | Event | 変更する軸 | 禁止する暗黙遷移 |
@@ -22,6 +33,9 @@ unknown != pass
 | transport成功 | `transport_status=succeeded` | `semantic_status=satisfied` |
 | verifierが目的未達を確認 | `semantic_status=semantic-unsatisfied`, `lambda_status=unsatisfied` | transport failureへの書換え |
 | 情報不足 | 対象軸=`unknown` | pass／failureへの推測 |
+| 拡張profile field不足 | `profile_conformance=not-satisfied`または`not-evaluable` | `base_structure_status=invalid` |
+| adapter不在 | `service_negotiation=unavailable`, `control_status=last-order` | 想像によるtransport成功への置換 |
+| 相反するObserver評価 | 別OAEとして両方を保持 | 多数決／最新値によるglobal truth化 |
 | cycle | `resolution_status=bottom`, `control_status=bottom` | Last Orderへの無条件昇格 |
 | resource limit | `control_status=last-order` | resultへの縮退 |
 

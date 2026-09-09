@@ -27,6 +27,10 @@
 
 FQuery CoreはFAMを問い合わせ、binding、projection、検証する再帰operator `Q(...)`の意味境界を定める。Node.js、C++、WASM、remote runtimeのどれもこの文書だけから実行権限を得ない。
 
+`authority_required: true`は「全てのFAMにauthority columnが必須」という意味ではない。副作用を伴うoperationが、上位Systemから対象・World・revision・期間・許可操作を持つauthority refを受け取るまで実行権限を得ない、という実行境界である。authority未注入でもFAM候補の保持・編集・解釈はできるが、authorityを要するrouteはLast Orderで止める。
+
+同様に`oae_transaction_required: true`は、Coreが唯一の真偽を裁定することを意味しない。指定`oae_rule_ref`の下で、record shape、lineage、revision binding、rule conformanceを検証可能なreceiptとして残す要求である。Observer verdictと採用authorityは別軸に置く。
+
 ## Core record
 
 ```fam-json id=fquery-core-record executable=false

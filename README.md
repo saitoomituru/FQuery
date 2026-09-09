@@ -19,12 +19,29 @@ FAMLog          observable execution dump / trace
 - Node.js / TypeScript: reference implementationと自動テストあり
 - plugin ABI / FAMLog: capability gate、trace、差分の参照実装あり
 - credential注入: `name / key / secret`の可搬なsource解決あり。保護強度はHost／上位IAM責務
-- FAM JSON Core: 再帰的な `ψ / ∇φ / λ / Q`、入力言語正本、翻訳sub-splitter写本、unknown保持を検証するmachine contractあり
-- Gemini FAM plugin: structured JSONを実FAMとして受け取り、返却後もFAM validatorを通すadapterあり
-- Node Editor: Presentation FAM／GUI Event ABI、React + React Flow renderer backend、VS Code／Sphere Host bridgeあり（Node Editorはhuman test合格、Host組み込みは未実施）
+- FAM JSON Core: 再帰的な `ψ / ∇φ / λ / Q`を最小交渉面とし、未知fieldを保持するopen-world machine contractあり。decomposition等の追加field拘束はprofileとして分離中（Issue #22）
+- Gemini FAM plugin: structured JSON候補を返すadapterあり。provider応答、base構造適合、profile適合、意味評価は別状態
+- Node Editor: Presentation FAM／GUI Event ABI、React + React Flow renderer backend、VS Code／Sphere Host bridgeあり。renderer backendの比較Human Testは通過したが、Browser上の分解・局所編集・λ再投影・nested FoldはChrome／SafariともHuman Test不合格（Issue #35、#38、#41）。Host組み込みは未実施
 - Atlantis 1.x native C++ runtime: `CONTRACT-WAIT`
 
 API、tool、pluginの呼び出し成功は、目的 `λ` の達成証拠ではありません。pluginが存在することと、GUI上でportが次nodeへ接続されていることも別状態です。
+
+## FAMの最小交渉面と拡張
+
+FAMはopen-worldです。CoreがFAMとして最低限要求する構造keyは`ψ / ∇φ / λ / Q`だけで、各軸の内容は未記入、`unknown`、またはWorld固有表現を取り得ます。`title`、`kind`、lineage、言語metadata、Access Mapper、OAE、任意の追加fieldは、利用するprofile／plugin／上位Systemとのnegotiationで拘束します。
+
+```text
+base_structure       = 4軸構造がFAMとして読めるか
+profile_conformance  = 選択profileの追加要求を満たすか
+service_negotiation  = plugin／adapter／socketを利用できるか
+observer_verdict     = 指定OAE rule下で観測者がどう評価したか
+```
+
+これらを一つの`valid / invalid`へ潰しません。知らないfieldや未提供の拡張fieldは、それだけで自然言語やFAM全体を拒否する理由にならず、losslessに保持します。profile未成立は`not-satisfied`または`not-evaluable`として記録し、base構造不正と区別します。
+
+FQueryは自然言語を断罪するvalidatorでも、世界の唯一の正解を決める神託機でもありません。入力は暗黙のWorld常識、関係、個人記憶、業界慣行等を含む不完全な観測として受け取り、どのrefFAM／Access Mapper／観測者／ruleで解釈したかを追跡可能にします。複数解釈や相反するOAEは非ゼロサムで併存でき、採用範囲とauthorityは上位Systemからrevision固定refとして注入されます。
+
+一回の分解で全てを埋め切る義務はありません。初回結果は手直し可能な暫定Foldでよく、`なんで？-DeFold-`による段階的分解、局所差替え、revision、FAMLogを通して回復可能であることを優先します。
 
 ## Repository map
 
@@ -34,7 +51,7 @@ API、tool、pluginの呼び出し成功は、目的 `λ` の達成証拠では�
 | `docs/architecture/` | Q Core、再帰、Node→nativeの責務境界 |
 | `docs/specification/` | machine contractへ対応する人間可読仕様 |
 | `packages/core/` | backend非依存のNode参照Core |
-| `packages/fam-core/` | FAM JSONの再帰4軸、入力言語正本、翻訳写本、lossless reader |
+| `packages/fam-core/` | FAM JSONの再帰4軸、open-world reader、lossless保持。追加拘束はprofileとして注入 |
 | `packages/fam-edit/` | canonical FAMのlossless部分編集primitive。validatorは注入し、FAM Coreを所有しない |
 | `packages/plugin-sdk/` | capability、bind、invoke、result envelope |
 | `packages/famlog/` | append-only semantic traceと差分 |
@@ -62,7 +79,7 @@ npm run build
 npm run dev # http://127.0.0.1:3000
 ```
 
-PlaygroundはHost gatewayからrouteを発見し、fixture、Gemini、ローカルOllamaを同じ`fam.decompose`契約で切り替えます。分解後はstable `Q.unit_ref`ごとの独立Fold nodeへ投影し、fixtureのBasic Commons Access Mapper FAMが分類・局所因果gateを注入します。Gemini credentialはHost側だけで解決され、Browserへは表示用`name`しか返しません。
+PlaygroundはHost gatewayからrouteを発見し、fixture、Gemini、ローカルOllamaを同じ`fam.decompose`契約で切り替えます。Basic Commons Access Mapperはrevision固定のtest fixtureであり、Manifest／IBDの正本や普遍的な分類規則ではありません。期待設計では分解前にactive refFAMとして注入し、同じrevisionを生成・検証・投影へ通しますが、現行経路は未完了でIssue #41を追跡中です。Gemini credentialはHost側だけで解決され、Browserへは表示用`name`しか返しません。
 
 現在の正本参照と実行境界は[`SPHERE-DOS.md`](SPHERE-DOS.md)、repository固有規約は[`AGENTS.md`](AGENTS.md)を参照してください。
 画面と実Hostの未検証項目は[`docs/testing/human-acceptance.ja.md`](docs/testing/human-acceptance.ja.md)、Issue #35固有の停止点は[`docs/testing/issue-35-human-acceptance.ja.md`](docs/testing/issue-35-human-acceptance.ja.md)へ分離しています。
