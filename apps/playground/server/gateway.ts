@@ -2,8 +2,8 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { resolveCredential, standaloneCredentialSources } from "@fquery/config";
-import { evaluateQ, Q, toWireQueryResult, type CapabilityProfileBinding, type CapabilityProfileReceipt, type CoreEvent, type PluginResolver } from "@fquery/core";
-import { createLiteralDecompositionFam, isFamDecompositionRecord, projectDecompositionUnits, projectSemanticTopology, readAccessMapProfile, readFamJson } from "@fquery/fam-core";
+import { evaluateQ, Q, toWireQueryResult, type CapabilityProfileBinding, type CapabilityProfileReceipt, type CoreEvent, type PluginResolver, type QueryResult } from "@fquery/core";
+import { createLiteralDecompositionFam, isFamDecompositionRecord, projectDecompositionUnits, projectSemanticTopology, readAccessMapProfile, readFamJson, type SemanticTopologyProjection } from "@fquery/fam-core";
 import { discoverGeminiModels, GeminiFamPlugin } from "@fquery/plugin-gemini";
 import { discoverOllamaModels, OllamaFamPlugin } from "@fquery/plugin-ollama";
 
@@ -81,12 +81,20 @@ export async function decomposeText(request: DecomposeRequest, options: GatewayO
     { kind: "literal", value: request.source },
     { queryId: `q://playground/${randomUUID()}`, operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: request.provider === "fixture" ? "none" : "network", limits: { maxDepth: 32, maxNodes: 10_000, timeoutMs: 45_000 } } },
   ), { pluginResolver: resolver, profileBindings: Object.freeze([profileBinding]), outputConnected: true, emit: (event) => events.push(event) });
-  const postValidationReceipt = validateWithAccessMap(result.value, profileBinding);
-  if (postValidationReceipt) events.push(Object.freeze({ eventType: "semantic-check", queryRef: result.queryRef, status: "profile-accepted", detail: { profileReceipts: Object.freeze([postValidationReceipt]) } }));
+  let validation: AccessMapValidation | undefined;
+  let postValidationError: string | undefined;
+  try {
+    validation = validateWithAccessMap(result.value, profileBinding);
+  } catch (error) {
+    postValidationError = error instanceof Error ? error.message : "access-map-post-validation-failed";
+  }
+  if (validation) events.push(Object.freeze({ eventType: "semantic-check", queryRef: result.queryRef, status: "profile-accepted", detail: { profileReceipts: Object.freeze([validation.receipt]), semanticTopologyStatus: validation.topology.status } }));
+  if (postValidationError) events.push(Object.freeze({ eventType: "semantic-check", queryRef: result.queryRef, status: "profile-rejected", detail: { profileRef: profileBinding.profileRef, revisionRef: profileBinding.revisionRef, reason: postValidationError } }));
   const generationReceipt = findProfileReceipt(events, profileBinding, "generation-constraint");
-  const topologyProjection = isFamDecompositionRecord(result.value) ? projectSemanticTopology(result.value, accessMap) : undefined;
+  const presentedResult = postValidationError && result.value !== undefined ? refFamNonconformant(result, postValidationError) : result;
+  const topologyProjection = validation?.topology;
   return Object.freeze({
-    result: toWireQueryResult(result),
+    result: toWireQueryResult(presentedResult),
     events: Object.freeze(events),
     access_map: accessMapDocument.value,
     ref_fam_receipt: Object.freeze({
@@ -94,7 +102,8 @@ export async function decomposeText(request: DecomposeRequest, options: GatewayO
       revision_ref: profileBinding.revisionRef,
       resolved_before_provider: true,
       generation_constraint: generationReceipt ?? null,
-      post_validation: postValidationReceipt ?? null,
+      post_validation: validation?.receipt ?? null,
+      post_validation_error: postValidationError ? Object.freeze({ code: "FQUERY-REF-FAM-NONCONFORMANT", reason: postValidationError }) : null,
       presentation_projection: Object.freeze({
         status: "provided-to-host",
         profile_ref: profileBinding.profileRef,
@@ -108,17 +117,44 @@ export async function decomposeText(request: DecomposeRequest, options: GatewayO
   });
 }
 
-function validateWithAccessMap(value: unknown, binding: CapabilityProfileBinding): CapabilityProfileReceipt | undefined {
+interface AccessMapValidation {
+  readonly receipt: CapabilityProfileReceipt;
+  readonly topology: SemanticTopologyProjection;
+}
+
+function validateWithAccessMap(value: unknown, binding: CapabilityProfileBinding): AccessMapValidation | undefined {
   if (!isFamDecompositionRecord(value)) return undefined;
   const accessMap = readAccessMapProfile(binding.value as Parameters<typeof readAccessMapProfile>[0]);
   const units = projectDecompositionUnits(value, accessMap);
   if (units.some((unit) => unit.classification.accessMapFamRef !== binding.profileRef || unit.classification.accessMapRevisionRef !== binding.revisionRef)) throw new TypeError("access-map-revision-drift");
+  const topology = projectSemanticTopology(value, accessMap);
   return Object.freeze({
-    profileRef: binding.profileRef,
-    revisionRef: binding.revisionRef,
-    appliedStages: Object.freeze(["post-validation"] as const),
-    validationScope: "fam-shape-and-classification-binding",
-    oaeConstraintEvaluations: Object.freeze([]),
+    receipt: Object.freeze({
+      profileRef: binding.profileRef,
+      revisionRef: binding.revisionRef,
+      appliedStages: Object.freeze(["post-validation"] as const),
+      validationScope: "fam-shape-classification-and-declared-topology-binding",
+      oaeConstraintEvaluations: Object.freeze([]),
+    }),
+    topology,
+  });
+}
+
+function refFamNonconformant(result: QueryResult, reason: string): QueryResult {
+  const { value, ...withoutValue } = result;
+  return Object.freeze({
+    ...withoutValue,
+    candidate: value,
+    semanticStatus: "not-evaluated",
+    lambdaStatus: "not-evaluated",
+    controlStatus: "last-order",
+    reason,
+    lastOrder: Object.freeze({
+      code: "FQUERY-REF-FAM-NONCONFORMANT",
+      reason,
+      requestedNext: "inspect-and-edit-semantic-topology-or-select-another-ref-fam",
+      resumeWhen: "ref-fam-conformant-topology-available",
+    }),
   });
 }
 

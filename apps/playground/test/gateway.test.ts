@@ -19,7 +19,8 @@ describe("Playground gateway", () => {
       revision_ref: "rev://fquery/test/basic-commons-access-mapper/2",
       resolved_before_provider: true,
       generation_constraint: null,
-      post_validation: { appliedStages: ["post-validation"], validationScope: "fam-shape-and-classification-binding", oaeConstraintEvaluations: [] },
+      post_validation: { appliedStages: ["post-validation"], validationScope: "fam-shape-classification-and-declared-topology-binding", oaeConstraintEvaluations: [] },
+      post_validation_error: null,
       presentation_projection: { status: "provided-to-host", semantic_topology_status: "topology-not-declared", selected_branch_ref: null, branch_refs: [], selection_scope_ref: "scope://fquery/playground/presentation-only" },
     });
   });
@@ -29,6 +30,12 @@ describe("Playground gateway", () => {
     (candidate as { kind: string }).kind = "provider-candidate";
     delete (candidate.Q as Record<string, unknown>).unknown_is_absence;
     for (const unit of (candidate.λ as { output_units: Array<{ Q: Record<string, unknown> }> }).output_units) delete unit.Q.unknown_is_absence;
+    const units = (candidate.λ as { output_units: Array<{ Q: { unit_ref: string } }> }).output_units;
+    (candidate.Q as Record<string, unknown>).semantic_topology_branches = [{
+      branch_ref: "branch://fquery/decomposition/primary",
+      observer_ref: "observer://gateway/integration",
+      relations: [{ from_unit_ref: units[0]!.Q.unit_ref, to_unit_ref: units[1]!.Q.unit_ref, axis: "mL", relation_kind: "causal", evidence_refs: [] }],
+    }];
     const generate = vi.fn(async (_request: { readonly prompt: string }) => ({ text: JSON.stringify(candidate), requestId: "gateway-integration-fixture" }));
     const response = await decomposeText(
       { provider: "gemini", model: "gemini-integration-fixture", source: "雨が降っている。傘を持って出かける。" },
@@ -50,11 +57,39 @@ describe("Playground gateway", () => {
     expect(response.ref_fam_receipt).toMatchObject({
       generation_constraint: { appliedStages: ["generation-constraint"] },
       post_validation: { appliedStages: ["post-validation"] },
-      presentation_projection: { profile_ref: "fam://fquery/test/basic-commons-access-mapper", revision_ref: "rev://fquery/test/basic-commons-access-mapper/2", semantic_topology_status: "topology-not-declared" },
+      post_validation_error: null,
+      presentation_projection: { profile_ref: "fam://fquery/test/basic-commons-access-mapper", revision_ref: "rev://fquery/test/basic-commons-access-mapper/2", semantic_topology_status: "selected", selected_branch_ref: "branch://fquery/decomposition/primary", branch_refs: ["branch://fquery/decomposition/primary"] },
     });
     expect(response.events).toEqual(expect.arrayContaining([
       expect.objectContaining({ eventType: "plugin-call-end", detail: expect.objectContaining({ normalization: expect.objectContaining({ repairedPaths: expect.arrayContaining(["$.kind", "$.Q.unknown_is_absence", "$.λ.output_units[0].Q.unknown_is_absence"]) }) }) }),
     ]));
+  });
+
+  it("壊れたsemantic topologyをHTTP例外にせずcandidate保持Last Orderで返す", async () => {
+    const candidate = structuredClone(createLiteralDecompositionFam("A。B。C。", "q://provider/invalid-topology"));
+    const units = (candidate.λ as { output_units: Array<{ Q: { unit_ref: string } }> }).output_units;
+    (candidate.Q as Record<string, unknown>).semantic_topology_branches = [{
+      branch_ref: "branch://fquery/decomposition/primary",
+      observer_ref: "observer://gateway/integration",
+      relations: [
+        { from_unit_ref: units[0]!.Q.unit_ref, to_unit_ref: units[2]!.Q.unit_ref, axis: "mL", relation_kind: "parent-child", evidence_refs: [] },
+        { from_unit_ref: units[1]!.Q.unit_ref, to_unit_ref: units[2]!.Q.unit_ref, axis: "mL", relation_kind: "parent-child", evidence_refs: [] },
+      ],
+    }];
+    const response = await decomposeText(
+      { provider: "fixture", model: "invalid-topology-fixture", source: "A。B。C。" },
+      { repoRoot, resolverFactory: () => ({ async invoke() { return { pluginId: "plugin://test/invalid-topology", transportStatus: "succeeded", outputStatus: "accepted", value: candidate, evidenceRefs: [] }; } }) },
+    );
+
+    expect(response.result).toMatchObject({
+      transport_status: "succeeded",
+      control_status: "last-order",
+      candidate: { fam_id: candidate.fam_id },
+      last_order: { code: "FQUERY-REF-FAM-NONCONFORMANT", requested_next: "inspect-and-edit-semantic-topology-or-select-another-ref-fam" },
+    });
+    expect(response.result).not.toHaveProperty("value");
+    expect(response.ref_fam_receipt).toMatchObject({ post_validation: null, post_validation_error: { code: "FQUERY-REF-FAM-NONCONFORMANT", reason: expect.stringContaining("semantic-topology-multiple-containment-parents") } });
+    expect(response.events).toEqual(expect.arrayContaining([expect.objectContaining({ eventType: "semantic-check", status: "profile-rejected" })]));
   });
 
   it("空sourceを拒否する", async () => {
