@@ -73,4 +73,18 @@ describe("Basic Commons Access Mapper FAM", () => {
       selectionScopeRef: "scope://fquery/playground/presentation-only",
     });
   });
+
+  it("一つのunitを複数Foldへ同時containmentする候補をprofile不適合として拒否する", () => {
+    const fam = structuredClone(createLiteralDecompositionFam("A。B。C。", "q://test/multiple-containment"));
+    const units = (fam.λ as { output_units: Array<{ Q: { unit_ref: string } }> }).output_units;
+    (fam.Q as Record<string, unknown>).semantic_topology_branches = [{
+      branch_ref: "branch://fquery/decomposition/primary",
+      observer_ref: "observer://test",
+      relations: [
+        { from_unit_ref: units[0]!.Q.unit_ref, to_unit_ref: units[2]!.Q.unit_ref, axis: "mL", relation_kind: "parent-child", evidence_refs: [] },
+        { from_unit_ref: units[1]!.Q.unit_ref, to_unit_ref: units[2]!.Q.unit_ref, axis: "mL", relation_kind: "parent-child", evidence_refs: [] },
+      ],
+    }];
+    expect(() => projectSemanticTopology(fam, profile)).toThrow("semantic-topology-multiple-containment-parents");
+  });
 });

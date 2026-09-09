@@ -46,7 +46,12 @@ export async function projectDecompositionGraph(
   fam: FamJsonRecord,
   accessMap: AccessMapProfile,
 ): Promise<CoreNodeIds> {
-  for (const nodeId of new Set(current.gradients ?? [])) {
+  const previousGradients = [...new Set(current.gradients ?? [])].sort((left, right) => {
+    const leftDepth = session.state.nodes.find((node) => node.nodeId === left)?.depth ?? 0;
+    const rightDepth = session.state.nodes.find((node) => node.nodeId === right)?.depth ?? 0;
+    return rightDepth - leftDepth;
+  });
+  for (const nodeId of previousGradients) {
     graphSequence += 1;
     await session.dispatch({ type: "node.remove.requested", requestId: `playground:remove-gradient:${graphSequence}`, nodeId });
   }
@@ -56,12 +61,12 @@ export async function projectDecompositionGraph(
   const units = projectDecompositionUnits(fam, accessMap);
   const topology = projectSemanticTopology(fam, accessMap);
   const relations = topology.selectedBranch?.relations ?? [];
-  const levels = semanticLevels(units.map((unit) => unit.unitRef), relations);
-  const maxLevel = Math.max(0, ...levels.values());
-  const levelCounts = new Map<number, number>();
-  for (const level of levels.values()) levelCounts.set(level, (levelCounts.get(level) ?? 0) + 1);
-  const boundaryWidth = Math.max(760, (maxLevel + 1) * 340 + 160);
-  const boundaryHeight = Math.max(460, Math.max(1, ...levelCounts.values()) * 340 + 180);
+  const unitRefs = units.map((unit) => unit.unitRef);
+  const containment = semanticContainment(unitRefs, relations);
+  const rootRelations = boundaryRelations(undefined, containment, relations);
+  const rootLayout = boundaryLayout(containment.topLevelRefs, rootRelations, containment);
+  const boundaryWidth = rootLayout.width;
+  const boundaryHeight = rootLayout.height;
   const boundaryNodeId = current.famvim;
   const boundaryPresentation = {
     targetRef: boundaryNodeId,
@@ -104,13 +109,13 @@ export async function projectDecompositionGraph(
     foldBoundary: {
       boundaryRef: `fold-boundary://${fam.fam_id}`,
       rootFoldRef: fam.fam_id,
-      childFoldRefs: Object.freeze(units.map((unit) => unit.unitRef)),
+      childFoldRefs: containment.topLevelRefs,
       resolutionMode: "atomic-resolution",
       dispatchMode: "single-processing-unit",
       closesAxes: ["G", "D", "L", "mL"],
       generation: 1,
       status: "complete",
-      boundaryMetrics: topologyMetrics(units.map((unit) => unit.unitRef), units.flatMap((unit) => unit.classification.dimensionRef ?? []), relations),
+      boundaryMetrics: topologyMetrics(containment.topLevelRefs, units.flatMap((unit) => unit.classification.dimensionRef ?? []), relations, 0),
       width: boundaryWidth,
       height: boundaryHeight,
     },
@@ -120,71 +125,267 @@ export async function projectDecompositionGraph(
   session.applyEngineEvent({ type: "presentation.changed", targetRef: boundaryNodeId, projection: boundaryPresentation });
   const gradients: string[] = [];
   const nodeByUnitRef = new Map<string, string>();
-  const usedRows = new Map<number, number>();
-  for (const unit of units) {
+  const originalNodeByUnitRef = new Map<string, NodeViewModel>();
+  // React Flowはparentをchildより前に受け取る必要があるため、providerのunit配列順には依存しない。
+  const orderedUnits = [...units].sort((left, right) => (containment.depthByRef.get(left.unitRef) ?? 1) - (containment.depthByRef.get(right.unitRef) ?? 1) || left.order - right.order);
+  for (const unit of orderedUnits) {
     graphSequence += 1;
     const nodeId = await addCoreNode(session, "core.gradient.famvim", graphSequence);
     if (!nodeId) continue;
     gradients.push(nodeId);
     nodeByUnitRef.set(unit.unitRef, nodeId);
-    const node = session.state.nodes.find((candidate) => candidate.nodeId === nodeId)!;
-    const level = levels.get(unit.unitRef) ?? 0;
-    const row = usedRows.get(level) ?? 0;
-    usedRows.set(level, row + 1);
+    originalNodeByUnitRef.set(unit.unitRef, session.state.nodes.find((candidate) => candidate.nodeId === nodeId)!);
+  }
+  for (const unit of orderedUnits) {
+    const nodeId = nodeByUnitRef.get(unit.unitRef);
+    const node = originalNodeByUnitRef.get(unit.unitRef);
+    if (!nodeId || !node) continue;
+    const semanticParentRef = containment.parentByChild.get(unit.unitRef);
+    const parentNodeId = semanticParentRef ? nodeByUnitRef.get(semanticParentRef) : boundaryNodeId;
+    if (!parentNodeId) throw new TypeError("semantic-containment-parent-node-not-found");
+    const directChildren = containment.childrenByParent.get(unit.unitRef) ?? [];
+    const isBoundary = directChildren.length > 0;
+    const depth = containment.depthByRef.get(unit.unitRef) ?? 1;
+    const position = semanticParentRef
+      ? nestedPosition(unit.unitRef, semanticParentRef, containment)
+      : rootLayout.positions.get(unit.unitRef) ?? { x: 60, y: 120 };
+    const subtreeRefs = containment.descendantsByRef.get(unit.unitRef) ?? Object.freeze([unit.unitRef]);
+    const subtreeRelations = relations.filter((relation) => subtreeRefs.includes(relation.fromUnitRef) && subtreeRefs.includes(relation.toUnitRef));
+    const subtreeUnits = units.filter((candidate) => subtreeRefs.includes(candidate.unitRef));
+    const size = containment.sizeByRef.get(unit.unitRef) ?? { width: 320, height: 280 };
+    const semanticBoundary = isBoundary ? semanticFoldBoundaryPresentation(nodeId) : undefined;
     session.applyEngineEvent({
       type: "fam.node.changed",
       node: {
         ...node,
-        label: `∇φ-${unit.order + 1}`,
+        label: isBoundary ? `Fold · ∇φ-${unit.order + 1}` : `∇φ-${unit.order + 1}`,
         foldRef: unit.unitRef,
-        parentFoldRef: unit.parentFamRef,
-        parentNodeId: boundaryNodeId,
-        depth: 1,
+        parentFoldRef: semanticParentRef ?? unit.parentFamRef,
+        parentNodeId,
+        depth,
         revisionRef: unit.unitRevisionRef,
         collapsed: false,
         projectionFreshness: "fresh",
-        value: { unit: unit.value, classification: unit.classification, sourcePointer: unit.sourcePointer },
+        value: { unit: unit.value, classification: unit.classification, sourcePointer: unit.sourcePointer, semanticTopologyBranchRef: topology.selectedBranch?.branchRef ?? null },
         badges: [
           { axis: "classification", value: unit.classification.dimensionRef ?? "unmapped", tone: unit.classification.status === "mapped" ? "active" : "unknown" },
           { axis: "topology", value: topology.status, tone: topology.status === "selected" ? "active" : "unknown" },
         ],
         evidenceRefs: [`${accessMap.famId}@${accessMap.revisionId}`],
+        ...(semanticBoundary ? {
+          ports: [
+            { portId: corePortId(nodeId, "psi"), label: "外Ψ", direction: "input", connectionStatus: "unconnected", cardinality: "many" },
+            { portId: corePortId(nodeId, "children"), label: "内Ψ", direction: "output", connectionStatus: "unconnected", cardinality: "many" },
+            { portId: corePortId(nodeId, "return"), label: "内λ", direction: "input", connectionStatus: "unconnected", cardinality: "many" },
+            { portId: corePortId(nodeId, "fam"), label: "外λ", direction: "output", connectionStatus: "unconnected", cardinality: "one" },
+          ],
+          foldBoundary: {
+            boundaryRef: `fold-boundary://${fam.fam_id}/semantic/${encodeURIComponent(unit.unitRef)}`,
+            rootFoldRef: unit.unitRef,
+            childFoldRefs: directChildren,
+            resolutionMode: "atomic-resolution",
+            dispatchMode: "single-processing-unit",
+            closesAxes: ["G", "D", "L", "mL"],
+            generation: 1,
+            status: "complete",
+            boundaryMetrics: topologyMetrics(directChildren, subtreeUnits.flatMap((candidate) => candidate.classification.dimensionRef ?? []), subtreeRelations, depth),
+            width: size.width,
+            height: size.height,
+          },
+          presentation: semanticBoundary,
+        } : {}),
       },
     });
-    await session.dispatch({ type: "node.move.requested", requestId: `playground:layout-root-fold-child:${graphSequence}`, nodeId, layoutSlotRef: layoutSlotRef(nodeId), x: 60 + level * 320, y: 120 + row * 320 });
-  }
-  const incoming = new Set(relations.map((relation) => relation.toUnitRef));
-  const outgoing = new Set(relations.map((relation) => relation.fromUnitRef));
-  for (const unit of units) {
-    const nodeId = nodeByUnitRef.get(unit.unitRef);
-    if (!nodeId) continue;
-    if (!incoming.has(unit.unitRef)) {
-      graphSequence += 1;
-      await session.dispatch({ type: "connection.add.requested", requestId: `playground:connect-root-boundary-child:${graphSequence}`, fromPortId: corePortId(boundaryNodeId, "children"), toPortId: corePortId(nodeId, "psi"), relationKind: "parent-child", relationStatus: "active", gateRef: topology.selectedBranch?.branchRef ?? "topology://not-declared" });
-    }
-    if (!outgoing.has(unit.unitRef)) {
-      graphSequence += 1;
-      await session.dispatch({ type: "connection.add.requested", requestId: `playground:connect-root-child-return:${graphSequence}`, fromPortId: corePortId(nodeId, "fam"), toPortId: corePortId(boundaryNodeId, "return"), relationKind: "parent-child", relationStatus: "active", gateRef: topology.selectedBranch?.branchRef ?? "topology://not-declared" });
-    }
-  }
-  for (const relation of relations) {
-    const fromNodeId = nodeByUnitRef.get(relation.fromUnitRef);
-    const toNodeId = nodeByUnitRef.get(relation.toUnitRef);
-    if (!fromNodeId || !toNodeId) continue;
+    if (semanticBoundary) session.applyEngineEvent({ type: "presentation.changed", targetRef: nodeId, projection: semanticBoundary });
     graphSequence += 1;
-    const gateRef = relation.evidenceRefs[0] ?? topology.selectedBranch?.branchRef;
-    await session.dispatch({ type: "connection.add.requested", requestId: `playground:connect-semantic:${graphSequence}`, fromPortId: corePortId(fromNodeId, "fam"), toPortId: corePortId(toNodeId, "psi"), relationKind: relation.relationKind, relationStatus: "active", ...(gateRef ? { gateRef } : {}) });
+    await session.dispatch({ type: "node.move.requested", requestId: `playground:layout-root-fold-child:${graphSequence}`, nodeId, layoutSlotRef: layoutSlotRef(nodeId), x: position.x, y: position.y });
+  }
+  await connectBoundaryGraph(session, boundaryNodeId, undefined, containment, relations, nodeByUnitRef, topology.selectedBranch?.branchRef);
+  for (const containerRef of containment.childrenByParent.keys()) {
+    const containerNodeId = nodeByUnitRef.get(containerRef);
+    if (containerNodeId) await connectBoundaryGraph(session, containerNodeId, containerRef, containment, relations, nodeByUnitRef, topology.selectedBranch?.branchRef);
   }
   await layoutRootFold(session, current.psi, boundaryNodeId, boundaryWidth, boundaryHeight, current.lambda);
   return Object.freeze({ psi: current.psi, famvim: boundaryNodeId, lambda: current.lambda, gradients: Object.freeze(gradients) });
 }
 
-function topologyMetrics(unitRefs: readonly string[], dimensionRefs: readonly string[], relations: readonly SemanticTopologyRelation[]) {
+interface SemanticContainment {
+  readonly parentByChild: ReadonlyMap<string, string>;
+  readonly childrenByParent: ReadonlyMap<string, readonly string[]>;
+  readonly topLevelRefs: readonly string[];
+  readonly depthByRef: ReadonlyMap<string, number>;
+  readonly descendantsByRef: ReadonlyMap<string, readonly string[]>;
+  readonly sizeByRef: ReadonlyMap<string, { readonly width: number; readonly height: number }>;
+}
+
+interface BoundaryGraphLayout {
+  readonly width: number;
+  readonly height: number;
+  readonly positions: ReadonlyMap<string, { readonly x: number; readonly y: number }>;
+}
+
+function semanticContainment(unitRefs: readonly string[], relations: readonly SemanticTopologyRelation[]): SemanticContainment {
+  const known = new Set(unitRefs);
+  const parentByChild = new Map<string, string>();
+  const childrenByParent = new Map<string, string[]>();
+  for (const relation of relations.filter((candidate) => candidate.relationKind === "parent-child")) {
+    if (!known.has(relation.fromUnitRef) || !known.has(relation.toUnitRef)) throw new TypeError("semantic-containment-unit-ref-not-found");
+    const previous = parentByChild.get(relation.toUnitRef);
+    if (previous && previous !== relation.fromUnitRef) throw new TypeError("semantic-containment-multiple-parents");
+    parentByChild.set(relation.toUnitRef, relation.fromUnitRef);
+    const children = childrenByParent.get(relation.fromUnitRef) ?? [];
+    if (!children.includes(relation.toUnitRef)) childrenByParent.set(relation.fromUnitRef, [...children, relation.toUnitRef]);
+  }
+  const topLevelRefs = Object.freeze(unitRefs.filter((ref) => !parentByChild.has(ref)));
+  const depthByRef = new Map<string, number>();
+  const descendantsByRef = new Map<string, readonly string[]>();
+  const sizeByRef = new Map<string, { readonly width: number; readonly height: number }>();
+  const visiting = new Set<string>();
+  const visit = (ref: string, depth: number): readonly string[] => {
+    if (visiting.has(ref)) throw new TypeError("semantic-containment-cycle");
+    visiting.add(ref);
+    depthByRef.set(ref, depth);
+    const children = childrenByParent.get(ref) ?? [];
+    const descendants = Object.freeze([ref, ...children.flatMap((child) => visit(child, depth + 1))]);
+    descendantsByRef.set(ref, descendants);
+    const childSizes = children.map((child) => sizeByRef.get(child) ?? { width: 320, height: 280 });
+    sizeByRef.set(ref, children.length === 0
+      ? Object.freeze({ width: 320, height: 280 })
+      : Object.freeze({ width: Math.max(660, ...childSizes.map((size) => size.width + 120)), height: Math.max(420, 140 + childSizes.reduce((sum, size) => sum + size.height + 40, 0)) }));
+    visiting.delete(ref);
+    return descendants;
+  };
+  for (const ref of topLevelRefs) visit(ref, 1);
+  if (depthByRef.size !== unitRefs.length) throw new TypeError("semantic-containment-root-not-found");
+  return Object.freeze({ parentByChild, childrenByParent, topLevelRefs, depthByRef, descendantsByRef, sizeByRef });
+}
+
+function directChildUnderBoundary(ref: string, boundaryRef: string | undefined, containment: SemanticContainment): string | undefined {
+  let current = ref;
+  const visited = new Set<string>();
+  while (true) {
+    if (visited.has(current)) throw new TypeError("semantic-containment-cycle");
+    visited.add(current);
+    const parent = containment.parentByChild.get(current);
+    if (parent === boundaryRef || (boundaryRef === undefined && parent === undefined)) return current;
+    if (parent === undefined) return undefined;
+    current = parent;
+  }
+}
+
+function boundaryRelations(boundaryRef: string | undefined, containment: SemanticContainment, relations: readonly SemanticTopologyRelation[]): readonly SemanticTopologyRelation[] {
+  const projected: SemanticTopologyRelation[] = [];
+  const keys = new Set<string>();
+  for (const relation of relations) {
+    if (relation.relationKind === "parent-child") continue;
+    const fromUnitRef = directChildUnderBoundary(relation.fromUnitRef, boundaryRef, containment);
+    const toUnitRef = directChildUnderBoundary(relation.toUnitRef, boundaryRef, containment);
+    if (!fromUnitRef || !toUnitRef || fromUnitRef === toUnitRef) continue;
+    const key = `${fromUnitRef}\u0000${toUnitRef}\u0000${relation.axis}\u0000${relation.relationKind}`;
+    if (keys.has(key)) continue;
+    keys.add(key);
+    projected.push(Object.freeze({ ...relation, fromUnitRef, toUnitRef }));
+  }
+  return Object.freeze(projected);
+}
+
+function boundaryLayout(childRefs: readonly string[], relations: readonly SemanticTopologyRelation[], containment: SemanticContainment): BoundaryGraphLayout {
+  const levels = semanticLevels(childRefs, relations);
+  const refsByLevel = new Map<number, string[]>();
+  for (const ref of childRefs) {
+    const level = levels.get(ref) ?? 0;
+    refsByLevel.set(level, [...(refsByLevel.get(level) ?? []), ref]);
+  }
+  const maxLevel = Math.max(0, ...levels.values());
+  const columnWidths = Array.from({ length: maxLevel + 1 }, (_, level) => Math.max(320, ...(refsByLevel.get(level) ?? []).map((ref) => containment.sizeByRef.get(ref)?.width ?? 320)));
+  const columnX: number[] = [];
+  let cursorX = 60;
+  for (const width of columnWidths) { columnX.push(cursorX); cursorX += width + 80; }
+  const positions = new Map<string, { readonly x: number; readonly y: number }>();
+  let maxColumnHeight = 0;
+  for (let level = 0; level <= maxLevel; level += 1) {
+    let cursorY = 120;
+    for (const ref of refsByLevel.get(level) ?? []) {
+      positions.set(ref, Object.freeze({ x: columnX[level] ?? 60, y: cursorY }));
+      cursorY += (containment.sizeByRef.get(ref)?.height ?? 280) + 40;
+    }
+    maxColumnHeight = Math.max(maxColumnHeight, cursorY);
+  }
+  return Object.freeze({ width: Math.max(760, cursorX + 20), height: Math.max(460, maxColumnHeight + 60), positions });
+}
+
+function nestedPosition(ref: string, parentRef: string, containment: SemanticContainment): { readonly x: number; readonly y: number } {
+  const siblings = containment.childrenByParent.get(parentRef) ?? [];
+  let y = 120;
+  for (const sibling of siblings) {
+    if (sibling === ref) return Object.freeze({ x: 60, y });
+    y += (containment.sizeByRef.get(sibling)?.height ?? 280) + 40;
+  }
+  throw new TypeError("semantic-containment-child-not-found");
+}
+
+function semanticFoldBoundaryPresentation(nodeId: string) {
+  return {
+    targetRef: nodeId,
+    mode: "native" as const,
+    rendererId: "react-flow",
+    presentation: {
+      schemaVersion: "fquery.presentation-fam/0.1.0-draft" as const,
+      presentationId: "presentation://fquery/core/fold-boundary",
+      targetRef: nodeId,
+      surfaces: ["node-editor" as const, "inspector" as const],
+      visualRole: "fold-boundary",
+      interfaceRoles: ["atomic-resolution", "single-processing-unit", "semantic-containment"],
+      visibility: "visible" as const,
+      rendererHint: "fquery-fold-boundary",
+      category: "Core",
+      aliases: ["Fold", "G/D/L/mL/S"],
+      layoutSlotRef: layoutSlotRef(nodeId),
+    },
+  };
+}
+
+async function connectBoundaryGraph(
+  session: PresentationSession,
+  boundaryNodeId: string,
+  boundaryRef: string | undefined,
+  containment: SemanticContainment,
+  relations: readonly SemanticTopologyRelation[],
+  nodeByUnitRef: ReadonlyMap<string, string>,
+  branchRef?: string,
+): Promise<void> {
+  const childRefs = boundaryRef === undefined ? containment.topLevelRefs : containment.childrenByParent.get(boundaryRef) ?? [];
+  const projected = boundaryRelations(boundaryRef, containment, relations);
+  const incoming = new Set(projected.map((relation) => relation.toUnitRef));
+  const outgoing = new Set(projected.map((relation) => relation.fromUnitRef));
+  for (const childRef of childRefs) {
+    const childNodeId = nodeByUnitRef.get(childRef);
+    if (!childNodeId) continue;
+    if (!incoming.has(childRef)) {
+      graphSequence += 1;
+      await session.dispatch({ type: "connection.add.requested", requestId: `playground:connect-boundary-child:${graphSequence}`, fromPortId: corePortId(boundaryNodeId, "children"), toPortId: corePortId(childNodeId, "psi"), relationKind: "parent-child", relationStatus: "active", gateRef: branchRef ?? "topology://not-declared" });
+    }
+    if (!outgoing.has(childRef)) {
+      graphSequence += 1;
+      await session.dispatch({ type: "connection.add.requested", requestId: `playground:connect-child-return:${graphSequence}`, fromPortId: corePortId(childNodeId, "fam"), toPortId: corePortId(boundaryNodeId, "return"), relationKind: "parent-child", relationStatus: "active", gateRef: branchRef ?? "topology://not-declared" });
+    }
+  }
+  for (const relation of projected) {
+    const fromNodeId = nodeByUnitRef.get(relation.fromUnitRef);
+    const toNodeId = nodeByUnitRef.get(relation.toUnitRef);
+    if (!fromNodeId || !toNodeId) continue;
+    graphSequence += 1;
+    const gateRef = relation.evidenceRefs[0] ?? branchRef;
+    await session.dispatch({ type: "connection.add.requested", requestId: `playground:connect-semantic:${graphSequence}`, fromPortId: corePortId(fromNodeId, "fam"), toPortId: corePortId(toNodeId, "psi"), relationKind: relation.relationKind, relationStatus: "active", ...(gateRef ? { gateRef } : {}) });
+  }
+}
+
+function topologyMetrics(unitRefs: readonly string[], dimensionRefs: readonly string[], relations: readonly SemanticTopologyRelation[], nestingDepth: number) {
   const technologyEdges = relations.filter((relation) => relation.axis === "L").map((relation) => ({ fromNodeRef: relation.fromUnitRef, toNodeRef: relation.toUnitRef }));
   const metaEdges = relations.filter((relation) => relation.axis === "mL").map((relation) => ({ fromNodeRef: relation.fromUnitRef, toNodeRef: relation.toUnitRef }));
   const technologyNodeRefs = [...new Set(technologyEdges.flatMap((edge) => [edge.fromNodeRef, edge.toNodeRef]))];
   const metaContextNodeRefs = [...new Set(metaEdges.flatMap((edge) => [edge.fromNodeRef, edge.toNodeRef]))];
-  return deriveFoldBoundaryMetrics({ directChildNodeRefs: unitRefs, contextDimensionRefs: dimensionRefs, nestingPathDepths: [0], technologyNodeRefs, technologyChainEdges: technologyEdges, requiredTechnologyRoutes: [], metaContextNodeRefs, metaContextChainEdges: metaEdges, nodePluginAvailable: true, exitAdapterRef: "adapter://fquery/playground/lambda-fixture-projection" });
+  return deriveFoldBoundaryMetrics({ directChildNodeRefs: unitRefs, contextDimensionRefs: dimensionRefs, nestingPathDepths: [nestingDepth], technologyNodeRefs, technologyChainEdges: technologyEdges, requiredTechnologyRoutes: [], metaContextNodeRefs, metaContextChainEdges: metaEdges, nodePluginAvailable: true, exitAdapterRef: "adapter://fquery/playground/lambda-fixture-projection" });
 }
 
 function semanticLevels(unitRefs: readonly string[], relations: readonly SemanticTopologyRelation[]): ReadonlyMap<string, number> {

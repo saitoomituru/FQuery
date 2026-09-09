@@ -267,6 +267,17 @@ function readSemanticTopologyBranch(value: unknown, path: string, contract: Acce
       evidenceRefs: freezeStrings(requiredArray(relation[contract.fields.evidenceRefs], `${relationPath}.${contract.fields.evidenceRefs}`), `${relationPath}.${contract.fields.evidenceRefs}`),
     });
   });
+  const relationKeys = new Set<string>();
+  const containmentParentByChild = new Map<string, string>();
+  for (const relation of relations) {
+    const key = `${relation.fromUnitRef}\u0000${relation.toUnitRef}\u0000${relation.axis}\u0000${relation.relationKind}`;
+    if (relationKeys.has(key)) throw new TypeError(`${path}:semantic-topology-relation-duplicate`);
+    relationKeys.add(key);
+    if (relation.relationKind !== "parent-child") continue;
+    const previous = containmentParentByChild.get(relation.toUnitRef);
+    if (previous && previous !== relation.fromUnitRef) throw new TypeError(`${path}:semantic-topology-multiple-containment-parents`);
+    containmentParentByChild.set(relation.toUnitRef, relation.fromUnitRef);
+  }
   assertAcyclic(relations);
   return Object.freeze({
     branchRef: requiredString(branch[contract.fields.branchRef], `${path}.${contract.fields.branchRef}`),
