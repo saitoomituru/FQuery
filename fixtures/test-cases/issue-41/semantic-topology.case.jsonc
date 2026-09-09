@@ -1,0 +1,32 @@
+{
+  "case_ref": "case://fquery/issue-41/human-observed-long-source",
+  "source_ref": "https://github.com/saitoomituru/FQuery/issues/41",
+  "observation_status": "human-provided-expectation",
+  "global_truth_status": "not-claimed",
+  "units": [
+    "これFPGAに姿勢制御とか定形MLをベイクするのに希望出るやん。",
+    "ルネサス の外道マンゴーこと　GR-Mango系の可変FPGA的機能強いマイコンボード一気に勝ち筋やん。",
+    "って思ってジャンク箱から掘り出してきたがファミコン持っておらんPS世代だ。親世代のゲーム機や",
+    "違法Romはないことないがさすがに少年時代パクられこいたトラウマからそれは無理だな。"
+  ],
+  "branches": [
+    {
+      "branch_ref": "branch://fquery/decomposition/primary",
+      "observer_ref": "observer://fquery/issue-41/user/fact-domain-reading",
+      "relations": [
+        { "from_unit_order": 0, "to_unit_order": 2, "axis": "mL", "relation_kind": "causal", "evidence_refs": ["oae-candidate://fquery/issue-41/user/fact-domain/1"] },
+        { "from_unit_order": 1, "to_unit_order": 2, "axis": "mL", "relation_kind": "causal", "evidence_refs": ["oae-candidate://fquery/issue-41/user/fact-domain/2"] },
+        { "from_unit_order": 2, "to_unit_order": 3, "axis": "mL", "relation_kind": "causal", "evidence_refs": ["oae-candidate://fquery/issue-41/user/fact-domain/3"] }
+      ]
+    },
+    {
+      "branch_ref": "branch://fquery/issue-41/astral-reading",
+      "observer_ref": "observer://fquery/issue-41/user/astral-reading",
+      "relations": [
+        { "from_unit_order": 0, "to_unit_order": 2, "axis": "mL", "relation_kind": "causal", "evidence_refs": ["oae-candidate://fquery/issue-41/user/astral/1"] },
+        { "from_unit_order": 1, "to_unit_order": 2, "axis": "mL", "relation_kind": "causal", "evidence_refs": ["oae-candidate://fquery/issue-41/user/astral/2"] },
+        { "from_unit_order": 2, "to_unit_order": 3, "axis": "mL", "relation_kind": "parent-child", "evidence_refs": ["oae-candidate://fquery/issue-41/user/astral/3"] }
+      ]
+    }
+  ]
+}

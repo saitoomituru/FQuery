@@ -1,11 +1,76 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { createLiteralDecompositionFam, readAccessMapProfile, readFamJson, type AccessMapProfile } from "@fquery/fam-core";
+import { createLiteralDecompositionFam, readAccessMapProfile, readFamJson, type AccessMapProfile, type FamJsonRecord } from "@fquery/fam-core";
 import { buildCoreGraph, projectDecompositionGraph } from "../src/host/core-graph.js";
 import { createPlaygroundSession } from "../src/host/session.js";
 
 const baseAccessMap = readAccessMapProfile(readFamJson(readFileSync(resolve(process.cwd(), "../../fixtures/test-cases/basic-commons-access-mapper/access-map.fam.json"), "utf8")).value);
+const issue41Source = readFileSync(resolve(process.cwd(), "../../fixtures/test-cases/issue-41/source.ja.txt"), "utf8").trimEnd();
+
+interface Issue41TopologyCase {
+  readonly units: readonly string[];
+  readonly branches: readonly {
+    readonly branch_ref: string;
+    readonly observer_ref: string;
+    readonly relations: readonly {
+      readonly from_unit_order: number;
+      readonly to_unit_order: number;
+      readonly axis: "L" | "mL";
+      readonly relation_kind: "dependency" | "causal" | "conditional" | "parent-child";
+      readonly evidence_refs: readonly string[];
+    }[];
+  }[];
+}
+
+const issue41Case = JSON.parse(readFileSync(resolve(process.cwd(), "../../fixtures/test-cases/issue-41/semantic-topology.case.jsonc"), "utf8")) as Issue41TopologyCase;
+
+function createIssue41Candidate(): FamJsonRecord {
+  const fam = structuredClone(createLiteralDecompositionFam("仮1。仮2。仮3。仮4。", "q://test/playground/issue-41"));
+  const mutableFam = fam as unknown as Record<string, unknown>;
+  const lambda = mutableFam.λ as { output_units: Array<Record<string, unknown>>; purpose_expression: string };
+  const units = issue41Case.units.map((sourceText, index) => {
+    const template = structuredClone(lambda.output_units[index]!);
+    const unitRef = `${fam.fam_id}/unit/${index + 1}`;
+    template.ψ = { source_text: sourceText, source_ref: "input://issue-41/human-test", source_language: "ja", observation_status: "provided" };
+    template["∇φ"] = [{ gradient_type: "source-segmentation", method: "human-observed-expectation", source_expression: sourceText, source_language: "ja", source_mutation: false }];
+    template.λ = { manifestation: sourceText, manifestation_language: "ja", semantic_role: "unclassified-wisdom-unit", sub_splitters: [] };
+    template.Q = {
+      observer_ref: "observer://fquery/issue-41/user",
+      registry_ref: "registry://fquery/fam-core",
+      fact_scope_ref: "q://test/playground/issue-41",
+      unit_index: index,
+      unit_ref: unitRef,
+      unit_revision_ref: `${unitRef}/revision/1`,
+      parent_fam_ref: fam.fam_id,
+      parent_revision_ref: fam.revision_id,
+      unit_order: index,
+      claim_kind: "unknown",
+      classification_status: "unknown",
+      unknowns: [],
+      unknown_is_absence: false,
+    };
+    return template;
+  });
+  mutableFam.title = issue41Source;
+  mutableFam.ψ = { source_text: issue41Source, source_ref: "input://issue-41/human-test", source_language: "ja", observation_status: "provided" };
+  mutableFam["∇φ"] = [{ gradient_type: "decomposition", method: "human-observed-expectation", source_expression: issue41Source, source_language: "ja", source_mutation: false }];
+  lambda.output_units = units;
+  lambda.purpose_expression = issue41Source;
+  const q = mutableFam.Q as Record<string, unknown>;
+  q.semantic_topology_branches = issue41Case.branches.map((branch) => ({
+    branch_ref: branch.branch_ref,
+    observer_ref: branch.observer_ref,
+    relations: branch.relations.map((relation) => ({
+      from_unit_ref: (units[relation.from_unit_order]!.Q as { unit_ref: string }).unit_ref,
+      to_unit_ref: (units[relation.to_unit_order]!.Q as { unit_ref: string }).unit_ref,
+      axis: relation.axis,
+      relation_kind: relation.relation_kind,
+      evidence_refs: relation.evidence_refs,
+    })),
+  }));
+  return fam;
+}
 
 describe("Playground semantic topology projection", () => {
   it("選択branchのmL鎖だけをroot Fold内へ投影し別branchを保持する", async () => {
@@ -85,5 +150,56 @@ describe("Playground semantic topology projection", () => {
       expect.objectContaining({ fromPortId: `${nestedChild.nodeId}:fam`, toPortId: `${nestedBoundary.nodeId}:return`, relationKind: "parent-child" }),
     ]));
     expect(session.state.connections.filter((connection) => connection.toPortId === `${nestedBoundary.nodeId}:psi` && connection.relationKind === "causal")).toHaveLength(2);
+  });
+
+  it("Issue #41実文の複数解釈を排他せずmL鎖またはnested Foldとして投影する", async () => {
+    const factFam = createIssue41Candidate();
+    const factUnits = (factFam.λ as { output_units: Array<{ Q: { unit_ref: string } }> }).output_units;
+    expect((factFam.ψ as { source_text: string }).source_text).toBe(issue41Source);
+    expect(factUnits.map((unit) => unit.Q.unit_ref)).toHaveLength(4);
+
+    const factSession = createPlaygroundSession().session;
+    const factIds = await buildCoreGraph(factSession);
+    const factProjected = await projectDecompositionGraph(factSession, factIds, factFam, baseAccessMap);
+    const factRoot = factSession.state.nodes.find((node) => node.nodeId === factProjected.famvim)!;
+    expect(factRoot.foldBoundary).toMatchObject({
+      childFoldRefs: factUnits.map((unit) => unit.Q.unit_ref),
+      boundaryMetrics: { direct_child_count: 4, mL: { max: 3, median: 3, min: 3 } },
+    });
+    expect(factRoot.value).toMatchObject({
+      semanticTopology: {
+        status: "selected",
+        selectedBranch: { branchRef: "branch://fquery/decomposition/primary" },
+        branches: [
+          { branchRef: "branch://fquery/decomposition/primary" },
+          { branchRef: "branch://fquery/issue-41/astral-reading" },
+        ],
+      },
+    });
+    expect(factSession.state.connections.filter((connection) => connection.relationKind === "causal")).toHaveLength(3);
+
+    const astralSession = createPlaygroundSession().session;
+    const astralIds = await buildCoreGraph(astralSession);
+    const astralAccessMap: AccessMapProfile = {
+      ...baseAccessMap,
+      semanticTopologyContract: {
+        ...baseAccessMap.semanticTopologyContract!,
+        selectedBranchRef: "branch://fquery/issue-41/astral-reading",
+        selectionScopeRef: "scope://fquery/issue-41/human-observer/presentation-only",
+      },
+    };
+    const astralProjected = await projectDecompositionGraph(astralSession, astralIds, createIssue41Candidate(), astralAccessMap);
+    const astralRoot = astralSession.state.nodes.find((node) => node.nodeId === astralProjected.famvim)!;
+    const astralByFold = new Map(astralSession.state.nodes.flatMap((node) => node.foldRef ? [[node.foldRef, node]] : []));
+    const mergedBoundary = astralByFold.get(factUnits[2]!.Q.unit_ref)!;
+    const nestedMemory = astralByFold.get(factUnits[3]!.Q.unit_ref)!;
+    expect(astralRoot.foldBoundary).toMatchObject({
+      childFoldRefs: [factUnits[0]!.Q.unit_ref, factUnits[1]!.Q.unit_ref, factUnits[2]!.Q.unit_ref],
+      boundaryMetrics: { direct_child_count: 3, mL: { max: 3, median: 3, min: 3 } },
+    });
+    expect(mergedBoundary.foldBoundary).toMatchObject({ childFoldRefs: [factUnits[3]!.Q.unit_ref], boundaryMetrics: { G: { max: 1 } } });
+    expect(nestedMemory.parentNodeId).toBe(mergedBoundary.nodeId);
+    expect(mergedBoundary.ports.map((port) => port.label)).toEqual(["外Ψ", "内Ψ", "内λ", "外λ"]);
+    expect(astralSession.state.connections.some((connection) => connection.fromPortId === `${astralRoot.nodeId}:children` && connection.toPortId === `${nestedMemory.nodeId}:psi`)).toBe(false);
   });
 });
