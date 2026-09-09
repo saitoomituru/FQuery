@@ -77,6 +77,37 @@ Sが不成立なら`FOLD-SOCKET-MISSING`、必須L routeが切れた場合は`FO
 
 完全検証が無意味、射程外、またはRed Hat化を招くため実行してはならない場合、`verification-prohibited`は正規の停止境界である。「検証できないので霊的に信用して進める」は、明示されたspiritual domainの`declared-belief`として有効であり、World-global factやtool verification passではない。
 
+## semantic topologyとexecution topology
+
+Foldの包含・親子・依存を表すsemantic topologyと、resourceへ仕事を配るexecution topologyを
+別projectionとして保持する。
+
+```text
+semantic topology != execution topology
+
+sibling Fold MAY execute in parallel on independent resources
+without rewriting semantic parentage
+```
+
+同一parent配下の独立sibling Foldは別model、human、API、rule engineへ並列dispatchできる。ただし
+実行fan-outを理由に、canonical FAM上のchildをroot直下へ移動してはならない。parent-child、shared ref、
+OAE gateはexecution projectionのdependency／join／validation barrierへ写す。
+
+```text
+sibling Fold  -> parallelizable candidate
+parent-child  -> execution dependency
+shared ref    -> join dependency
+OAE required  -> validation barrier
+```
+
+resource選択とscheduler policyはFAM Coreへ固定しない。revision固定ref FAM、Execution Adapter、
+Infinite Core等がactive ruleとresource availabilityに基づいて決める。並列結果はstable Fold ref、
+input revision、output revision、dispatch receiptにより元のsemantic topologyへ戻す。dispatch失敗を
+semantic parentageの変更で隠さない。
+
+G/D/L/mL/SはFold構造と接続契約を記述する座標であり、CPU数や同時実行数ではない。必要な
+parallelism、queue、resource affinity等は別execution projectionに置く。
+
 ## #35での実装境界
 
 #35では「なんで？-DeFold-」の子graphをboundaryへネストし、busy状態、chattering防止、generation直列化、旧応答遮断、FoldLog alphaへの`boundary_metrics`記録までを扱う。`まとめる-Fold-`は意味構造を保持したcanvas縮約として扱う。Playground上の境界表示はHuman Testに必要な最小debug表示であり、Gの視覚的な深度表現やD/L/mLの本表示設計は後続Issueとする。

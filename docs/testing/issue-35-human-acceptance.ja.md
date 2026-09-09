@@ -2,7 +2,7 @@
 
 状態: `AUTOMATED-PASS / SAFARI-HUMAN-FAIL / CHROME-HUMAN-FAIL`
 
-対象revision: `6e68470` 以降（実施時のHEADを記録すること）
+対象revision: `17d96ae` 以降（実施時のHEADを記録すること）
 
 ## 2026-09-08 Human Test観測
 
@@ -67,6 +67,10 @@
 12. 左paneに不要なtab scrollbarが再発せず、tab操作とpane本文scrollが分離していることを確認する。
 13. Geminiで3unitを分解し、provider候補に`unknown_is_absence`または`kind`の逸脱があっても1回のprovider応答から3unitとλが表示され、Recordsの`plugin-call-end.normalization.repairedPaths`で補正箇所を確認できることを確認する。
 14. Xのtimeline、小説、Web記事等から権利・個人情報の扱える範囲で無作為に選んだ実文と、日本語・英語・codeが混在する実文を投入する。機械的な言語分割や全unitのflat fan-outに逃げず、人間から見てcontext、包含、順序、Fold boundaryが妥当かを観測する。本文の恒久複製を既定にせず、source URLまたは投入ref、取得時刻、対象範囲、subject revision、observer ref/domain、適用したOAE rule ref、verdict、evidence refを記録する。別observerの相反するverdictは上書きせず、別OAEとして併記する。
+15. 公式game／映画／作品情報や制作者interviewでは、現実のpublisher／studio、公開行為、製品、作品World、game build、作中Event、制作者の制作経験、登場人物の経験、受け手の心象を別refとして観測する。同じ公式sourceや同じ「苦労」等の語彙だけを理由に同一Worldへmergeしていないことを確認する。
+
+Codexが公開sourceから決定論的に抽出した最初の候補と、そのHuman未評価境界は
+[`observer-source-candidate-20260909.ja.md`](observer-source-candidate-20260909.ja.md)に記録する。
 
 ## 完了に含めない境界
 
