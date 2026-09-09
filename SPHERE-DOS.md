@@ -9,8 +9,26 @@
 | SphereOS Atlantis | `4de928dec5196d458ace96432b2f9aac9c7cfabc` | `SPHERE-DOS.ja.md` |
 | Proton.md Core | 同上 | `docs/architecture/proton-md-executable-context-container.ja.md` |
 | FAM Family | 同上 | `proton/modules/FAMFamily.proton.md` |
-| ZeroRoomLab-manifest | `0949625b7472ff815bf1fba4f43c753e85f22eee` | `AGENTS.md` |
+| ZeroRoomLab-manifest | `f27903abd3e2c69732dfcbec91d948b1d3801808` | `docs/theory/fam-infoton-reference-boundary.ja.md` |
+| ZeroRoomLab-manifest legacy context | `0949625b7472ff815bf1fba4f43c753e85f22eee` | `AGENTS.md` / `docs/theory/sphere-context-dimension-os.ja.md` |
 | IBD Query FAM draft | `25861b8970ce932bc99b272a0a813822e4df5cab` | `schemas/draft/query-fam.schema.json` |
+
+## 現行FAM参照境界
+
+FQueryでFold / refFAM / FAMJSON / FAMLog / OAEの意味境界を解釈する場合、ZeroRoomLab-manifest `f27903a` の `fam-infoton-reference-boundary.ja.md` を優先参照する。
+
+要点:
+
+```text
+FAMJSON = 再参照可能な独立意味identity / Infoton
+refFAM  = AQC SchemerをFAM統合した形而上学的method / wisdom
+FAMLog  = 時間方向の観測・操作trace
+Fold    = independent FAM reference boundary
+```
+
+複数参照されたsubtreeを同一FAM JSON内のshared nodeへせず、独立FAM extraction candidateとして扱う。factを含むものをrefFAMへ正典化しない。
+
+FQuery側machine contractは[`docs/specification/fam-reference-boundary.ja.md`](docs/specification/fam-reference-boundary.ja.md)を参照する。
 
 ## 境界
 
