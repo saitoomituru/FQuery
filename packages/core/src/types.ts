@@ -66,6 +66,9 @@ export interface LastOrder {
 export interface QueryResult extends StatusAxes {
   readonly queryRef: string;
   readonly value?: unknown;
+  /** baseは読めるがservice profile未適合の場合に、手直し用candidateを失わない。 */
+  readonly candidate?: unknown;
+  readonly profileValidation?: CapabilityProfileValidation;
   readonly reason?: string;
   readonly evidenceRefs: readonly string[];
   readonly variationStatus?: "valid-variation";
@@ -130,7 +133,10 @@ export interface CapabilityResult {
   readonly value?: unknown;
   readonly transportStatus: "succeeded" | "failed" | "unknown";
   /** provider応答をcanonical出力として採用できたか。transport状態と混同しない。 */
-  readonly outputStatus?: "accepted" | "invalid";
+  readonly outputStatus?: "accepted" | "profile-nonconformant" | "invalid";
+  /** canonical valueとして採用できない場合のlosslessな手直し対象。 */
+  readonly candidate?: unknown;
+  readonly profileValidation?: CapabilityProfileValidation;
   readonly evidenceRefs?: readonly string[];
   readonly reason?: string;
   /** 実際に適用した段階だけを記録する。意図されたrolesの宣言とは分離する。 */
@@ -147,6 +153,17 @@ export interface CapabilityResult {
     readonly credentialName?: string;
     readonly requestId?: string;
   };
+}
+
+export interface CapabilityProfileValidation {
+  readonly baseStructureStatus: "valid" | "invalid";
+  readonly profileConformance: "not-evaluated" | "satisfied" | "not-satisfied" | "not-evaluable";
+  readonly profileRef?: string;
+  readonly issues: readonly {
+    readonly path: string;
+    readonly code: string;
+    readonly message?: string;
+  }[];
 }
 
 export interface PluginResolver {

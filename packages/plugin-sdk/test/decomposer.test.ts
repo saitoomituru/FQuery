@@ -45,4 +45,16 @@ describe("Decomposer SPI", () => {
     expect(outcome.validationIssues.length).toBeGreaterThan(0);
     expect(outcome.receipt).toMatchObject({ provider: "fixture", model: "invalid", validationStatus: "rejected" });
   });
+
+  it("baseは読めるprofile不適合candidateを手直し用に保持する", () => {
+    const candidate = { ψ: "入力", "∇φ": [], λ: {}, Q: null, extra: { retained: true } };
+    const outcome = validateDecomposerCandidate(request, candidate, {
+      implementationRef: "decomposer://test/provider",
+      implementationRevision: "1",
+    });
+    expect(outcome.status).toBe("profile-nonconformant");
+    if (outcome.status !== "profile-nonconformant") throw new Error("profile-nonconformant expected");
+    expect(outcome.candidate).toEqual(candidate);
+    expect(outcome.receipt).toMatchObject({ baseStructureStatus: "valid", profileConformance: "not-satisfied", validationStatus: "profile-nonconformant" });
+  });
 });

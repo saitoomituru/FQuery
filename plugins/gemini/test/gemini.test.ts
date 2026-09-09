@@ -50,6 +50,20 @@ describe("GeminiFamPlugin", () => {
     expect(generate).toHaveBeenCalledTimes(2);
     expect(generate.mock.calls[1]?.[0].prompt).toContain("Validator findings");
   });
+  it("base成立のprofile欠落は再生成せずcandidateとして返す", async () => {
+    const candidate = { ψ: { source_text: "言いさしの自然言語" }, "∇φ": [], λ: {}, Q: null, provider_extra: { retained: true } };
+    const generate = vi.fn(async () => ({ text: JSON.stringify(candidate) }));
+    const plugin = new GeminiFamPlugin({ model: "gemini-fixture", credentialName: "gemini-local", credentialSources: [explicitSource([{ name: "gemini-local", key: "not-a-real-key" }])], generate });
+    const result = await evaluateQ(Q({ kind: "literal", value: "言いさしの自然言語" }, { queryId: "q://test/profile-gap", operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: "network" } }), { pluginResolver: plugin });
+    expect(generate).toHaveBeenCalledOnce();
+    expect(result).toMatchObject({
+      transportStatus: "succeeded",
+      controlStatus: "last-order",
+      candidate: { provider_extra: { retained: true } },
+      profileValidation: { baseStructureStatus: "valid", profileConformance: "not-satisfied" },
+      lastOrder: { code: "FQUERY-PLUGIN-PROFILE-NONCONFORMANT" },
+    });
+  });
   it("profile所有のunknown非不存在宣言はproviderへ再送せず局所補正する", async () => {
     const candidate = structuredClone(createLiteralDecompositionFam("雨。傘。未知。", "q://test/invariant"));
     candidate.kind = "provider-candidate";

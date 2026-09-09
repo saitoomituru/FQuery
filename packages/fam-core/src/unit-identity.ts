@@ -24,6 +24,9 @@ export interface DecompositionUnitProjection {
 /** providerが返した分解FAMへFQuery profileのstable unit identityを補う。既存identityとsource objectは変更しない。 */
 export function stampDecompositionUnitIdentity(value: FamJsonRecord): FamJsonRecord {
   if (value.kind !== "decomposition") return value;
+  // stable identityの材料が無いcandidateに`undefined/unit/*`を捏造しない。
+  // 欠落はdecomposition profile不適合としてそのまま返す。
+  if (typeof value.fam_id !== "string" || value.fam_id.length === 0 || typeof value.revision_id !== "string" || value.revision_id.length === 0) return value;
   const lambda = asObject(value.λ);
   const units = Array.isArray(lambda?.output_units) ? lambda.output_units : undefined;
   if (!units) return value;

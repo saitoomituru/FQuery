@@ -173,7 +173,7 @@ async function invokeCapability(query: QueryNode, capability: string, value: unk
     if (timer !== undefined) clearTimeout(timer);
   }
   if (!result) return pluginNotFound(query, context, capability);
-  emit(context, { eventType: "plugin-call-end", queryRef: query.queryId, status: result.transportStatus, detail: { capability, pluginId: result.pluginId, ...(result.outputStatus ? { outputStatus: result.outputStatus } : {}), ...(result.reason ? { reason: result.reason } : {}), ...(result.profileReceipts ? { profileReceipts: result.profileReceipts } : {}), ...(result.normalization ? { normalization: result.normalization } : {}), ...(result.execution ? { execution: result.execution } : {}) } });
+  emit(context, { eventType: "plugin-call-end", queryRef: query.queryId, status: result.transportStatus, detail: { capability, pluginId: result.pluginId, ...(result.outputStatus ? { outputStatus: result.outputStatus } : {}), ...(result.reason ? { reason: result.reason } : {}), ...(result.profileValidation ? { profileValidation: result.profileValidation } : {}), ...(result.profileReceipts ? { profileReceipts: result.profileReceipts } : {}), ...(result.normalization ? { normalization: result.normalization } : {}), ...(result.execution ? { execution: result.execution } : {}) } });
   if (result.transportStatus === "failed") {
     const rejected = result.pluginStatus === "rejected";
     return {
@@ -213,6 +213,29 @@ async function invokeCapability(query: QueryNode, capability: string, value: unk
         reason,
         requestedNext: "inspect-provider-output-or-select-another-route",
         resumeWhen: "valid-provider-output-available",
+      },
+    } satisfies QueryResult;
+  }
+  if (result.outputStatus === "profile-nonconformant") {
+    const reason = result.reason ?? "plugin-output-profile-nonconformant";
+    return {
+      ...initialAxes(context.outputConnected),
+      resolutionStatus: "resolved" as const,
+      pluginStatus: "resolved" as const,
+      transportStatus: "succeeded" as const,
+      semanticStatus: "not-evaluated" as const,
+      lambdaStatus: "not-evaluated" as const,
+      controlStatus: "last-order" as const,
+      queryRef: query.queryId,
+      ...(result.candidate !== undefined ? { candidate: result.candidate } : {}),
+      ...(result.profileValidation ? { profileValidation: result.profileValidation } : {}),
+      reason,
+      evidenceRefs: result.evidenceRefs ?? [],
+      lastOrder: {
+        code: "FQUERY-PLUGIN-PROFILE-NONCONFORMANT",
+        reason,
+        requestedNext: "inspect-and-edit-candidate-or-select-another-route",
+        resumeWhen: "profile-conformant-candidate-available",
       },
     } satisfies QueryResult;
   }

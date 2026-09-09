@@ -1,6 +1,7 @@
 import {
   createLiteralDecompositionFam,
   stampDecompositionUnitIdentity,
+  validateFamJson,
   validateFamDecomposition,
   type FamJsonRecord,
   type FamValidationIssue,
@@ -33,11 +34,14 @@ export interface DecompositionReceipt {
   readonly implementationRevision: string;
   readonly provider?: string;
   readonly model?: string;
-  readonly validationStatus: "accepted" | "rejected" | "not-produced";
+  readonly validationStatus: "accepted" | "profile-nonconformant" | "rejected" | "not-produced";
+  readonly baseStructureStatus: "valid" | "invalid" | "not-evaluated";
+  readonly profileConformance: "satisfied" | "not-satisfied" | "not-evaluable" | "not-evaluated";
 }
 
 export type DecompositionOutcome =
   | { readonly status: "resolved"; readonly fam: FamJsonRecord; readonly receipt: DecompositionReceipt }
+  | { readonly status: "profile-nonconformant"; readonly candidate: unknown; readonly reason: string; readonly validationIssues: readonly FamValidationIssue[]; readonly receipt: DecompositionReceipt }
   | {
       readonly status: "unresolved";
       readonly unknowns: readonly string[];
@@ -68,9 +72,20 @@ export function validateDecomposerCandidate(
   const identifiedCandidate = candidate && typeof candidate === "object" && !Array.isArray(candidate) && (candidate as { kind?: unknown }).kind === "decomposition"
     ? stampDecompositionUnitIdentity(candidate as FamJsonRecord)
     : candidate;
+  const base = validateFamJson(identifiedCandidate);
   const validation = validateFamDecomposition(identifiedCandidate);
-  const receipt = createReceipt(request, metadata, validation.valid ? "accepted" : "rejected");
+  const validationStatus = validation.valid ? "accepted" : base.valid ? "profile-nonconformant" : "rejected";
+  const receipt = createReceipt(request, metadata, validationStatus, base.baseStructureStatus, validation.profileConformance);
   if (!validation.valid) {
+    if (base.valid) {
+      return Object.freeze({
+        status: "profile-nonconformant",
+        candidate: identifiedCandidate,
+        reason: "decomposition-profile-nonconformant",
+        validationIssues: Object.freeze([...validation.issues]),
+        receipt,
+      });
+    }
     return Object.freeze({
       status: "rejected",
       reason: "fam-validation-failed",
@@ -117,6 +132,8 @@ function createReceipt(
   request: DecompositionRequest,
   metadata: DecomposerCandidateMetadata,
   validationStatus: DecompositionReceipt["validationStatus"],
+  baseStructureStatus: DecompositionReceipt["baseStructureStatus"] = validationStatus === "not-produced" ? "not-evaluated" : validationStatus === "rejected" ? "invalid" : "valid",
+  profileConformance: DecompositionReceipt["profileConformance"] = validationStatus === "accepted" ? "satisfied" : validationStatus === "profile-nonconformant" ? "not-satisfied" : validationStatus === "rejected" ? "not-evaluable" : "not-evaluated",
 ): DecompositionReceipt {
   return Object.freeze({
     schemaVersion: "fquery.decomposition-receipt/0.1.0-draft",
@@ -128,5 +145,7 @@ function createReceipt(
     ...(metadata.provider ? { provider: metadata.provider } : {}),
     ...(metadata.model ? { model: metadata.model } : {}),
     validationStatus,
+    baseStructureStatus,
+    profileConformance,
   });
 }

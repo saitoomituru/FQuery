@@ -47,6 +47,21 @@ describe("OllamaFamPlugin", () => {
     expect(generate).toHaveBeenCalledTimes(2);
   });
 
+  it("base成立のprofile欠落は再生成せずcandidateとして返す", async () => {
+    const candidate = { ψ: "mixed language / 日本語 / int main(){}", "∇φ": [], λ: {}, Q: null, provider_extra: { retained: true } };
+    const generate = vi.fn(async () => ({ text: JSON.stringify(candidate) }));
+    const plugin = new OllamaFamPlugin({ model: "qwen-fixture", generate });
+    const result = await evaluateQ(Q({ kind: "literal", value: candidate.ψ }, { queryId: "q://test/profile-gap", operations: [{ kind: "invoke", capability: "fam.decompose" }], policy: { sideEffect: "network" } }), { pluginResolver: plugin });
+    expect(generate).toHaveBeenCalledOnce();
+    expect(result).toMatchObject({
+      transportStatus: "succeeded",
+      controlStatus: "last-order",
+      candidate: { provider_extra: { retained: true } },
+      profileValidation: { baseStructureStatus: "valid", profileConformance: "not-satisfied" },
+      lastOrder: { code: "FQUERY-PLUGIN-PROFILE-NONCONFORMANT" },
+    });
+  });
+
   it("network許可なしではtransportを呼ばない", async () => {
     const generate = vi.fn();
     const plugin = new OllamaFamPlugin({ model: "qwen3:8b", generate });

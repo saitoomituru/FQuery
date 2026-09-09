@@ -9,7 +9,7 @@ import {
   type DecompositionRequest,
   type PluginManifest,
 } from "@fquery/plugin-sdk";
-import { FAM_JSON_RESPONSE_SCHEMA, normalizeDecompositionProfileInvariants, validateFamDecomposition, type FamJsonRecord } from "@fquery/fam-core";
+import { FAM_DECOMPOSITION_RESPONSE_SCHEMA, normalizeDecompositionProfileInvariants, validateFamDecomposition, validateFamJson, type FamJsonRecord, type FamValidationResult } from "@fquery/fam-core";
 
 export type GeminiFamCapability = "fam.decompose" | "fam.integrate" | "fam.compare" | "fam.project";
 const CAPABILITIES: readonly GeminiFamCapability[] = ["fam.decompose", "fam.integrate", "fam.compare", "fam.project"];
@@ -49,17 +49,31 @@ export class GeminiFamPlugin implements PluginResolver {
     if (!resolved?.credential.key) return { pluginId: "plugin://fquery/gemini", transportStatus: "failed", reason: `credential-not-found:${this.#options.credentialName}` };
     try {
       const generate = this.#options.generate ?? googleGenerate;
-      let response = await generate({ apiKey: resolved.credential.key, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_JSON_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
+      let response = await generate({ apiKey: resolved.credential.key, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_DECOMPOSITION_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
       let parsed: ParsedFam;
       try {
         parsed = parseFam(response.text);
       } catch (validationError) {
-        response = await generate({ apiKey: resolved.credential.key, model: this.#options.model, prompt: buildRepairPrompt(request, validationError), responseSchema: FAM_JSON_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
+        response = await generate({ apiKey: resolved.credential.key, model: this.#options.model, prompt: buildRepairPrompt(request, validationError), responseSchema: FAM_DECOMPOSITION_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
         try {
           parsed = parseFam(response.text);
         } catch (repairValidationError) {
           return { pluginId: geminiPluginManifest.pluginId, transportStatus: "succeeded", outputStatus: "invalid", reason: errorReason(repairValidationError, resolved.credential.key, "gemini-output-invalid"), execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name, ...(response.requestId ? { requestId: response.requestId } : {}) } };
         }
+      }
+      if (!parsed.validation.valid) {
+        return {
+          pluginId: geminiPluginManifest.pluginId,
+          transportStatus: "succeeded",
+          outputStatus: "profile-nonconformant",
+          candidate: parsed.value,
+          reason: "decomposition-profile-nonconformant",
+          profileValidation: toProfileValidation(parsed.validation),
+          evidenceRefs: [],
+          ...generationProfileReceipts(request),
+          ...(parsed.repairedPaths.length > 0 ? { normalization: { profileRef: parsed.profileRef, repairedPaths: parsed.repairedPaths } } : {}),
+          execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name, ...(response.requestId ? { requestId: response.requestId } : {}) },
+        };
       }
       return { pluginId: geminiPluginManifest.pluginId, transportStatus: "succeeded", outputStatus: "accepted", value: parsed.value, evidenceRefs: [], ...generationProfileReceipts(request), ...(parsed.repairedPaths.length > 0 ? { normalization: { profileRef: parsed.profileRef, repairedPaths: parsed.repairedPaths } } : {}), execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name, ...(response.requestId ? { requestId: response.requestId } : {}) } };
     } catch (error) {
@@ -130,12 +144,22 @@ function generationProfileReceipts(request: CapabilityInvocation): Pick<Capabili
   return receipts.length > 0 ? { profileReceipts: Object.freeze(receipts) } : {};
 }
 
-interface ParsedFam { readonly value: FamJsonRecord; readonly repairedPaths: readonly string[]; readonly profileRef: string }
+interface ParsedFam { readonly value: FamJsonRecord; readonly repairedPaths: readonly string[]; readonly profileRef: string; readonly validation: FamValidationResult }
 
 function parseFam(text: string): ParsedFam {
   const candidate = JSON.parse(text) as FamJsonRecord;
+  const base = validateFamJson(candidate);
+  if (!base.valid) throw new TypeError(`invalid-fam-base:${base.issues.map((entry) => `${entry.path}:${entry.code}`).join(",")}`);
   const normalized = normalizeDecompositionProfileInvariants(candidate);
   const validation = validateFamDecomposition(normalized.value);
-  if (!validation.valid) throw new TypeError(`invalid-fam-json:${validation.issues.map((issue) => `${issue.path}:${issue.code}`).join(",")}`);
-  return normalized;
+  return Object.freeze({ ...normalized, validation });
+}
+
+function toProfileValidation(validation: FamValidationResult) {
+  return Object.freeze({
+    baseStructureStatus: validation.baseStructureStatus,
+    profileConformance: validation.profileConformance,
+    ...(validation.profileRef ? { profileRef: validation.profileRef } : {}),
+    issues: Object.freeze(validation.issues.map((entry) => Object.freeze({ path: entry.path, code: entry.code, message: entry.message }))),
+  });
 }

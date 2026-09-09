@@ -61,6 +61,27 @@ describe("Q", () => {
     expect(result.lambdaStatus).toBe("unknown");
   });
 
+  it("base成立のprofile不適合candidateをtransport失敗や消失へ潰さない", async () => {
+    const candidate = { ψ: "入力", "∇φ": [], λ: {}, Q: null, extra: { retained: true } };
+    const result = await evaluateQ(Q(
+      { kind: "literal", value: "入力" },
+      { queryId: "q://test/profile-gap", operations: [{ kind: "invoke", capability: "fam.decompose" }] },
+    ), { pluginResolver: { invoke: async () => ({
+      pluginId: "plugin://test/decomposer",
+      transportStatus: "succeeded",
+      outputStatus: "profile-nonconformant",
+      candidate,
+      profileValidation: { baseStructureStatus: "valid", profileConformance: "not-satisfied", profileRef: "profile://test/decomposition", issues: [{ path: "$.kind", code: "string-required" }] },
+    }) } });
+    expect(result).toMatchObject({
+      transportStatus: "succeeded",
+      controlStatus: "last-order",
+      candidate,
+      lastOrder: { code: "FQUERY-PLUGIN-PROFILE-NONCONFORMANT" },
+    });
+    expect(toWireQueryResult(result)).toMatchObject({ candidate, profile_validation: { baseStructureStatus: "valid", profileConformance: "not-satisfied" } });
+  });
+
   it("明示verifierとevidenceだけでlambda satisfiedになる", async () => {
     const query = Q(
       { kind: "literal", value: "hello" },
