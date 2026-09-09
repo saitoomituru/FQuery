@@ -209,7 +209,7 @@ describe("FQuery Playground FAMVIM", () => {
     expect(boundary.getAttribute("data-node-id")).toBe(parentNodeId);
     expect(container.querySelector(`.fquery-flow-node[data-node-id="${parentNodeId}"]`)).toBeNull();
     expect(boundary.getAttribute("data-dispatch-mode")).toBe("single-processing-unit");
-    expect(boundary.textContent).toContain("G=2/2/2 · D=1 · L=0/0/0/not-declared · mL=1/1/1 · child=2 · S=ready");
+    expect(boundary.textContent).toContain("G=2/2/2 · D=1 · L=0/0/0/not-declared · mL=0/0/0 · child=2 · S=ready");
     expect(boundary.textContent).toContain("まとめる-Fold-");
     expect([...boundary.querySelectorAll("[data-gate]")].map((gate) => gate.getAttribute("data-gate"))).toEqual(["outer-psi", "inner-psi", "inner-lambda", "outer-lambda"]);
     expect([...boundary.querySelectorAll("[data-gate]")].every((gate) => gate.getAttribute("data-connection-status") === "connected")).toBe(true);

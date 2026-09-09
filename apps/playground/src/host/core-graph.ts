@@ -417,7 +417,12 @@ export interface RecursiveFoldProjection {
 
 /** Fold境界配下を子から除去し、同一IDで置換した元unitを復元する。 */
 export async function removeRecursiveFoldProjection(session: PresentationSession, projection: RecursiveFoldProjection): Promise<void> {
-  for (const nodeId of projection.childNodeIds) {
+  const deepestFirst = [...projection.childNodeIds].sort((left, right) => {
+    const leftDepth = session.state.nodes.find((node) => node.nodeId === left)?.depth ?? 0;
+    const rightDepth = session.state.nodes.find((node) => node.nodeId === right)?.depth ?? 0;
+    return rightDepth - leftDepth;
+  });
+  for (const nodeId of deepestFirst) {
     if (!session.state.nodes.some((node) => node.nodeId === nodeId)) continue;
     graphSequence += 1;
     await session.dispatch({ type: "node.remove.requested", requestId: `playground:remove-recursive-fold:${graphSequence}`, nodeId });
@@ -479,9 +484,14 @@ export async function projectRecursiveDecompositionGraph(
   const boundaryRef = `fold-boundary://${parent.foldRef}/generation/${generation}`;
   const boundaryDepth = parent.depth ?? 0;
   const gravityDepth = foldBoundaryAncestorCount(session, parentNodeId) + 1;
-  const boundaryWidth = 760;
   const units = projectDecompositionUnits(fam, accessMap);
-  const boundaryHeight = Math.max(460, units.length * 340 + 120);
+  const topology = projectSemanticTopology(fam, accessMap);
+  const relations = topology.selectedBranch?.relations ?? [];
+  const containment = semanticContainment(units.map((unit) => unit.unitRef), relations);
+  const rootRelations = boundaryRelations(undefined, containment, relations);
+  const rootLayout = boundaryLayout(containment.topLevelRefs, rootRelations, containment);
+  const boundaryWidth = rootLayout.width;
+  const boundaryHeight = rootLayout.height;
   const boundaryPresentation = { targetRef: boundaryNodeId, mode: "native" as const, rendererId: "react-flow", presentation: { schemaVersion: "fquery.presentation-fam/0.1.0-draft" as const, presentationId: "presentation://fquery/core/fold-boundary", targetRef: boundaryNodeId, surfaces: ["node-editor" as const, "inspector" as const], visualRole: "fold-boundary", interfaceRoles: ["atomic-resolution", "single-processing-unit"], visibility: "visible" as const, rendererHint: "fquery-fold-boundary", category: "Core", aliases: ["Fold", "D/G/L/S"], layoutSlotRef: layoutSlotRef(boundaryNodeId) } };
   const boundaryNode: NodeViewModel = {
     nodeId: boundaryNodeId,
@@ -493,8 +503,8 @@ export async function projectRecursiveDecompositionGraph(
       { portId: corePortId(boundaryNodeId, "return"), label: "内λ", direction: "input", connectionStatus: "unconnected", cardinality: "many" },
       { portId: corePortId(boundaryNodeId, "fam"), label: "外λ", direction: "output", connectionStatus: "unconnected", cardinality: "one" },
     ],
-    value: { sourceUnit: parent.value, childFamRef: fam.fam_id, childRevisionRef: fam.revision_id },
-    evidenceRefs: [`${accessMap.famId}@${accessMap.revisionId}`],
+    value: { sourceUnit: parent.value, childFamRef: fam.fam_id, childRevisionRef: fam.revision_id, semanticTopology: topology },
+    evidenceRefs: [`${accessMap.famId}@${accessMap.revisionId}`, ...(topology.selectedBranch ? [topology.selectedBranch.branchRef] : [])],
     canExecute: false,
     canCancel: true,
     foldRef: parent.foldRef,
@@ -503,50 +513,97 @@ export async function projectRecursiveDecompositionGraph(
     depth: boundaryDepth,
     revisionRef: fam.revision_id,
     projectionFreshness: "unknown",
-    foldBoundary: { boundaryRef, rootFoldRef: parent.foldRef, childFoldRefs: [], resolutionMode: "atomic-resolution", dispatchMode: "single-processing-unit", closesAxes: ["G", "D", "L", "mL"], generation, status: "running", boundaryMetrics: deriveFoldBoundaryMetrics({ directChildNodeRefs: [], contextDimensionRefs: units.flatMap((unit) => unit.classification.dimensionRef ?? []), nestingPathDepths: [gravityDepth], technologyNodeRefs: [], technologyChainEdges: [], requiredTechnologyRoutes: [], metaContextNodeRefs: [], metaContextChainEdges: [], nodePluginAvailable: true, exitAdapterRef: "adapter://fquery/playground/lambda-fixture-projection" }), width: boundaryWidth, height: boundaryHeight },
+    foldBoundary: { boundaryRef, rootFoldRef: parent.foldRef, childFoldRefs: [], resolutionMode: "atomic-resolution", dispatchMode: "single-processing-unit", closesAxes: ["G", "D", "L", "mL"], generation, status: "running", boundaryMetrics: topologyMetrics([], units.flatMap((unit) => unit.classification.dimensionRef ?? []), relations, gravityDepth), width: boundaryWidth, height: boundaryHeight },
     presentation: boundaryPresentation,
   };
   session.applyEngineEvent({ type: "fam.node.changed", node: boundaryNode });
   session.applyEngineEvent({ type: "presentation.changed", targetRef: boundaryNodeId, projection: boundaryPresentation });
   const childNodeIds: string[] = [];
-  const childFoldRefs: string[] = [];
-  for (const unit of units) {
+  const nodeByUnitRef = new Map<string, string>();
+  const originalNodeByUnitRef = new Map<string, NodeViewModel>();
+  const orderedUnits = [...units].sort((left, right) => (containment.depthByRef.get(left.unitRef) ?? 1) - (containment.depthByRef.get(right.unitRef) ?? 1) || left.order - right.order);
+  for (const unit of orderedUnits) {
     graphSequence += 1;
     const nodeId = await addCoreNode(session, "core.gradient.famvim", graphSequence);
     if (!nodeId) continue;
     childNodeIds.push(nodeId);
-    childFoldRefs.push(unit.unitRef);
-    const node = session.state.nodes.find((candidate) => candidate.nodeId === nodeId)!;
+    nodeByUnitRef.set(unit.unitRef, nodeId);
+    originalNodeByUnitRef.set(unit.unitRef, session.state.nodes.find((candidate) => candidate.nodeId === nodeId)!);
+  }
+  for (const unit of orderedUnits) {
+    const nodeId = nodeByUnitRef.get(unit.unitRef);
+    const node = originalNodeByUnitRef.get(unit.unitRef);
+    if (!nodeId || !node) continue;
+    const semanticParentRef = containment.parentByChild.get(unit.unitRef);
+    const directChildren = containment.childrenByParent.get(unit.unitRef) ?? [];
+    const isBoundary = directChildren.length > 0;
+    const relativeDepth = containment.depthByRef.get(unit.unitRef) ?? 1;
+    const semanticParentNodeId = semanticParentRef ? nodeByUnitRef.get(semanticParentRef) : boundaryNodeId;
+    if (!semanticParentNodeId) throw new TypeError("recursive-semantic-containment-parent-node-not-found");
+    const position = semanticParentRef
+      ? nestedPosition(unit.unitRef, semanticParentRef, containment)
+      : rootLayout.positions.get(unit.unitRef) ?? { x: 60, y: 120 };
+    const subtreeRefs = containment.descendantsByRef.get(unit.unitRef) ?? Object.freeze([unit.unitRef]);
+    const subtreeRelations = relations.filter((relation) => subtreeRefs.includes(relation.fromUnitRef) && subtreeRefs.includes(relation.toUnitRef));
+    const subtreeUnits = units.filter((candidate) => subtreeRefs.includes(candidate.unitRef));
+    const size = containment.sizeByRef.get(unit.unitRef) ?? { width: 320, height: 280 };
+    const semanticBoundary = isBoundary ? semanticFoldBoundaryPresentation(nodeId) : undefined;
     session.applyEngineEvent({ type: "fam.node.changed", node: {
       ...node,
-      label: `↳ ∇φ-${unit.order + 1}`,
+      label: isBoundary ? `Fold · ↳ ∇φ-${unit.order + 1}` : `↳ ∇φ-${unit.order + 1}`,
       foldRef: unit.unitRef,
-      parentFoldRef: parent.foldRef,
-      parentNodeId: boundaryNodeId,
-      depth: boundaryDepth + 1,
+      parentFoldRef: semanticParentRef ?? parent.foldRef,
+      parentNodeId: semanticParentNodeId,
+      depth: boundaryDepth + relativeDepth,
       collapsed: false,
       revisionRef: unit.unitRevisionRef,
       projectionFreshness: "fresh",
-      value: { unit: unit.value, classification: unit.classification, sourcePointer: unit.sourcePointer, recursiveParentFamRef: fam.fam_id },
-      badges: [{ axis: "recursive", value: "child", tone: "notice" }, { axis: "classification", value: unit.classification.dimensionRef ?? "unmapped", tone: unit.classification.status === "mapped" ? "active" : "unknown" }],
-      evidenceRefs: [`${accessMap.famId}@${accessMap.revisionId}`, `parent-fold://${parent.foldRef}`],
+      value: { unit: unit.value, classification: unit.classification, sourcePointer: unit.sourcePointer, recursiveParentFamRef: fam.fam_id, semanticTopologyBranchRef: topology.selectedBranch?.branchRef ?? null },
+      badges: [{ axis: "recursive", value: "child", tone: "notice" }, { axis: "classification", value: unit.classification.dimensionRef ?? "unmapped", tone: unit.classification.status === "mapped" ? "active" : "unknown" }, { axis: "topology", value: topology.status, tone: topology.status === "selected" ? "active" : "unknown" }],
+      evidenceRefs: [`${accessMap.famId}@${accessMap.revisionId}`, `parent-fold://${parent.foldRef}`, ...(topology.selectedBranch ? [topology.selectedBranch.branchRef] : [])],
+      ...(semanticBoundary ? {
+        ports: [
+          { portId: corePortId(nodeId, "psi"), label: "外Ψ", direction: "input", connectionStatus: "unconnected", cardinality: "many" },
+          { portId: corePortId(nodeId, "children"), label: "内Ψ", direction: "output", connectionStatus: "unconnected", cardinality: "many" },
+          { portId: corePortId(nodeId, "return"), label: "内λ", direction: "input", connectionStatus: "unconnected", cardinality: "many" },
+          { portId: corePortId(nodeId, "fam"), label: "外λ", direction: "output", connectionStatus: "unconnected", cardinality: "one" },
+        ],
+        foldBoundary: {
+          boundaryRef: `${boundaryRef}/semantic/${encodeURIComponent(unit.unitRef)}`,
+          rootFoldRef: unit.unitRef,
+          childFoldRefs: directChildren,
+          resolutionMode: "atomic-resolution",
+          dispatchMode: "single-processing-unit",
+          closesAxes: ["G", "D", "L", "mL"],
+          generation,
+          status: "complete",
+          boundaryMetrics: topologyMetrics(directChildren, subtreeUnits.flatMap((candidate) => candidate.classification.dimensionRef ?? []), subtreeRelations, gravityDepth + relativeDepth),
+          width: size.width,
+          height: size.height,
+        },
+        presentation: semanticBoundary,
+      } : {}),
     } });
+    if (semanticBoundary) session.applyEngineEvent({ type: "presentation.changed", targetRef: nodeId, projection: semanticBoundary });
     await session.dispatch({
       type: "node.move.requested",
       requestId: `playground:layout-recursive:${graphSequence}`,
       nodeId,
       layoutSlotRef: layoutSlotRef(nodeId),
-      x: 60,
-      y: 100 + unit.order * 320,
+      x: position.x,
+      y: position.y,
     });
-    await session.dispatch({ type: "connection.add.requested", requestId: `playground:connect-boundary-child:${graphSequence}`, fromPortId: corePortId(boundaryNodeId, "children"), toPortId: corePortId(nodeId, "psi") });
-    await session.dispatch({ type: "connection.add.requested", requestId: `playground:connect-child-return:${graphSequence}`, fromPortId: corePortId(nodeId, "fam"), toPortId: corePortId(boundaryNodeId, "return") });
+  }
+  await connectBoundaryGraph(session, boundaryNodeId, undefined, containment, relations, nodeByUnitRef, topology.selectedBranch?.branchRef);
+  for (const containerRef of containment.childrenByParent.keys()) {
+    const containerNodeId = nodeByUnitRef.get(containerRef);
+    if (containerNodeId) await connectBoundaryGraph(session, containerNodeId, containerRef, containment, relations, nodeByUnitRef, topology.selectedBranch?.branchRef);
   }
   session.applyEngineEvent({ type: "fam.node.changed", node: {
     ...boundaryNode,
     badges: [{ axis: "fold", value: "complete", tone: "success" }],
     projectionFreshness: "fresh",
-    foldBoundary: { ...boundaryNode.foldBoundary!, childFoldRefs: Object.freeze(childFoldRefs), status: "complete", boundaryMetrics: deriveFoldBoundaryMetrics({ directChildNodeRefs: childFoldRefs, contextDimensionRefs: units.flatMap((unit) => unit.classification.dimensionRef ?? []), nestingPathDepths: [gravityDepth], technologyNodeRefs: [], technologyChainEdges: [], requiredTechnologyRoutes: [], metaContextNodeRefs: childFoldRefs, metaContextChainEdges: [], nodePluginAvailable: true, exitAdapterRef: "adapter://fquery/playground/lambda-fixture-projection" }) },
+    foldBoundary: { ...boundaryNode.foldBoundary!, childFoldRefs: containment.topLevelRefs, status: "complete", boundaryMetrics: topologyMetrics(containment.topLevelRefs, units.flatMap((unit) => unit.classification.dimensionRef ?? []), relations, gravityDepth) },
   } });
   return Object.freeze({ boundaryNodeId, childNodeIds: Object.freeze(childNodeIds), replacedNode: parent });
 }

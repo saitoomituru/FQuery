@@ -2,7 +2,7 @@ import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import { createLiteralDecompositionFam, readAccessMapProfile, readFamJson, type AccessMapProfile, type FamJsonRecord } from "@fquery/fam-core";
-import { buildCoreGraph, projectDecompositionGraph } from "../src/host/core-graph.js";
+import { buildCoreGraph, projectDecompositionGraph, projectRecursiveDecompositionGraph } from "../src/host/core-graph.js";
 import { createPlaygroundSession } from "../src/host/session.js";
 
 const baseAccessMap = readAccessMapProfile(readFamJson(readFileSync(resolve(process.cwd(), "../../fixtures/test-cases/basic-commons-access-mapper/access-map.fam.json"), "utf8")).value);
@@ -201,5 +201,43 @@ describe("Playground semantic topology projection", () => {
     expect(nestedMemory.parentNodeId).toBe(mergedBoundary.nodeId);
     expect(mergedBoundary.ports.map((port) => port.label)).toEqual(["外Ψ", "内Ψ", "内λ", "外λ"]);
     expect(astralSession.state.connections.some((connection) => connection.fromPortId === `${astralRoot.nodeId}:children` && connection.toPortId === `${nestedMemory.nodeId}:psi`)).toBe(false);
+  });
+
+  it("再帰DeFoldでも選択semantic topologyを保持してFold-on-Foldへ投影する", async () => {
+    const { session } = createPlaygroundSession();
+    const ids = await buildCoreGraph(session);
+    const parentFam = createLiteralDecompositionFam("判断対象である。", "q://test/playground/recursive-topology-parent");
+    const parentProjected = await projectDecompositionGraph(session, ids, parentFam, baseAccessMap);
+    const parentNodeId = parentProjected.gradients![0]!;
+    const childFam = structuredClone(createLiteralDecompositionFam("技術観測。対象評価。本人記憶。現在判断。", "q://test/playground/recursive-topology-child"));
+    const childUnits = (childFam.λ as { output_units: Array<{ Q: { unit_ref: string } }> }).output_units;
+    (childFam.Q as Record<string, unknown>).semantic_topology_branches = [{
+      branch_ref: "branch://fquery/decomposition/primary",
+      observer_ref: "observer://human/recursive-reading",
+      relations: [
+        { from_unit_ref: childUnits[0]!.Q.unit_ref, to_unit_ref: childUnits[2]!.Q.unit_ref, axis: "mL", relation_kind: "causal", evidence_refs: ["oae-candidate://human/recursive/1"] },
+        { from_unit_ref: childUnits[1]!.Q.unit_ref, to_unit_ref: childUnits[2]!.Q.unit_ref, axis: "mL", relation_kind: "causal", evidence_refs: ["oae-candidate://human/recursive/2"] },
+        { from_unit_ref: childUnits[2]!.Q.unit_ref, to_unit_ref: childUnits[3]!.Q.unit_ref, axis: "mL", relation_kind: "parent-child", evidence_refs: ["oae-candidate://human/recursive/3"] },
+      ],
+    }];
+
+    const recursive = await projectRecursiveDecompositionGraph(session, parentNodeId, childFam, baseAccessMap);
+    const nodeByFold = new Map(session.state.nodes.flatMap((node) => node.foldRef ? [[node.foldRef, node]] : []));
+    const recursiveRoot = session.state.nodes.find((node) => node.nodeId === recursive.boundaryNodeId)!;
+    const nestedBoundary = nodeByFold.get(childUnits[2]!.Q.unit_ref)!;
+    const nestedChild = nodeByFold.get(childUnits[3]!.Q.unit_ref)!;
+
+    expect(recursive.boundaryNodeId).toBe(parentNodeId);
+    expect(recursiveRoot.foldBoundary).toMatchObject({
+      childFoldRefs: [childUnits[0]!.Q.unit_ref, childUnits[1]!.Q.unit_ref, childUnits[2]!.Q.unit_ref],
+      boundaryMetrics: { direct_child_count: 3, mL: { max: 3, median: 3, min: 3 } },
+    });
+    expect(nestedBoundary.foldBoundary).toMatchObject({ childFoldRefs: [childUnits[3]!.Q.unit_ref] });
+    expect(nestedChild.parentNodeId).toBe(nestedBoundary.nodeId);
+    expect(session.state.connections.some((connection) => connection.fromPortId === `${recursiveRoot.nodeId}:children` && connection.toPortId === `${nestedChild.nodeId}:psi`)).toBe(false);
+    expect(session.state.connections).toEqual(expect.arrayContaining([
+      expect.objectContaining({ fromPortId: `${parentProjected.famvim}:children`, toPortId: `${recursiveRoot.nodeId}:psi` }),
+      expect.objectContaining({ fromPortId: `${recursiveRoot.nodeId}:fam`, toPortId: `${parentProjected.famvim}:return` }),
+    ]));
   });
 });
