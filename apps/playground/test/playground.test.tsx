@@ -104,7 +104,7 @@ describe("FQuery Playground", () => {
     fireEvent.click(container.querySelector('[data-node-id="q://playground/node/3"] .fquery-outliner-focus')!);
   });
 
-  it("pluginなしでCore graphが立ち上がり、分解後は1 Ψ → N ∇φ → 1 λへ投影される", async () => {
+  it("pluginなしでCore graphが立ち上がり、分解後はroot FoldへN ∇φを収容する", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(json(fixtureRoutes))
       .mockResolvedValueOnce(json(decompositionResponse(createLiteralDecompositionFam("雨が降る。傘を持つ。", "q://test/playground"))));
@@ -129,6 +129,11 @@ describe("FQuery Playground", () => {
     await waitFor(() => expect(canvasNodes(container)[0]!.querySelector('[data-axis="transport"]')?.textContent).toContain("succeeded"));
     expect(canvasNodes(container)[0]!.querySelector('[data-axis="semantic"]')?.textContent).toContain("unknown");
     await waitFor(() => expect(canvasNodes(container)).toHaveLength(4));
+    const rootBoundary = container.querySelector('[data-resolution-mode="atomic-resolution"][data-node-id="q://playground/node/2"]')!;
+    expect(rootBoundary).not.toBeNull();
+    expect(rootBoundary.textContent).toContain("topology");
+    expect(rootBoundary.textContent).toContain("G=0/0/0");
+    expect([...rootBoundary.querySelectorAll("[data-gate]")]).toHaveLength(4);
     const projected = canvasNodes(container).filter((node) => node.querySelector("[data-fold-ref]"));
     expect(projected).toHaveLength(2);
     expect(projected[0]!.textContent).toContain("雨が降る。");
@@ -172,7 +177,7 @@ describe("FQuery Playground FAMVIM", () => {
     expect(fetcher).toHaveBeenCalledTimes(3);
     await act(async () => { resolveRecursive(json(decompositionResponse(childFam))); await recursiveResponse; });
     const boundary = await waitFor(() => {
-      const found = container.querySelector<HTMLElement>('[data-resolution-mode="atomic-resolution"]');
+      const found = container.querySelector<HTMLElement>(`[data-resolution-mode="atomic-resolution"][data-node-id="${parentUnit.getAttribute("data-node-id")}"]`);
       expect(found).not.toBeNull();
       return found!;
     });
@@ -197,14 +202,14 @@ describe("FQuery Playground FAMVIM", () => {
     const parentNodeId = parentUnit.getAttribute("data-node-id");
     await act(async () => { fireEvent.click(within(parentUnit).getByText("なんで？-DeFold-")); });
     await waitFor(() => expect(canvasNodes(container)).toHaveLength(5));
-    await waitFor(() => expect(container.querySelectorAll('[data-resolution-mode="atomic-resolution"]')).toHaveLength(1));
+    await waitFor(() => expect(container.querySelectorAll('[data-resolution-mode="atomic-resolution"]')).toHaveLength(2));
     const children = canvasNodes(container).filter((node) => node.querySelector('[data-fold-ref^="q://test/playground/recursive-child"]'));
     expect(children).toHaveLength(2);
-    const boundary = container.querySelector('[data-resolution-mode="atomic-resolution"]')!;
+    const boundary = container.querySelector(`[data-resolution-mode="atomic-resolution"][data-node-id="${parentNodeId}"]`)!;
     expect(boundary.getAttribute("data-node-id")).toBe(parentNodeId);
     expect(container.querySelector(`.fquery-flow-node[data-node-id="${parentNodeId}"]`)).toBeNull();
     expect(boundary.getAttribute("data-dispatch-mode")).toBe("single-processing-unit");
-    expect(boundary.textContent).toContain("G=1/1/1 · D=1 · L=0/0/0/not-declared · mL=1/1/1 · child=2 · S=ready");
+    expect(boundary.textContent).toContain("G=2/2/2 · D=1 · L=0/0/0/not-declared · mL=1/1/1 · child=2 · S=ready");
     expect(boundary.textContent).toContain("まとめる-Fold-");
     expect([...boundary.querySelectorAll("[data-gate]")].map((gate) => gate.getAttribute("data-gate"))).toEqual(["outer-psi", "inner-psi", "inner-lambda", "outer-lambda"]);
     expect([...boundary.querySelectorAll("[data-gate]")].every((gate) => gate.getAttribute("data-connection-status") === "connected")).toBe(true);
@@ -217,7 +222,7 @@ describe("FQuery Playground FAMVIM", () => {
     expect(canvasNodes(container)).toHaveLength(5);
     openLeftTab(container, "outline");
     expect(container.querySelectorAll('.fquery-outliner [data-depth="1"]')).toHaveLength(2);
-    expect(container.querySelectorAll('.fquery-outliner [data-depth="2"]')).toHaveLength(0);
+    expect(container.querySelectorAll('.fquery-outliner [data-depth="2"]')).toHaveLength(2);
     openLeftTab(container, "records");
     expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain('"operation": "recursive-decompose"');
     expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain("q://test/playground/recursive-parent/fam/unit/1");
@@ -244,11 +249,11 @@ describe("FQuery Playground FAMVIM", () => {
     });
     const childNodeId = childUnit.getAttribute("data-node-id");
     await act(async () => { fireEvent.click(within(childUnit).getByText("なんで？-DeFold-")); });
-    await waitFor(() => expect(container.querySelectorAll('[data-resolution-mode="atomic-resolution"]')).toHaveLength(2));
+    await waitFor(() => expect(container.querySelectorAll('[data-resolution-mode="atomic-resolution"]')).toHaveLength(3));
     const nested = container.querySelector(`[data-resolution-mode="atomic-resolution"][data-node-id="${childNodeId}"]`)!;
     expect(nested).not.toBeNull();
     expect(container.querySelector(`.fquery-flow-node[data-node-id="${childNodeId}"]`)).toBeNull();
-    expect(nested.textContent).toContain("G=2/2/2");
+    expect(nested.textContent).toContain("G=3/3/3");
     expect([...nested.querySelectorAll("[data-gate]")]).toHaveLength(4);
     expect(container.textContent).toContain("根拠である。");
     expect(JSON.parse(String(fetcher.mock.calls[3]?.[1]?.body))).toMatchObject({ source: "理由Aである。" });

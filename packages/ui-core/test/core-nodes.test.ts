@@ -58,9 +58,10 @@ describe("Core nodes", () => {
     await session.dispatch({ type: "node.add.requested", requestId: "a2", capability: "core.gradient.famvim" });
     await session.dispatch({ type: "node.add.requested", requestId: "a3", capability: "core.lambda.nl-output" });
     const [psi, famvim, lambda] = session.state.nodes;
-    await session.dispatch({ type: "connection.add.requested", requestId: "c1", fromPortId: corePortId(psi!.nodeId, "observation"), toPortId: corePortId(famvim!.nodeId, "psi") });
+    await session.dispatch({ type: "connection.add.requested", requestId: "c1", fromPortId: corePortId(psi!.nodeId, "observation"), toPortId: corePortId(famvim!.nodeId, "psi"), relationKind: "causal", relationStatus: "active", gateRef: "rule://test/semantic-edge" });
     const state = await session.dispatch({ type: "connection.add.requested", requestId: "c2", fromPortId: corePortId(famvim!.nodeId, "fam"), toPortId: corePortId(lambda!.nodeId, "fam") });
     expect(state.connections).toHaveLength(2);
+    expect(state.connections[0]).toMatchObject({ relationKind: "causal", relationStatus: "active", gateRef: "rule://test/semantic-edge" });
     expect(state.nodes.every((node) => state.presentations[node.nodeId]?.mode === "native")).toBe(true);
     expect(state.nodes[1]!.ports.map((port) => port.connectionStatus)).toEqual(["connected", "connected"]);
   });

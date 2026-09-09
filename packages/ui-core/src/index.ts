@@ -232,7 +232,7 @@ export type GuiEventAbi =
   | { readonly type: "node.add.requested"; readonly requestId: string; readonly capability: string; readonly presentationRef?: string }
   | { readonly type: "node.remove.requested"; readonly requestId: string; readonly nodeId: string }
   | { readonly type: "node.move.requested"; readonly requestId: string; readonly nodeId: string; readonly layoutSlotRef: string; readonly x: number; readonly y: number }
-  | { readonly type: "connection.add.requested"; readonly requestId: string; readonly fromPortId: string; readonly toPortId: string }
+  | { readonly type: "connection.add.requested"; readonly requestId: string; readonly fromPortId: string; readonly toPortId: string; readonly relationKind?: ConnectionViewModel["relationKind"]; readonly relationStatus?: ConnectionViewModel["relationStatus"]; readonly gateRef?: string }
   | { readonly type: "connection.remove.requested"; readonly requestId: string; readonly connectionId: string }
   | { readonly type: "property.change.requested"; readonly requestId: string; readonly targetRef: string; readonly property: string; readonly value: unknown }
   | { readonly type: "presentation.change.requested"; readonly requestId: string; readonly targetRef: string; readonly presentationRef: string }

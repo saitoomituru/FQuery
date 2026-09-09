@@ -69,7 +69,14 @@ export function createFixtureDecisionPort(options: FixtureDecisionPortOptions): 
             kind: "connection.add",
             requestId: request.requestId,
             status: "accepted",
-            connection: { connectionId: `connection://fixture/${request.fromPortId}->${request.toPortId}`, fromPortId: request.fromPortId, toPortId: request.toPortId },
+            connection: {
+              connectionId: `connection://fixture/${request.fromPortId}->${request.toPortId}`,
+              fromPortId: request.fromPortId,
+              toPortId: request.toPortId,
+              ...(request.relationKind ? { relationKind: request.relationKind } : {}),
+              ...(request.relationStatus ? { relationStatus: request.relationStatus } : {}),
+              ...(request.gateRef ? { gateRef: request.gateRef } : {}),
+            },
           });
         }
         case "connection.remove.requested":

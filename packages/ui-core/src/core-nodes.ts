@@ -68,7 +68,8 @@ export const CORE_NODE_CONTRACTS: readonly CoreNodeContract[] = Object.freeze([
     famRole: "∇φ",
     capability: "core.gradient.famvim",
     ports: Object.freeze([
-      Object.freeze({ portKey: "psi", label: "ψ", direction: "input", carries: "observation" }),
+      // semantic topologyでは複数前提が一つの判断unitへ合流し得る。
+      Object.freeze({ portKey: "psi", label: "ψ", direction: "input", carries: "observation", cardinality: "many" }),
       Object.freeze({ portKey: "fam", label: "FAM", direction: "output", carries: "∇φ" }),
     ] as const),
     presentation: presentation("∇φ.FAMVIM", "core.gradient.famvim", "fam-editor", ["psi", "fam"], ["FAMVIM", "RAW FAM", "editor", "∇φ"]),

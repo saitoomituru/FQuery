@@ -14,6 +14,7 @@ function FQueryFoldBoundaryNodeComponent({ id, selected }: NodeProps) {
   const innerPsi = model.ports.find((port) => port.portId.endsWith(":children") && port.direction === "output");
   const innerLambda = model.ports.find((port) => port.portId.endsWith(":return") && port.direction === "input");
   const outerLambda = model.ports.find((port) => port.portId.endsWith(":fam") && port.direction === "output");
+  const topology = model.badges.find((badge) => badge.axis === "topology");
   return (
     <section
       className="fquery-fold-boundary"
@@ -31,6 +32,7 @@ function FQueryFoldBoundaryNodeComponent({ id, selected }: NodeProps) {
       {outerLambda && <BoundaryGate portId={outerLambda.portId} label={outerLambda.label} connectionStatus={outerLambda.connectionStatus} gate="outer-lambda" type="source" position={Position.Right} top="4rem" />}
       <header><strong>{model.label}</strong><span>generation {boundary.generation} · {boundary.status}</span></header>
       <small>G={formatStats(boundary.boundaryMetrics.G)} · D={boundary.boundaryMetrics.D} · L={formatStats(boundary.boundaryMetrics.L)}/{boundary.boundaryMetrics.L.continuity} · mL={formatStats(boundary.boundaryMetrics.mL)} · child={boundary.boundaryMetrics.direct_child_count} · S={boundary.boundaryMetrics.S.socket_present ? "ready" : boundary.boundaryMetrics.S.on_missing}</small>
+      {topology && <small className="fquery-badge" data-axis="topology" data-tone={topology.tone}>topology {topology.value}</small>}
       <small>atomic-resolution · single-processing-unit</small>
       <button
         type="button"
