@@ -92,9 +92,13 @@ export function projectPsiNode(session: PresentationSession, ids: CoreNodeIds, i
 export function projectFamvimNode(session: PresentationSession, ids: CoreNodeIds, response: unknown): void {
   const node = session.state.nodes.find((entry) => entry.nodeId === ids.famvim);
   if (!node) return;
-  const value = resultRecord(response)?.value;
+  const result = resultRecord(response);
+  const value = result?.value ?? result?.candidate;
   const fam = isFamJsonRecord(value) ? value : undefined;
-  const semantic = fam ? "unknown" : "not-evaluated";
+  const validation = isRecord(result?.profile_validation) ? result.profile_validation : undefined;
+  const semantic = typeof validation?.profileConformance === "string"
+    ? validation.profileConformance
+    : fam ? "unknown" : "not-evaluated";
   session.applyEngineEvent({ type: "fam.node.changed", node: { ...node, badges: [{ axis: "semantic", value: semantic, tone: statusTone(semantic) }], value: fam ?? null } });
 }
 

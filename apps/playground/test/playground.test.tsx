@@ -44,6 +44,32 @@ describe("FQuery Playground", () => {
     expect(container.querySelector(".psi-node-error")?.textContent).toContain("source-expression-required");
   });
 
+  it("profile不適合candidateをFAMVIMに保持しcanonical graphやλへは昇格しない", async () => {
+    const candidate = { title: "手直し可能な候補", ψ: "入力", "∇φ": [], λ: {}, Q: null, provider_extension: { retained: true } };
+    const response = {
+      result: {
+        candidate,
+        transport_status: "succeeded",
+        plugin_status: "resolved",
+        resolution_status: "resolved",
+        connection_status: "connected",
+        semantic_status: "not-evaluated",
+        lambda_status: "not-evaluated",
+        control_status: "last-order",
+        reason: "decomposition-profile-nonconformant",
+        profile_validation: { baseStructureStatus: "valid", profileConformance: "not-satisfied", issues: [{ path: "$.kind", code: "string-required" }] },
+        last_order: { code: "FQUERY-PLUGIN-PROFILE-NONCONFORMANT", reason: "decomposition-profile-nonconformant", requested_next: "inspect-and-edit-candidate-or-select-another-route", resume_when: "profile-conformant-candidate-available" },
+      },
+    };
+    const fetcher = vi.fn().mockResolvedValueOnce(json(fixtureRoutes)).mockResolvedValueOnce(json(response));
+    const { container } = await mountWithGraph(fetcher);
+    await act(async () => { fireEvent.click(canvasNodes(container)[0]!.querySelector('[aria-label="route controls"] button')!); });
+    await waitFor(() => expect(canvasNodes(container)[1]!.textContent).toContain("手直し可能な候補"));
+    expect(canvasNodes(container)[1]!.querySelector('[data-axis="semantic"]')?.textContent).toContain("not-satisfied");
+    expect(canvasNodes(container)).toHaveLength(3);
+    expect(container.querySelector('[data-node-id="q://playground/node/3"]')?.textContent).toContain("未提供");
+  });
+
   it("複数provider/modelを発見し、Ψ.NL node内のdecomposerで分解する", async () => {
     const fetcher = vi.fn()
       .mockResolvedValueOnce(json([

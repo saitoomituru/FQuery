@@ -5,7 +5,7 @@ import { isFamJsonRecord, readAccessMapProfile, validateFamJson, type AccessMapP
 import { createPlaygroundSession } from "./host/session.js";
 import { useCanonicalFam, useEditReceipts, useFoldLogRecords, useSessionState } from "./host/use-session.js";
 import { buildCoreGraph, placeUnplacedNodes, projectDecompositionGraph, projectRecursiveDecompositionGraph, refreshDecompositionNodes, removeRecursiveFoldProjection, setFoldBoundaryCollapsed, setRecursiveFoldStatus, type CoreNodeIds } from "./host/core-graph.js";
-import { DecomposerContext, FIXTURE_ROUTE, isRecord, projectLambdaNode, projectPsiNode, requestDecompose, resultRecord, type DecomposerContextValue, type PlaygroundRoute } from "./host/decomposer.js";
+import { DecomposerContext, FIXTURE_ROUTE, isRecord, projectFamvimNode, projectLambdaNode, projectPsiNode, requestDecompose, resultRecord, type DecomposerContextValue, type PlaygroundRoute } from "./host/decomposer.js";
 import { PANE_COMPONENTS, createPlaygroundPaneRegistry } from "./host/pane-registry.js";
 import { PlaygroundPaneContext, type PlaygroundEditReceiptView, type PlaygroundPaneContextValue } from "./context.js";
 import { CoreNodeRenderer } from "./nodes/CoreNodeRenderer.js";
@@ -194,6 +194,8 @@ export function App() {
     setResponse(outcome.response);
     if (isRecord(outcome.response) && Array.isArray(outcome.response.events)) setLastEvent(JSON.stringify(outcome.response.events.at(-1) ?? "完了"));
     projectPsiNode(session, coreIds.current, { response: outcome.response, running: false, source, provider, model });
+    // profile不適合candidateは手直し用にFAMVIMへ表示するが、canonical graph/λへは昇格しない。
+    projectFamvimNode(session, coreIds.current, outcome.response);
     const famValue = resultRecord(outcome.response)?.value;
     const accessMapValue = isRecord(outcome.response) ? outcome.response.access_map : undefined;
     if (isFamJsonRecord(famValue) && isFamJsonRecord(accessMapValue)) {
