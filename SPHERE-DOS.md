@@ -9,7 +9,7 @@
 | SphereOS Atlantis | `4de928dec5196d458ace96432b2f9aac9c7cfabc` | `SPHERE-DOS.ja.md` |
 | Proton.md Core | 同上 | `docs/architecture/proton-md-executable-context-container.ja.md` |
 | FAM Family | 同上 | `proton/modules/FAMFamily.proton.md` |
-| ZeroRoomLab-manifest | `7fa42361463568cbe706830488d50dbf705fc030` | `AGENTS.md` |
+| ZeroRoomLab-manifest | `0949625b7472ff815bf1fba4f43c753e85f22eee` | `AGENTS.md` |
 | IBD Query FAM draft | `25861b8970ce932bc99b272a0a813822e4df5cab` | `schemas/draft/query-fam.schema.json` |
 
 ## 境界

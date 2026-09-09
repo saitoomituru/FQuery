@@ -4,6 +4,11 @@
 
 FQueryはFAMのmachine contractを `fam.json/0.1.0-draft` として保持する。保存済みのFoldAccessMapper 0.2.1-alpha原典は歴史資料であり、この仕様は原典の4軸をJSON transportへ写像した現在時点のInterpretation OAEである。
 
+OAE拘束成立、複数Observerの並存、制作主体と作品Worldの分離に関する横断正本は、
+[ZeroRoomLab-manifest `0949625`](https://github.com/saitoomituru/ZeroRoomLab-manifest/blob/0949625b7472ff815bf1fba4f43c753e85f22eee/docs/theory/sphere-context-dimension-os.ja.md)
+をrevision固定で参照する。FQueryはそのWorldごとのrule内容を複製・hard-codeせず、FAM JSONと
+evaluation receiptの機械境界だけを所有する。
+
 ## 4軸node
 
 FAM nodeは常に `ψ / ∇φ / λ / Q` の4軸を同時に持ち、各軸の内部へ再帰できる。
