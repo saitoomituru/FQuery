@@ -8,7 +8,8 @@ FQuery（短縮名 `Q`）は、FAMを問い合わせ、結び、検証し、別�
 
 ```text
 Proton.md       semantic / meta ABI
-FAM             state / wisdom structure
+FAM             portable Infoton / semantic structure
+refFAM          metaphysical Schemer / reusable wisdom method
 FQuery (Q)      recursive control / query operator
 FAMLog          observable execution dump / trace
 ```
@@ -20,6 +21,7 @@ FAMLog          observable execution dump / trace
 - plugin ABI / FAMLog: capability gate、trace、差分の参照実装あり
 - credential注入: `name / key / secret`の可搬なsource解決あり。保護強度はHost／上位IAM責務
 - FAM JSON Core: 再帰的な `ψ / ∇φ / λ / Q`を最小交渉面とし、未知fieldを保持するopen-world machine contractあり。decomposition等の追加field拘束はprofileとして分離中（Issue #22）
+- FAM reference boundary: Foldを同一JSON内の単なるgroupではなく、独立FAM identityへの参照境界として扱うcorrective contractを追加。複数参照が必要なsubtreeは独立FAM extraction candidateとし、Fold / DeFoldは参照先FAMの可逆なpresentation操作、`unFold`だけを破壊的境界操作として分離（Issue #35, #37, #41, #42）
 - Gemini FAM plugin: structured JSON候補を返すadapterあり。provider応答、base構造適合、profile適合、意味評価は別状態
 - Node Editor: Presentation FAM／GUI Event ABI、React + React Flow renderer backend、VS Code／Sphere Host bridgeあり。renderer backendの比較Human Testは通過したが、Browser上の分解・局所編集・λ再投影・nested FoldはChrome／SafariともHuman Test不合格（Issue #35、#38、#41）。Host組み込みは未実施
 - Atlantis 1.x native C++ runtime: `CONTRACT-WAIT`
@@ -43,13 +45,34 @@ FQueryは自然言語を断罪するvalidatorでも、世界の唯一の正解�
 
 一回の分解で全てを埋め切る義務はありません。初回結果は手直し可能な暫定Foldでよく、`なんで？-DeFold-`による段階的分解、局所差替え、revision、FAMLogを通して回復可能であることを優先します。
 
+## FAMJSON / FAMLog / refFAM とFold参照境界
+
+FAMは単なるJSON保存形式ではなく、**再参照可能な独立意味identity＝情報子（Infoton）を記述する言語**として扱います。
+
+```text
+OAE / 所感
+  -> FAMLog（時間方向の観測・操作trace）
+  -> 再利用価値が生まれ独立identityを持つ
+  -> FAMJSON（可搬な情報子）
+  -> fact-freeな問い方・見方・方法へ抽象化
+  -> refFAM（叡智 / Schemer）
+```
+
+refFAMは共有factの正解表ではありません。旧AQC SchemerをFAMへ統合した、ものの見方・問い方・分類・成立条件・写像・検証手続き等を記述する形而上学的FAMです。定量factや個別観測を扱う場合は通常FAMへ置き、選択profileが`Q`へevidence、Observer、revision、取得方法、必要ならhash/verifier receiptを要求できます。
+
+複数Foldから同じ`∇φ`やsubtreeを直接共有する必要が出た場合、同一FAM JSON内のshared nodeへしません。**可搬性が観測された意味単位を独立FAMへ切り出し、複数consumerから同じFAM identityをrefします。** 複数参照は叡智の証明ではなく、まず情報子へ昇格すべき可搬性のシグナルです。
+
+Foldも同じです。Fold boundaryは参照先FAMを持つviewportであり、`まとめる-Fold-`は参照先を消さず描画だけを畳み、`ひらく-DeFold-` / `なんで？-DeFold-`は参照先FAMをresolveして合成表示します。child FAMをparent JSONへinline copyしません。`unFold`のみが独立FAM境界を破壊し得る操作です。
+
+詳細は[`docs/specification/fam-reference-boundary.ja.md`](docs/specification/fam-reference-boundary.ja.md)を参照してください。思想正本はZeroRoomLab-manifestの[`fam-infoton-reference-boundary.ja.md`](https://github.com/saitoomituru/ZeroRoomLab-manifest/blob/f27903abd3e2c69732dfcbec91d948b1d3801808/docs/theory/fam-infoton-reference-boundary.ja.md)です。
+
 ## Repository map
 
 | Path | 責務 |
 |---|---|
 | `proton/` | 言語非依存のFQuery semantic profile |
 | `docs/architecture/` | Q Core、再帰、Node→nativeの責務境界 |
-| `docs/specification/` | machine contractへ対応する人間可読仕様 |
+| `docs/specification/` | machine contractへ対応する人間可読仕様。FAM Core、Fold/FAM参照境界、Runner、GUI等を分離 |
 | `packages/core/` | backend非依存のNode参照Core |
 | `packages/fam-core/` | FAM JSONの再帰4軸、open-world reader、lossless保持。追加拘束はprofileとして注入 |
 | `packages/fam-edit/` | canonical FAMのlossless部分編集primitive。validatorは注入し、FAM Coreを所有しない |
