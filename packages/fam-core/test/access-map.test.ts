@@ -1,6 +1,6 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
-import { classifyWithAccessMap, readAccessMapProfile, readFamJson } from "../src/index.js";
+import { classifyWithAccessMap, createLiteralDecompositionFam, projectSemanticTopology, readAccessMapProfile, readFamJson } from "../src/index.js";
 
 const fixtureUrl = new URL("../../../fixtures/test-cases/basic-commons-access-mapper/access-map.fam.json", import.meta.url);
 
@@ -32,5 +32,40 @@ describe("Basic Commons Access Mapper FAM", () => {
       status: "unmapped",
       evidenceScope: ["unknown", "not-absence"],
     });
+  });
+
+  it("profile指定pathとfield名から複数topology branchを読み一つだけpresentation選択する", () => {
+    const fam = structuredClone(createLiteralDecompositionFam("前提A。前提B。判断。結論。", "q://test/topology"));
+    const units = (fam.λ as { output_units: Array<{ Q: { unit_ref: string } }> }).output_units;
+    (fam.Q as Record<string, unknown>).provider_graphs = [
+      {
+        id: "branch://fact-domain",
+        by: "observer://human/fact-reading",
+        links: [
+          { from: units[0]!.Q.unit_ref, to: units[2]!.Q.unit_ref, chain_axis: "mL", kind: "causal", receipts: ["oae://human/fact/1"] },
+          { from: units[1]!.Q.unit_ref, to: units[2]!.Q.unit_ref, chain_axis: "mL", kind: "causal", receipts: ["oae://human/fact/2"] },
+          { from: units[2]!.Q.unit_ref, to: units[3]!.Q.unit_ref, chain_axis: "mL", kind: "dependency", receipts: ["oae://human/fact/3"] },
+        ],
+      },
+      { id: "branch://astral-reading", by: "observer://human/astral-reading", links: [] },
+    ];
+    const mapped = {
+      ...profile,
+      semanticTopologyContract: {
+        branchesPointer: "/Q/provider_graphs",
+        selectedBranchRef: "branch://fact-domain",
+        selectionScopeRef: "scope://test/presentation-only",
+        fields: { branchRef: "id", observerRef: "by", relations: "links", fromUnitRef: "from", toUnitRef: "to", axis: "chain_axis", relationKind: "kind", evidenceRefs: "receipts" },
+      },
+    } as const;
+    const topology = projectSemanticTopology(fam, mapped);
+    expect(topology).toMatchObject({ status: "selected", selectionScopeRef: "scope://test/presentation-only", selectedBranch: { branchRef: "branch://fact-domain", observerRef: "observer://human/fact-reading" } });
+    expect(topology.branches).toHaveLength(2);
+    expect(topology.selectedBranch?.relations).toHaveLength(3);
+    expect(topology.branches[1]?.branchRef).toBe("branch://astral-reading");
+  });
+
+  it("topology未宣言をunit順の暗黙chainへ変換しない", () => {
+    expect(projectSemanticTopology(createLiteralDecompositionFam("A。B。", "q://test/no-topology"), profile)).toEqual({ status: "contract-not-declared", branches: [] });
   });
 });
