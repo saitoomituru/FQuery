@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   readFamJson,
   createLiteralDecompositionFam,
+  FAM_BASE_RESPONSE_SCHEMA,
   FAM_JSON_RESPONSE_SCHEMA,
   inferSourceLanguage,
   serializeFamJson,
@@ -50,6 +51,40 @@ const nested: FamJsonRecord = {
 };
 
 describe("FAM JSON Core", () => {
+  it("base handshakeは4軸だけを必須とし各軸の未確定値を許容する", () => {
+    const result = validateFamJson({ ψ: null, "∇φ": [], λ: null, Q: null });
+    expect(result).toMatchObject({
+      valid: true,
+      baseStructureStatus: "valid",
+      profileConformance: "not-evaluated",
+    });
+  });
+
+  it("profile metadata欠落はbase FAMを無効化せずprofile不適合として分離する", () => {
+    const candidate = { ψ: { source_text: "不完全な自然言語" }, "∇φ": [], λ: {}, Q: {} };
+    expect(validateFamJson(candidate).valid).toBe(true);
+    expect(validateFamDecomposition(candidate)).toMatchObject({
+      valid: false,
+      baseStructureStatus: "valid",
+      profileConformance: "not-satisfied",
+    });
+  });
+
+  it("未知拡張fieldの単独Qをnested FAMと誤認せず保持する", () => {
+    const candidate = {
+      ψ: "入力",
+      "∇φ": [],
+      λ: "出力",
+      Q: null,
+      plugin_extension: { Q: "plugin固有の同名field", extra_column: { retained: true } },
+    };
+    const text = JSON.stringify(candidate, null, 2);
+    const document = readFamJson(text);
+    expect(validateFamJson(candidate).valid).toBe(true);
+    expect(writeUnmodifiedFamJson(document)).toBe(text);
+    expect(document.value.plugin_extension).toEqual(candidate.plugin_extension);
+  });
+
   it("ψ / ∇φ / λ / Qとnested FAMを再帰検証する", () => {
     const result = validateFamJson(nested);
     expect(result.valid).toBe(true);
@@ -158,6 +193,13 @@ describe("FAM JSON Core", () => {
     const failures: string[] = [];
     inspectSchema(FAM_JSON_RESPONSE_SCHEMA, "$", failures);
     expect(failures).toEqual([]);
+  });
+
+  it("base response schemaは4軸以外のcolumnを拘束しない", () => {
+    expect(FAM_BASE_RESPONSE_SCHEMA).toMatchObject({
+      required: ["ψ", "∇φ", "λ", "Q"],
+      additionalProperties: true,
+    });
   });
 
   it("Gemini responseJsonSchema非対応のboolean enumと空items schemaを含めない", () => {

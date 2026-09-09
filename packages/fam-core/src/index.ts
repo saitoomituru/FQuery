@@ -15,7 +15,7 @@ export interface FamNode extends JsonObject {
   readonly ψ: JsonValue;
   readonly "∇φ": JsonValue;
   readonly λ: JsonValue;
-  readonly Q: JsonObject;
+  readonly Q: JsonValue;
 }
 
 export interface FamJsonRecord extends FamNode {
@@ -27,6 +27,7 @@ export interface FamJsonRecord extends FamNode {
   readonly index_subjects: readonly JsonValue[];
   readonly pointers: readonly JsonValue[];
   readonly provenance: JsonObject;
+  readonly Q: JsonObject;
 }
 
 export interface FamDocument {
@@ -44,8 +45,17 @@ export interface FamValidationResult {
   readonly valid: boolean;
   readonly issues: readonly FamValidationIssue[];
   readonly nodePaths: readonly string[];
+  /** FAM Coreが裁定するのは4軸構造が読めるかだけである。 */
+  readonly baseStructureStatus: "valid" | "invalid";
+  /** profileを指定しない検証ではnot-evaluatedのまま保持する。 */
+  readonly profileConformance: "not-evaluated" | "satisfied" | "not-satisfied" | "not-evaluable";
+  readonly profileRef?: string;
 }
 
+/**
+ * FAM base handshake。必須なのは ψ / ∇φ / λ / Q の構造境界だけで、
+ * 各軸の値、メタデータ、未知の拡張fieldの意味はここで裁定しない。
+ */
 export function validateFamJson(value: unknown): FamValidationResult {
   const issues: FamValidationIssue[] = [];
   const nodePaths: string[] = [];
@@ -53,14 +63,6 @@ export function validateFamJson(value: unknown): FamValidationResult {
     issue(issues, "$", "record-required", "FAM JSONはobjectでなければなりません");
     return freezeResult(issues, nodePaths);
   }
-  requiredString(value, "schema_version", "$", issues);
-  if (value.schema_version !== FAM_JSON_SCHEMA_VERSION) {
-    issue(issues, "$.schema_version", "unsupported-schema-version", `schema_versionは${FAM_JSON_SCHEMA_VERSION}でなければなりません`);
-  }
-  for (const field of ["fam_id", "revision_id", "kind", "title"] as const) requiredString(value, field, "$", issues);
-  requiredArray(value, "index_subjects", "$", issues);
-  requiredArray(value, "pointers", "$", issues);
-  requiredObject(value, "provenance", "$", issues);
   validateFamNode(value, "$", issues, nodePaths);
   return freezeResult(issues, nodePaths);
 }
@@ -91,7 +93,15 @@ export function validateFamDecomposition(value: unknown): FamValidationResult {
   const base = validateFamJson(value);
   const issues = [...base.issues];
   const nodePaths = [...base.nodePaths];
-  if (!isRecord(value)) return freezeResult(issues, nodePaths);
+  if (!isRecord(value)) return freezeResult(issues, nodePaths, { profileConformance: "not-evaluable", profileRef: "profile://fquery/decomposition@0.1.0-draft" });
+  requiredString(value, "schema_version", "$", issues);
+  if (value.schema_version !== FAM_JSON_SCHEMA_VERSION) {
+    issue(issues, "$.schema_version", "unsupported-schema-version", `decomposition profileのschema_versionは${FAM_JSON_SCHEMA_VERSION}でなければなりません`);
+  }
+  for (const field of ["fam_id", "revision_id", "kind", "title"] as const) requiredString(value, field, "$", issues);
+  requiredArray(value, "index_subjects", "$", issues);
+  requiredArray(value, "pointers", "$", issues);
+  requiredObject(value, "provenance", "$", issues);
   if (value.kind !== "decomposition") issue(issues, "$.kind", "decomposition-kind-required", "decomposition FAMのkindはdecompositionでなければなりません");
   const psi = value.ψ;
   if (!isRecord(psi) || typeof psi.source_text !== "string" || psi.source_text.length === 0) {
@@ -115,7 +125,10 @@ export function validateFamDecomposition(value: unknown): FamValidationResult {
   if (!isRecord(q) || !Array.isArray(q.unknowns)) issue(issues, "$.Q.unknowns", "unknowns-required", "Q.unknownsはarrayでなければなりません");
   else validateUnknownEntries(q.unknowns, "$.Q.unknowns", issues);
   if (!isRecord(q) || q.unknown_is_absence !== false) issue(issues, "$.Q.unknown_is_absence", "unknown-absence-boundary-required", "unknown_is_absenceはfalseでなければなりません");
-  return freezeResult(issues, nodePaths);
+  return freezeResult(issues, nodePaths, {
+    profileConformance: base.valid && issues.length === 0 ? "satisfied" : base.valid ? "not-satisfied" : "not-evaluable",
+    profileRef: "profile://fquery/decomposition@0.1.0-draft",
+  });
 }
 
 export function createLiteralDecompositionFam(sourceText: string, queryRef: string): FamJsonRecord {
@@ -182,7 +195,21 @@ const UNKNOWN_ENTRY_RESPONSE_SCHEMA = Object.freeze({
   properties: { source_expression: { type: "string" }, source_language: { type: "string" }, concept_id: { type: "string" } },
 });
 
-export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Object.freeze({
+/** FAM base handshakeだけを求めるopen-world schema。 */
+export const FAM_BASE_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Object.freeze({
+  type: "object",
+  required: ["ψ", "∇φ", "λ", "Q"],
+  additionalProperties: true,
+  properties: {
+    ψ: {},
+    "∇φ": {},
+    λ: {},
+    Q: {},
+  },
+});
+
+/** providerとdecomposition service間で使うprofile schema。base FAMの定義ではない。 */
+export const FAM_DECOMPOSITION_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Object.freeze({
   type: "object",
   required: ["schema_version", "fam_id", "revision_id", "kind", "title", "title_language", "index_subjects", "ψ", "∇φ", "λ", "Q", "pointers", "provenance"],
   additionalProperties: true,
@@ -322,6 +349,9 @@ export const FAM_JSON_RESPONSE_SCHEMA: Readonly<Record<string, unknown>> = Objec
   },
 });
 
+/** @deprecated decomposition providerとの互換alias。base検証に使わないこと。 */
+export const FAM_JSON_RESPONSE_SCHEMA = FAM_DECOMPOSITION_RESPONSE_SCHEMA;
+
 function validateFamNode(
   value: Record<string, unknown>,
   path: string,
@@ -331,7 +361,6 @@ function validateFamNode(
   for (const axis of ["ψ", "∇φ", "λ", "Q"] as const) {
     if (!(axis in value)) issue(issues, `${path}.${axis}`, "axis-required", `FAM nodeには${axis}が必要です`);
   }
-  if ("Q" in value && !isRecord(value.Q)) issue(issues, `${path}.Q`, "q-object-required", "Qはobjectでなければなりません");
   if (["ψ", "∇φ", "λ", "Q"].every((axis) => axis in value)) nodePaths.push(path);
   for (const [key, child] of Object.entries(value)) inspectNested(child, `${path}.${key}`, issues, nodePaths);
 }
@@ -343,7 +372,9 @@ function inspectNested(value: unknown, path: string, issues: FamValidationIssue[
   }
   if (!isRecord(value)) return;
   const axisCount = ["ψ", "∇φ", "λ", "Q"].filter((axis) => axis in value).length;
-  if (axisCount > 0) validateFamNode(value, path, issues, nodePaths);
+  // open-world拡張の単独field名をpartial FAMと誤認しない。
+  // 2軸以上が現れたobjectだけをnested FAM candidateとして構造検証する。
+  if (axisCount >= 2) validateFamNode(value, path, issues, nodePaths);
   else for (const [key, child] of Object.entries(value)) inspectNested(child, `${path}.${key}`, issues, nodePaths);
 }
 
@@ -441,8 +472,20 @@ function issue(issues: FamValidationIssue[], path: string, code: string, message
   issues.push(Object.freeze({ path, code, message }));
 }
 
-function freezeResult(issues: FamValidationIssue[], nodePaths: string[]): FamValidationResult {
-  return Object.freeze({ valid: issues.length === 0, issues: Object.freeze(issues), nodePaths: Object.freeze(nodePaths) });
+function freezeResult(
+  issues: FamValidationIssue[],
+  nodePaths: string[],
+  options: { readonly profileConformance?: FamValidationResult["profileConformance"]; readonly profileRef?: string } = {},
+): FamValidationResult {
+  const baseStructureStatus = issues.some((entry) => entry.code === "record-required" || entry.code === "axis-required") ? "invalid" : "valid";
+  return Object.freeze({
+    valid: issues.length === 0,
+    issues: Object.freeze(issues),
+    nodePaths: Object.freeze(nodePaths),
+    baseStructureStatus,
+    profileConformance: options.profileConformance ?? "not-evaluated",
+    ...(options.profileRef ? { profileRef: options.profileRef } : {}),
+  });
 }
 
 function formatIssues(issues: readonly FamValidationIssue[]): string {
