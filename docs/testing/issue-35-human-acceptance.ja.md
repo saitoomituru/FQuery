@@ -1,8 +1,8 @@
 # Issue #35 Browser Playground引継ぎ票
 
-状態: `AUTOMATED-PASS / SAFARI-HUMAN-FAIL / CHROME-HUMAN-FAIL`
+状態: `LEGACY-AUTOMATED-PASS / OPEN-WORLD-AUTOMATED-WAIT / SAFARI-HUMAN-FAIL / CHROME-HUMAN-FAIL`
 
-対象revision: `17d96ae` 以降（実施時のHEADを記録すること）
+対象revision: `da4bc93` 以降（実施時のHEADを記録すること）
 
 ## 2026-09-08 Human Test観測
 

@@ -60,10 +60,10 @@ FQueryは自然言語を断罪するvalidatorでも、世界の唯一の正解�
 | `packages/ui-react/` | React + React Flow Presentation component。semantic engineは持たない |
 | `packages/hosts/` | VS Code／Sphere等のHost bridge |
 | `packages/config/` | credential sourceの順序付き解決。表示は`name`のみ |
-| `plugins/gemini/` | Gemini APIから検証済みFAMを得るnetwork plugin |
-| `plugins/ollama/` | ローカルOllamaのmodel発見と検証済みFAM変換plugin |
+| `plugins/gemini/` | Gemini APIからcandidate FAMを得るnetwork plugin。採用・意味評価は別境界 |
+| `plugins/ollama/` | ローカルOllamaのmodel発見とcandidate FAM変換plugin。採用・意味評価は別境界 |
 | `apps/playground/` | API key不要のlocalhost検証面（React） |
-| `fixtures/` | 正例、負例、benchmark入力 |
+| `fixtures/` | revision固定profileの適合例、境界例、benchmark入力。普遍的正解集ではない |
 | `native/` | Atlantis 1.x向け予約地。現時点ではruntimeではない |
 
 ## 開発
