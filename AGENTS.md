@@ -28,6 +28,25 @@ unknown != pass
 - `base_structure`、`profile_conformance`、`service_negotiation`、`observer_verdict`を別軸で報告する。profile不適合をFAM全体の不正へ書き換えない
 - 自然言語の不完全さ、混在言語、code、俗語、暗黙Contextを規約違反として断罪しない。自然言語は解釈対象であり、validatorは文章の善悪・真偽・正しさを裁定しない
 
+## FAMJSON / FAMLog / refFAM境界
+
+- FAMJSONを「4軸を持つJSONなら何でもそう呼ぶ」状態へ縮退させない。FAMJSONは再参照可能な独立意味identity＝情報子のwire representationとして扱う
+- 単発の観測、所感、操作trace、0参照のrecordは、まずOAE / FAMLog candidateとして扱う。再参照可能なidentityを持った時点でFAMJSONへの昇格候補になる
+- refFAMは共有fact tableではない。旧AQC SchemerのFAM統合版であり、問い方、見方、分類、成立条件、mapping、検証法、unknown policy等の形而上学的method / wisdomを記述する
+- fact、業務上の事実、特定Worldのstate、合意logを含む場合は通常FAMとして分離する。必要なprofileがQへevidence、observer、subject revision、取得方法、verifier、hash receipt等を要求する
+- `複数参照された == 真理`、`複数参照された == refFAM`と短絡しない。複数参照はまず経験価値の可搬性、独立情報子へ昇格すべきsignalとして扱う
+- 正本思想はZeroRoomLab-manifest `fam-infoton-reference-boundary.ja.md`、FQuery machine contractは[`docs/specification/fam-reference-boundary.ja.md`](docs/specification/fam-reference-boundary.ja.md)を参照する
+
+## Fold参照正規化
+
+- 同一FAM内の`∇φ` / subtree / Fold nodeを複数semantic consumerからshared nodeとして直接参照しない。複数参照が必要になった時点で独立FAM extraction candidateとする
+- Fold boundaryは原則として独立FAM identityへの参照境界である。Fold内部をparent FAMのcanonical hidden child arrayとして所有し続ける設計へ新規依存を増やさない
+- `まとめる-Fold-`は参照先FAMを削除せずpresentationだけを縮約する
+- `ひらく-DeFold-` / `なんで？-DeFold-`は参照先FAMをresolveしてprojectする。child FAMをparent FAM JSONへinline copyしない
+- `unFold`だけが独立FAM境界や中間表現を破壊し得る。Fold / DeFoldを暗黙にunFoldへ昇格しない
+- React Flowの一枚graph、nested node object、renderer groupをcanonical cross-FAM identityにしない。GUIは複数FAM viewを合成表示するsurfaceである
+- legacy nested subtreeを移行する場合、source revision、extracted FAM identity、node refs、unknown fields、before/after hash、loss statusをreceipt化し、内容を失わない
+
 ## 解釈・OAE・authority境界
 
 - Coreは唯一のWorld、正解、客観、合意、authorityをhard-codeしない。active refFAM／Access Mapper／`oae_rule_ref`を上位Systemからrevision固定で受け取る
