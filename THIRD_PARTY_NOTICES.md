@@ -34,3 +34,13 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 ```
+
+## Playwright
+
+FQueryのbrowser自動検証は`@playwright/test`を開発時依存として利用します。PlaywrightによるChromium／Chrome自動検証は、実Safari／実ChromeのHuman Testを代替しません。
+
+Project: https://github.com/microsoft/playwright
+
+License: Apache-2.0
+
+Copyright: Microsoft Corporation
