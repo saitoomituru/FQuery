@@ -53,7 +53,9 @@ unknown != pass
 - `capability != authority`、`observation != authority`、`consensus != authority`を維持する。authorityは対象、操作、World、revision、期間を持つscope付き運用契約として扱う
 - 複数の解釈、複数の合意、相反するObserver verdictを非ゼロサムで保持する。一つのscopeで採用された解釈から他branchの削除を導出しない
 - 「客観的」は無主体の普遍真理へ昇格せず、合意したcorpus、Observer、instrument、rule、適用scopeを提示する。個人と手元instrumentの合意も`locally-verified`として保持できるが、独立検証済みとは名乗らない
-- FQueryが検証するのはOAE recordのshape、lineage、revision binding、rule conformanceであり、verdictの宇宙的真偽ではない。`適切`、`度し難い`等の評価語彙も外部ruleが所有する
+- CoreはOAE record、producer、adapter chain、subject / observer / rule revision refをlosslessに保存・搬送する。shape、lineage、revision binding、rule conformanceの評価は選択されたObserver／evaluator adapterがOAEとして返し、Core自身の普遍監査へ昇格しない
+- `適切`、`度し難い`等の評価語彙、倫理、guide rail、vendor policyの採否はrevision固定refFAM／ruleが所有する。Coreはpluginの自己申告Levelや判断内容を認証・降格・BANしない
+- adapterが観測できた拒否、書換え、理由、policy refはFAMLogへ残す。理由が取得できない場合は推測でvendor意図を補完せず`reason-unavailable`として残し、その品質評価は別Observer OAEへ分離する
 
 ## 手直し可能性と段階的DeFold
 

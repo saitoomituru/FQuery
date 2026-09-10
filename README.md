@@ -19,6 +19,7 @@ FAMLog          observable execution dump / trace
 - semantic contract: `fquery/0.1.0-draft`
 - Node.js / TypeScript: reference implementationと自動テストあり
 - plugin ABI / FAMLog: capability gate、trace、差分の参照実装あり
+- model adapter support: provider / model / runtime / adapter revision / harnessごとの自己申告Levelとproducer chainを記録する契約を設計。Coreは認証機関にならず、品質・適合評価をObserver OAEへ分離（実装中）
 - credential注入: `name / key / secret`の可搬なsource解決あり。保護強度はHost／上位IAM責務
 - FAM JSON Core: 再帰的な `ψ / ∇φ / λ / Q`を最小交渉面とし、未知fieldを保持するopen-world machine contractあり。decomposition等の追加field拘束はprofileとして分離中（Issue #22）
 - FAM reference boundary: Foldを同一JSON内の単なるgroupではなく、独立FAM identityへの参照境界として扱うcorrective contractを追加。複数参照が必要なsubtreeは独立FAM extraction candidateとし、Fold / DeFoldは参照先FAMの可逆なpresentation操作、`unFold`だけを破壊的境界操作として分離（Issue #35, #37, #41, #42）
@@ -64,7 +65,7 @@ refFAMは共有factの正解表ではありません。旧AQC SchemerをFAMへ�
 
 Foldも同じです。Fold boundaryは参照先FAMを持つviewportであり、`まとめる-Fold-`は参照先を消さず描画だけを畳み、`ひらく-DeFold-` / `なんで？-DeFold-`は参照先FAMをresolveして合成表示します。child FAMをparent JSONへinline copyしません。`unFold`のみが独立FAM境界を破壊し得る操作です。
 
-詳細は[`docs/specification/fam-reference-boundary.ja.md`](docs/specification/fam-reference-boundary.ja.md)を参照してください。思想正本はZeroRoomLab-manifestの[`fam-infoton-reference-boundary.ja.md`](https://github.com/saitoomituru/ZeroRoomLab-manifest/blob/f27903abd3e2c69732dfcbec91d948b1d3801808/docs/theory/fam-infoton-reference-boundary.ja.md)です。
+詳細は[`docs/specification/fam-reference-boundary.ja.md`](docs/specification/fam-reference-boundary.ja.md)を参照してください。思想正本はZeroRoomLab-manifest `85d1b5d` の[`fam-infoton-reference-boundary.ja.md`](https://github.com/saitoomituru/ZeroRoomLab-manifest/blob/85d1b5db8d46f34671d38a451617c08edff41675/docs/theory/fam-infoton-reference-boundary.ja.md)です。model adapterの申告Levelは[`docs/specification/model-adapter-support-level.ja.md`](docs/specification/model-adapter-support-level.ja.md)へ分離しています。
 
 ## Repository map
 

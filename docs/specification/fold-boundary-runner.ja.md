@@ -2,7 +2,7 @@
 
 状態: `DESIGN-CORRECTIVE / LEGACY-NESTED-IMPLEMENTATION / HUMAN-RETEST-PENDING`
 
-正本思想: [ZeroRoomLab-manifest `f27903a`](https://github.com/saitoomituru/ZeroRoomLab-manifest/blob/f27903abd3e2c69732dfcbec91d948b1d3801808/docs/theory/fam-infoton-reference-boundary.ja.md)
+正本思想: [ZeroRoomLab-manifest `85d1b5d`](https://github.com/saitoomituru/ZeroRoomLab-manifest/blob/85d1b5db8d46f34671d38a451617c08edff41675/docs/theory/fam-infoton-reference-boundary.ja.md)
 
 Machine contract: [`fam-reference-boundary.ja.md`](fam-reference-boundary.ja.md)
 
