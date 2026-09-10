@@ -16,6 +16,7 @@ npm run dev      # http://127.0.0.1:3000
 - `panes/sections.tsx`: 1 section 1 component。Host contextからGUI Core componentへ橋渡し
 - `nodes/`: Core 3 nodeのcanvas renderer（`rendererHint: fquery-core-node`）
 - `server/gateway.ts`: `/api/routes`と`/api/decompose`。provider routeの発見とQ envelope
+- `server/cli-executor.ts`: Host許可registryの完全一致`commandRef`だけを`shell:false`で起動するCLI harness executor。stdin/stdout/exitとredaction済みstderr状態をLv1 receiptへ渡す。BrowserやFAMからbinary path、args、cwd、envは指定できない
 
 ## 機能
 

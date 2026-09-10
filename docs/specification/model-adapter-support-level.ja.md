@@ -67,6 +67,8 @@ Lv5はSphere-aae / AAE側の内部bus adapterと接続receiptが揃うまで`DES
 
 Codex、Claudeその他のassistantが公式CLIで非対話入力と機械可読出力を提供する場合、Host側CLI harnessからLv1 adapterを構成できる。FQueryはvendor名ごとのprocess起動をCoreへ焼き込まず、`@fquery/plugin-sdk`の`createCliHarnessHandler`へHost executorを注入する。
 
+Playground Hostの`createRegisteredCliExecutor`はこの境界の参照実装である。CLI path、固定args、cwd、timeout、入出力上限はHost registryに置き、requestの`commandRef`とargsが完全一致した場合だけ`shell:false`で起動する。CLIのstderr本文やcredentialをFAMへ混ぜず、有無と終了状態だけをreceiptへ残す。Codex、Claude、Grokのように非対話／機械可読modeを持つCLIは同じexecutorへ登録できるが、それぞれのstdout decoder、利用モデル、CLI revision、login状態、harness設定は別scopeとして申告する。CLIが存在することだけから内部推論・自己同一性・Lv2以上を推定しない。
+
 ```text
 FQuery plugin
   -> command_ref + fixed args + stdin

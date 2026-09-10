@@ -31,7 +31,7 @@ export interface CliHarnessExecutionReceipt {
   readonly exitCode: number | null;
   readonly stdout: string;
   readonly stderrStatus: "empty" | "present-redacted" | "not-observed";
-  readonly termination: "exited" | "signalled" | "timeout" | "cancelled" | "spawn-failed";
+  readonly termination: "exited" | "signalled" | "timeout" | "cancelled" | "output-limit" | "spawn-failed";
   readonly evidenceRefs: readonly string[];
   readonly requestId?: string;
   readonly failureReason?: string;
