@@ -65,7 +65,7 @@ refFAMは共有factの正解表ではありません。旧AQC SchemerをFAMへ�
 
 Foldも同じです。Fold boundaryは参照先FAMを持つviewportであり、`まとめる-Fold-`は参照先を消さず描画だけを畳み、`ひらく-DeFold-` / `なんで？-DeFold-`は参照先FAMをresolveして合成表示します。child FAMをparent JSONへinline copyしません。`unFold`のみが独立FAM境界を破壊し得る操作です。
 
-詳細は[`docs/specification/fam-reference-boundary.ja.md`](docs/specification/fam-reference-boundary.ja.md)を参照してください。思想正本はZeroRoomLab-manifest `85d1b5d` の[`fam-infoton-reference-boundary.ja.md`](https://github.com/saitoomituru/ZeroRoomLab-manifest/blob/85d1b5db8d46f34671d38a451617c08edff41675/docs/theory/fam-infoton-reference-boundary.ja.md)です。model adapterの申告Levelは[`docs/specification/model-adapter-support-level.ja.md`](docs/specification/model-adapter-support-level.ja.md)へ分離しています。
+詳細は[`docs/specification/fam-reference-boundary.ja.md`](docs/specification/fam-reference-boundary.ja.md)を参照してください。思想正本はZeroRoomLab-manifest `104d29f` の[`fam-infoton-reference-boundary.ja.md`](https://github.com/saitoomituru/ZeroRoomLab-manifest/blob/104d29fa2c900e49834546c65cb244ac984bbf2d/docs/theory/fam-infoton-reference-boundary.ja.md)です。model adapterの申告Levelは[`docs/specification/model-adapter-support-level.ja.md`](docs/specification/model-adapter-support-level.ja.md)へ分離しています。
 
 ## Repository map
 

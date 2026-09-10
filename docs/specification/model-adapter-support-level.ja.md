@@ -2,7 +2,7 @@
 
 状態: `DESIGN-BOUND / IMPLEMENTATION-IN-PROGRESS`
 
-思想正本: [ZeroRoomLab-manifest `85d1b5d`](https://github.com/saitoomituru/ZeroRoomLab-manifest/blob/85d1b5db8d46f34671d38a451617c08edff41675/docs/theory/fam-model-adapter-support-levels.ja.md)
+思想正本: [ZeroRoomLab-manifest `104d29f`](https://github.com/saitoomituru/ZeroRoomLab-manifest/blob/104d29fa2c900e49834546c65cb244ac984bbf2d/docs/theory/fam-model-adapter-support-levels.ja.md)
 
 ## 目的
 

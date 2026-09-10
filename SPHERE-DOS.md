@@ -9,13 +9,13 @@
 | SphereOS Atlantis | `4de928dec5196d458ace96432b2f9aac9c7cfabc` | `SPHERE-DOS.ja.md` |
 | Proton.md Core | 同上 | `docs/architecture/proton-md-executable-context-container.ja.md` |
 | FAM Family | 同上 | `proton/modules/FAMFamily.proton.md` |
-| ZeroRoomLab-manifest | `85d1b5db8d46f34671d38a451617c08edff41675` | `docs/theory/fam-infoton-reference-boundary.ja.md` / `docs/theory/fam-model-adapter-support-levels.ja.md` |
+| ZeroRoomLab-manifest | `104d29fa2c900e49834546c65cb244ac984bbf2d` | `docs/theory/fam-infoton-reference-boundary.ja.md` / `docs/theory/fam-model-adapter-support-levels.ja.md` |
 | ZeroRoomLab-manifest legacy context | `0949625b7472ff815bf1fba4f43c753e85f22eee` | `AGENTS.md` / `docs/theory/sphere-context-dimension-os.ja.md` |
 | IBD Query FAM draft | `25861b8970ce932bc99b272a0a813822e4df5cab` | `schemas/draft/query-fam.schema.json` |
 
 ## 現行FAM参照境界
 
-FQueryでFold / refFAM / FAMJSON / FAMLog / OAEの意味境界とmodel adapterの申告Levelを解釈する場合、ZeroRoomLab-manifest `85d1b5d` の `fam-infoton-reference-boundary.ja.md` と `fam-model-adapter-support-levels.ja.md` を優先参照する。
+FQueryでFold / refFAM / FAMJSON / FAMLog / OAEの意味境界とmodel adapterの申告Levelを解釈する場合、ZeroRoomLab-manifest `104d29f` の `fam-infoton-reference-boundary.ja.md` と `fam-model-adapter-support-levels.ja.md` を優先参照する。
 
 要点:
 

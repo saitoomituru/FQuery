@@ -7,7 +7,7 @@
 FQueryはFAMのmachine contractを `fam.json/0.1.0-draft` として保持する。保存済みのFoldAccessMapper 0.2.1-alpha原典は歴史資料であり、この仕様は原典の4軸をJSON transportへ写像した現在時点のInterpretation OAEである。
 
 現行のFAMJSON / FAMLog / refFAM / 情報子 / Fold参照境界に関する思想正本は、ZeroRoomLab-manifest
-[`fam-infoton-reference-boundary.ja.md@85d1b5d`](https://github.com/saitoomituru/ZeroRoomLab-manifest/blob/85d1b5db8d46f34671d38a451617c08edff41675/docs/theory/fam-infoton-reference-boundary.ja.md)
+[`fam-infoton-reference-boundary.ja.md@104d29f`](https://github.com/saitoomituru/ZeroRoomLab-manifest/blob/104d29fa2c900e49834546c65cb244ac984bbf2d/docs/theory/fam-infoton-reference-boundary.ja.md)
 をrevision固定で参照する。
 
 OAE拘束成立、複数Observer、World分離等の横断正本は既存Manifest文書を参照し、FQueryはWorldごとのrule内容を複製・hard-codeしない。
