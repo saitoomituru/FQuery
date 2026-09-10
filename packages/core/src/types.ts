@@ -188,6 +188,8 @@ export interface CapabilityResult {
     readonly pluginVersion?: string;
     readonly credentialName?: string;
     readonly requestId?: string;
+    /** provider/CLI固有の観測fieldをlosslessに保持する。Coreは意味を裁定しない。 */
+    readonly [extension: string]: unknown;
   };
 }
 

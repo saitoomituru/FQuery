@@ -89,6 +89,7 @@ describe("CLI harness adapter", () => {
     const result = await handler(request);
     expect(result).toMatchObject({ transportStatus: "failed", outputStatus: "invalid", reason: "cli-refused-or-failed" });
     expect(result.evidenceRefs).toEqual(["receipt://cli/claude/failure-1"]);
+    expect(result.execution).toMatchObject({ termination: "exited", stderrStatus: "present-redacted" });
   });
 
   it("stdout decode失敗をtransport failureへ偽装しない", async () => {

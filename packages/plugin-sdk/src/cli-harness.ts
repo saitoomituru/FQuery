@@ -71,12 +71,18 @@ export function createCliHarnessHandler(
     try {
       receipt = await executor.execute(executionRequest);
     } catch {
-      return failureResult(manifest, config, "cli-executor-threw", [], "spawn-failed");
+      return failureResult(manifest, config, "cli-executor-threw", {
+        exitCode: null,
+        stdout: "",
+        stderrStatus: "not-observed",
+        termination: "spawn-failed",
+        evidenceRefs: [],
+      });
     }
 
     if (receipt.termination !== "exited" || receipt.exitCode !== 0) {
       const reason = receipt.failureReason ?? `cli-${receipt.termination}${receipt.exitCode === null ? "" : `:${receipt.exitCode}`}`;
-      return failureResult(manifest, config, reason, receipt.evidenceRefs, receipt.termination, receipt.stdout);
+      return failureResult(manifest, config, reason, receipt);
     }
 
     try {
@@ -99,6 +105,8 @@ export function createCliHarnessHandler(
           model: modelRef ?? "unknown",
           pluginVersion: manifest.pluginVersion,
           ...(receipt.requestId ? { requestId: receipt.requestId } : {}),
+          termination: receipt.termination,
+          stderrStatus: receipt.stderrStatus,
         },
       };
     } catch {
@@ -123,16 +131,14 @@ function failureResult(
   manifest: PluginManifest,
   config: CliHarnessAdapterConfig,
   reason: string,
-  evidenceRefs: readonly string[],
-  termination: CliHarnessExecutionReceipt["termination"],
-  stdout?: string,
+  receipt: CliHarnessExecutionReceipt,
 ): Omit<CapabilityResult, "pluginId"> {
   return {
     transportStatus: "failed",
     outputStatus: "invalid",
-    ...(stdout ? { candidate: stdout } : {}),
+    ...(receipt.stdout ? { candidate: receipt.stdout } : {}),
     reason,
-    evidenceRefs: Object.freeze([...evidenceRefs]),
+    evidenceRefs: Object.freeze([...receipt.evidenceRefs]),
     adapterProvenance: createAdapterProvenance(manifest, {
       providerRef: config.providerRef,
       ...(config.modelRef ? { modelRef: config.modelRef } : {}),
@@ -143,7 +149,9 @@ function failureResult(
       provider: config.providerRef,
       model: config.modelRef ?? "unknown",
       pluginVersion: manifest.pluginVersion,
-      requestId: `termination:${termination}`,
+      ...(receipt.requestId ? { requestId: receipt.requestId } : {}),
+      termination: receipt.termination,
+      stderrStatus: receipt.stderrStatus,
     },
   };
 }
