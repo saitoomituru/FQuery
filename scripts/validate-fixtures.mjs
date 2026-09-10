@@ -8,6 +8,7 @@ const knownSchemas = new Set([
   "fquery.famlog/0.1.0-draft",
   "fquery.famlog-diff/0.1.0-draft",
   "fquery.negative-fixture/0.1.0-draft",
+  "fquery.nonlinear-replay/0.1.0-draft",
   "fquery.ui/0.1.0-draft",
   "fquery.ui.core-nodes/0.1.0-draft",
   "fam.json/0.1.0-draft",
@@ -31,6 +32,7 @@ for (const root of roots) {
     if (!knownSchemas.has(value.schema_version)) throw new Error(`${path}: 未対応schema_version ${value.schema_version}です`);
     if (value.schema_version === "fquery.result/0.1.0-draft") validateResult(path, value);
     if (value.schema_version === "fquery.benchmark/0.1.0-draft") validateBenchmark(path, value);
+    if (value.schema_version === "fquery.nonlinear-replay/0.1.0-draft") validateNonlinearReplay(path, value);
     if (value.schema_version === "fquery.famlog/0.1.0-draft") validateFamLog(path, value);
     if (value.schema_version === "fquery.famlog-diff/0.1.0-draft") validateFamLogDiff(path, value);
     if (value.schema_version === "fquery.ui/0.1.0-draft") validateUi(path, value);
@@ -38,6 +40,20 @@ for (const root of roots) {
     if (value.schema_version === "fam.json/0.1.0-draft") validateFam(path, value);
     if (value.schema_version === "fold.log/0.1.0-alpha") validateFoldLog(path, value);
     count += 1;
+  }
+}
+
+function validateNonlinearReplay(path, value) {
+  if (typeof value.case_ref !== "string" || !isRecord(value.subject) || typeof value.subject.source_text !== "string" || !Array.isArray(value.observations) || value.observations.length < 2) {
+    throw new Error(`${path}: nonlinear replay contractが不正です`);
+  }
+  for (const [index, observation] of value.observations.entries()) {
+    if (observation.schemaVersion !== "fquery.nonlinear-observer-oae/0.1.0-draft" || observation.subjectRef !== value.subject.subject_ref || observation.subjectRevisionRef !== value.subject.subject_revision_ref) {
+      throw new Error(`${path}: observations[${index}]のsubject bindingが不正です`);
+    }
+    if (!isRecord(observation.topology) || !Array.isArray(observation.topology.semanticRelations) || !Array.isArray(observation.topology.alternativeBranchRefs)) {
+      throw new Error(`${path}: observations[${index}]のtopologyが不正です`);
+    }
   }
 }
 

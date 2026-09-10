@@ -1,0 +1,102 @@
+{
+  "schema_version": "fquery.nonlinear-replay/0.1.0-draft",
+  "case_ref": "case://fquery/nonlinear/fpga-post/20260910",
+  "selection": {
+    "method": "human-random-pick",
+    "observer_ref": "observer://human/saitoomituru",
+    "observed_at": "2026-09-10",
+    "source_scope": "USER_PROVIDED_TEXT"
+  },
+  "subject": {
+    "subject_ref": "text://fquery/human-test/fpga-post",
+    "subject_revision_ref": "revision://fquery/human-test/fpga-post/1",
+    "source_text": "これFPGAに姿勢制御とか定形MLをベイクするのに希望出るやん。\n\nルネサス の外道マンゴーこと　GR-Mango系の可変FPGA的機能強いマイコンボード一気に勝ち筋やん。\n\nって思ってジャンク箱から掘り出してきたがファミコン持っておらんPS世代だ。親世代のゲーム機や\n\n違法Romはないことないがさすがに少年時代パクられこいたトラウマからそれは無理だな。"
+  },
+  "observations": [
+    {
+      "schemaVersion": "fquery.nonlinear-observer-oae/0.1.0-draft",
+      "oaeRef": "oae://human/fpga-post/factual-reading",
+      "oaeRevisionRef": "revision://human/fpga-post/factual-reading/1",
+      "subjectRef": "text://fquery/human-test/fpga-post",
+      "subjectRevisionRef": "revision://fquery/human-test/fpga-post/1",
+      "candidateRef": "fam://human/fpga-post/factual-reading",
+      "candidateRevisionRef": "revision://human/fpga-post/factual-reading/1",
+      "observerRef": "observer://human/saitoomituru",
+      "observerDomainRef": "domain://fquery/human-structural-review",
+      "ruleRef": "rule://fquery/nonlinear-structure-review",
+      "ruleRevisionRef": "revision://fquery/nonlinear-structure-review/draft-1",
+      "recordIntegrity": "valid",
+      "ruleConformance": "satisfied",
+      "observerVerdict": "factual-chain-expected",
+      "topology": {
+        "contextDimensionRefs": ["dimension://engineering-prospect", "dimension://hardware-opportunity", "dimension://personal-memory", "dimension://behavioral-constraint"],
+        "foldBoundaryRefs": [],
+        "semanticRelations": [
+          {"fromRef": "unit://1", "toRef": "unit://3", "relation": "motivates"},
+          {"fromRef": "unit://2", "toRef": "unit://3", "relation": "motivates"},
+          {"fromRef": "unit://3", "toRef": "unit://4", "relation": "elicits-memory-constraint"}
+        ],
+        "toolRelations": [],
+        "alternativeBranchRefs": ["branch://human/fpga-post/astral-reading"],
+        "unknownRefs": ["unknown://exact-gr-mango-capability", "unknown://event-history"]
+      },
+      "evidenceRefs": ["human-test://issue-42/2026-09-10/fpga-post"],
+      "issueCodes": []
+    },
+    {
+      "schemaVersion": "fquery.nonlinear-observer-oae/0.1.0-draft",
+      "oaeRef": "oae://human/fpga-post/gemini-browser-observation",
+      "oaeRevisionRef": "revision://human/fpga-post/gemini-browser-observation/1",
+      "subjectRef": "text://fquery/human-test/fpga-post",
+      "subjectRevisionRef": "revision://fquery/human-test/fpga-post/1",
+      "candidateRef": "fam://google/gemini/fpga-post/browser-candidate",
+      "candidateRevisionRef": "revision://google/gemini/fpga-post/browser-candidate/observed-1",
+      "observerRef": "observer://human/saitoomituru",
+      "observerDomainRef": "domain://fquery/browser-human-test",
+      "ruleRef": "rule://fquery/nonlinear-structure-review",
+      "ruleRevisionRef": "revision://fquery/nonlinear-structure-review/draft-1",
+      "recordIntegrity": "valid",
+      "ruleConformance": "not-satisfied",
+      "observerVerdict": "flat-fanout-observed",
+      "topology": {
+        "contextDimensionRefs": ["dimension://provider/unmapped"],
+        "foldBoundaryRefs": [],
+        "semanticRelations": [],
+        "toolRelations": [],
+        "alternativeBranchRefs": [],
+        "unknownRefs": ["unknown://provider-causal-topology"]
+      },
+      "evidenceRefs": ["human-test://issue-42/2026-09-10/fpga-post/screenshot"],
+      "issueCodes": ["flat-fanout", "causal-chain-not-retained"]
+    },
+    {
+      "schemaVersion": "fquery.nonlinear-observer-oae/0.1.0-draft",
+      "oaeRef": "oae://openai/codex/fpga-post/design-review",
+      "oaeRevisionRef": "revision://openai/codex/fpga-post/design-review/1",
+      "subjectRef": "text://fquery/human-test/fpga-post",
+      "subjectRevisionRef": "revision://fquery/human-test/fpga-post/1",
+      "candidateRef": "fam://openai/codex/fpga-post/interpretation-candidate",
+      "candidateRevisionRef": "revision://openai/codex/fpga-post/interpretation-candidate/1",
+      "observerRef": "observer://openai/codex/current-session",
+      "observerDomainRef": "domain://fquery/assistant-structural-review",
+      "ruleRef": "rule://fquery/nonlinear-structure-review",
+      "ruleRevisionRef": "revision://fquery/nonlinear-structure-review/draft-1",
+      "recordIntegrity": "valid",
+      "ruleConformance": "satisfied",
+      "observerVerdict": "causal-chain-with-personal-memory-fold-plausible",
+      "topology": {
+        "contextDimensionRefs": ["dimension://engineering-prospect", "dimension://hardware-opportunity", "dimension://personal-memory", "dimension://behavioral-constraint"],
+        "foldBoundaryRefs": ["fold://personal-memory-and-constraint"],
+        "semanticRelations": [
+          {"fromRef": "unit://1", "toRef": "unit://3-4", "relation": "motivates"},
+          {"fromRef": "unit://2", "toRef": "unit://3-4", "relation": "motivates"}
+        ],
+        "toolRelations": [],
+        "alternativeBranchRefs": ["branch://human/fpga-post/factual-reading"],
+        "unknownRefs": ["unknown://exact-gr-mango-capability", "unknown://event-history", "unknown://memory-fact-boundary"]
+      },
+      "evidenceRefs": ["human-test://issue-42/2026-09-10/fpga-post"],
+      "issueCodes": ["assistant-observation-not-global-truth"]
+    }
+  ]
+}
