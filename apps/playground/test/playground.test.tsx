@@ -415,7 +415,15 @@ describe("FQuery Playground FAMVIM", () => {
   });
 
   it("降水確率の局所差替えをcommit後にλとFoldLog edit recordへ自動反映する", async () => {
-    const fam = createLiteralDecompositionFam("雨が降っている。傘を持って出かける。ただし降水量は未確認である。", "q://test/playground/precipitation-edit");
+    const fam = structuredClone(createLiteralDecompositionFam("雨が降っている。傘を持って出かける。ただし降水量は未確認である。", "q://test/playground/precipitation-edit"));
+    const targetUnit = (fam.λ as { output_units: Array<Record<string, unknown>> }).output_units[2]!;
+    const targetRef = (targetUnit.Q as { unit_ref: string }).unit_ref;
+    (targetUnit.λ as { sub_splitters: unknown[] }).sub_splitters.push({
+      ψ: { source_text: "ただし降水量は未確認である。", source_language: "ja", target_language: "en" },
+      "∇φ": [{ gradient_type: "translation-copy" }],
+      λ: { manifestation: "However, the amount of precipitation is unconfirmed.", manifestation_language: "en" },
+      Q: { copy_role: "translation-witness", source_node_ref: targetRef, unknowns: [], unknown_is_absence: false, translation_error: { status: "not-evaluated", metric_refs: [], measurements: [] } },
+    });
     const fetcher = vi.fn().mockResolvedValueOnce(json(fixtureRoutes)).mockResolvedValueOnce(json(decompositionResponse(fam)));
     const { container } = await mountWithGraph(fetcher);
     await act(async () => { fireEvent.click(canvasNodes(container)[0]!.querySelector('[aria-label="route controls"] button')!); });
@@ -428,6 +436,8 @@ describe("FQuery Playground FAMVIM", () => {
     openLeftTab(container, "records");
     await waitFor(() => expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain('"operation": "edit"'));
     expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain('"resultRevisionRef": "rev://playground/fam-edit/1"');
+    expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain('"invalidatedDerivedPaths": [');
+    expect(container.querySelector('[data-record-kind="famlog"]')?.textContent).toContain('"/λ/sub_splitters"');
   });
 });
 

@@ -19,6 +19,7 @@ export interface FamUnitReplacementResult {
   readonly changedUnitRef: string;
   readonly unchangedUnitRefs: readonly string[];
   readonly revalidateChildRefs: readonly string[];
+  readonly invalidatedDerivedPaths: readonly string[];
 }
 
 /** 選択unitだけをUser提供overrideとして置換し、元unitとparent revisionを変更しない。 */
@@ -33,6 +34,9 @@ export function replaceFamUnit(
   const before = units[index]!;
   const beforePsi = requiredObject(before.ψ, "unit.ψ");
   const beforeQ = requiredObject(before.Q, "unit.Q");
+  const beforeLambda = requiredObject(before.λ, "unit.λ");
+  const previousSubSplitters = Array.isArray(beforeLambda.sub_splitters) ? beforeLambda.sub_splitters : [];
+  const invalidatedDerivedPaths = previousSubSplitters.length > 0 ? ["/λ/sub_splitters"] : [];
   const beforeText = requiredString(beforePsi.source_text, "unit.ψ.source_text");
   if (!request.replacementText.trim()) throw new TypeError("replacement-text-required");
   const replacement: FamNode = {
@@ -50,8 +54,11 @@ export function replaceFamUnit(
       source_mutation: false,
     }],
     λ: {
-      ...requiredObject(before.λ, "unit.λ"),
+      ...beforeLambda,
       manifestation: request.replacementText,
+      // 翻訳写本などは旧source_textへ束縛されている。局所差替え後に
+      // currentとして残さず、再生成・再評価されるまで空集合へ失効させる。
+      sub_splitters: [],
     },
     Q: {
       ...beforeQ,
@@ -62,6 +69,14 @@ export function replaceFamUnit(
       override_source_ref: request.overrideSourceRef,
       override_observer_ref: request.overrideObserverRef,
       replaces_source_expression: beforeText,
+      ...(previousSubSplitters.length > 0 ? {
+        invalidated_derivations: [{
+          path: "/λ/sub_splitters",
+          reason: "source-unit-replaced-requires-revalidation",
+          previous_count: previousSubSplitters.length,
+          revalidation_status: "required",
+        }],
+      } : {}),
       unknowns: [],
       unknown_is_absence: false,
     },
@@ -85,6 +100,7 @@ export function replaceFamUnit(
     changedUnitRef: request.unitRef,
     unchangedUnitRefs: Object.freeze(units.flatMap((unit) => asObject(unit.Q)?.unit_ref !== request.unitRef && typeof asObject(unit.Q)?.unit_ref === "string" ? [asObject(unit.Q)!.unit_ref as string] : [])),
     revalidateChildRefs: Object.freeze(revalidateChildRefs),
+    invalidatedDerivedPaths: Object.freeze(invalidatedDerivedPaths),
   });
 }
 

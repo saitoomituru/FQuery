@@ -106,7 +106,7 @@ export function createPlaygroundSession(): PlaygroundSession {
   const receipts = new EditReceiptStore();
   const fams = new FamDocumentStore();
   const logs = new FoldLogStore();
-  const pendingFamEffects = new Map<string, { readonly sourceFam: FamJsonRecord; readonly sourceFoldRef: string; readonly receipt: FamEditReceipt; readonly document?: FamDocument }>();
+  const pendingFamEffects = new Map<string, { readonly sourceFam: FamJsonRecord; readonly sourceFoldRef: string; readonly receipt: FamEditReceipt; readonly document?: FamDocument; readonly invalidatedDerivedPaths?: readonly string[] }>();
   let editSequence = 0;
   const session = new PresentationSession(createFixtureDecisionPort({
     registry,
@@ -143,6 +143,7 @@ export function createPlaygroundSession(): PlaygroundSession {
           sourceFam: fams.current.value,
           sourceFoldRef: node.foldRef,
           receipt: result.decision.receipt,
+          invalidatedDerivedPaths: result.invalidatedDerivedPaths,
           ...(result.decision.status === "accepted" ? { document: result.decision.document } : {}),
         });
         if (result.decision.status === "rejected") return { rejected: result.decision.receipt.reason ?? "fam-unit-replacement-rejected" };
@@ -209,13 +210,13 @@ export function createPlaygroundSession(): PlaygroundSession {
     if (!effect) return;
     pendingFamEffects.delete(decision.requestId);
     receipts.push(effect.receipt);
-    appendEditFoldLog(logs, effect.sourceFoldRef, effect.sourceFam, effect.receipt);
+    appendEditFoldLog(logs, effect.sourceFoldRef, effect.sourceFam, effect.receipt, effect.invalidatedDerivedPaths);
     if (effect.document) fams.setDecision(effect.document);
   });
   return { session, receipts, fams, logs };
 }
 
-function appendEditFoldLog(logs: FoldLogStore, sourceFoldRef: string, sourceFam: FamJsonRecord, receipt: FamEditReceipt): void {
+function appendEditFoldLog(logs: FoldLogStore, sourceFoldRef: string, sourceFam: FamJsonRecord, receipt: FamEditReceipt, invalidatedDerivedPaths: readonly string[] = []): void {
   const q = sourceFam.Q as Record<string, unknown>;
   logs.append({
     traceId: `foldlog://playground/${sourceFam.fam_id}`,
@@ -235,7 +236,7 @@ function appendEditFoldLog(logs: FoldLogStore, sourceFoldRef: string, sourceFam:
     recompositionRequired: false,
     beforeSha256: receipt.beforeSha256,
     ...(receipt.afterSha256 ? { afterSha256: receipt.afterSha256 } : {}),
-    detail: { operationId: receipt.operationId, reason: receipt.reason ?? null, persistenceBoundary: "volatile-browser-memory" },
+    detail: { operationId: receipt.operationId, reason: receipt.reason ?? null, invalidatedDerivedPaths, persistenceBoundary: "volatile-browser-memory" },
   });
 }
 
