@@ -9,6 +9,7 @@ FAM JSON Coreのframework非依存machine contract。FAMはopen-worldであり�
 - provider structured output用profile Schema
 - 必要な経路だけへ注入するlanguage lineage profile
 - 翻訳要求時に`λ.sub_splitters`へ写本を保持するtranslation profile
+- decomposition profileのroot `∇φ`をarrayへ固定せず、container表現とTopology Normalizerを分離
 
 原典Markdown自体をstrict JSONとして扱わない。原典の構文補正や抽出結果は、原典archiveとは別artifactとreceiptへ分離する。
 

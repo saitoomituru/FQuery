@@ -20,6 +20,7 @@
     "dev": "npm run build:libs && npm run dev -w @fquery/playground",
     "dev:browser": "npm run build:libs && npm run dev -w @fquery/playground -- --port 3100",
     "validate:fixtures": "node scripts/validate-fixtures.mjs",
+    "inspect:topology": "npm run build -w @fquery/core && node scripts/inspect-topology-samples.mjs",
     "verify:origins": "node scripts/verify-origin-integrity.mjs",
     "pretest": "npm run build",
     "test": "npm run test --workspaces --if-present",

@@ -1,6 +1,6 @@
 # FQuery selector / traversal / normalization 最小規約
 
-状態: `DESIGN-CORRECTIVE / IMPLEMENTATION-PENDING`
+状態: `CORE-IMPLEMENTATION-CANDIDATE / AUTOMATED-VERIFIED / HUMAN-TEST-PENDING`
 
 関連:
 - [`fam-json-core.ja.md`](fam-json-core.ja.md)
@@ -278,8 +278,22 @@ FQuery surface
 ## 12. non-goals
 
 - `アストラル`、`エレメンタル`、企業部署、科学domain等の意味をCore enumへ固定する
+
 - array indexを実行順へ自動昇格する
 - `prev / next`と`before / after`を同義にする
 - semantic similarityだけでFoldを横断する
 - vector DB / SQL / Neo4j / IBD等の特定backendをFQuery Coreへ固定する
 - LLMへpointer integrityやFold boundary enforcementを委譲する
+
+## 13. 2026-09-11 Core実装receipt
+
+次のCore候補を実装し、自動testへ接続した。
+
+- `@fquery/fam-core`: decomposition profileのroot `∇φ=array`固定を解除
+- `@fquery/core`: `normalizeFamTopology()`、Fold-scoped selector resolver、layer pointer validator
+- `@fquery/core`: `fam_ref` module graph resolver、cycle停止、extraction candidate判定
+- `@fquery/core`: 同じTopology revisionからRunner dependencyとlayout非依存Presentation inputを純粋投影
+- `@fquery/core`: objective fact / subjective truth adapter capabilityを分離
+- `sample1 / sample2 / sample3`: array parallel、object address、L/mL差、module referenceを回帰test
+
+実GUIへの接続、provider generation前のrefFAM注入、非線形発見evalはそれぞれ後続Issueの責務であり、本receiptから完了へ昇格しない。Human確認手順は[`../testing/issue-43-human-acceptance.ja.md`](../testing/issue-43-human-acceptance.ja.md)とする。

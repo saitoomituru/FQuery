@@ -115,11 +115,11 @@ selectorは既定でcurrent Fold内だけを解決する。
 
 ## 現行implementationとの状態差
 
-これらは**FAM base / selector規約のサンプル**であり、現行`validateFamDecomposition()`の適合fixtureではない。
+これらは**FAM selector / Topology Normalizer規約のサンプル**であり、`validateFamDecomposition()`のprovider profile適合fixtureではない。歴史的sample表記の`Ψ`も入力互換として保持し、FAM Core正本のbase axis `ψ`へ無断rewriteしない。
 
-現行implementationはdecomposition profileで`∇φ=array`を要求しているため、`sample2.fam.json`および`sample3-1.fam.json` / `sample3-2.fam.json`はIssue #43の実装が入るまでdecomposition profileでは`not-satisfied`になり得る。
+Issue #43のCore実装候補はdecomposition profileからroot `∇φ=array`固定を外した。ただしsample1〜3はprovider用metadataやlineageを意図的に持たないため、decomposition profileの`not-satisfied`とTopology normalizationの成否を混同しない。
 
-これはsampleをarrayへ直す理由ではない。Issue #43で、base FAM構造、container representation、semantic/runtime topology、module resolutionを分離して実装する。
+sampleを旧provider profileへ合わせてarray化しない。base FAM構造、container representation、semantic/runtime topology、module resolutionは別状態として検証する。
 
 関連:
 - `docs/specification/fquery-selector-traversal-normalization.ja.md`
