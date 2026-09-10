@@ -1,16 +1,19 @@
 import type {
-  AdapterProvenanceReceipt,
   CapabilityInvocation,
   CapabilityResult,
   FamAdapterSupportClaim,
   PluginResolver,
   QueryPolicy,
 } from "@fquery/core";
+import { createAdapterProvenance } from "./provenance.js";
 
 export { createUnresolvedDecomposition, ManualNlDecomposer, validateDecomposerCandidate } from "./decomposer.js";
 export type * from "./decomposer.js";
 export { asOaeConstraintEvaluationReceipt, validateOaeConstraintEvaluationReceipt } from "./oae-evaluator.js";
 export type * from "./oae-evaluator.js";
+export { createCliHarnessHandler } from "./cli-harness.js";
+export type * from "./cli-harness.js";
+export { createAdapterProvenance } from "./provenance.js";
 
 export interface PluginManifest {
   readonly schemaVersion: "fquery.plugin/0.1.0-draft";
@@ -64,33 +67,6 @@ export class PluginRegistry implements PluginResolver {
     const result = await registration.handler(request);
     return { ...result, pluginId: registration.manifest.pluginId, pluginStatus: result.pluginStatus ?? "resolved", adapterProvenance: result.adapterProvenance ?? createAdapterProvenance(registration.manifest) };
   }
-}
-
-export function createAdapterProvenance(
-  manifest: PluginManifest,
-  scope: {
-    readonly providerRef?: string;
-    readonly modelRef?: string;
-    readonly runtimeRef?: string;
-    readonly harnessRef?: string;
-    readonly oaeRefs?: readonly string[];
-  } = {},
-): AdapterProvenanceReceipt {
-  return Object.freeze({
-    schemaVersion: "fam.adapter-provenance/0.1.0-draft",
-    producerRef: manifest.pluginId,
-    producerRevision: manifest.pluginVersion,
-    adapterChain: Object.freeze([Object.freeze({
-      adapterRef: manifest.pluginId,
-      adapterRevision: manifest.pluginVersion,
-      ...(scope.providerRef ? { providerRef: scope.providerRef } : {}),
-      ...(scope.modelRef ? { modelRef: scope.modelRef } : {}),
-      ...(scope.runtimeRef ? { runtimeRef: scope.runtimeRef } : {}),
-      ...(scope.harnessRef ? { harnessRef: scope.harnessRef } : {}),
-    })]),
-    supportClaim: manifest.famSupport,
-    oaeRefs: Object.freeze([...(scope.oaeRefs ?? [])]),
-  });
 }
 
 export function allowsSideEffect(allowed: QueryPolicy["sideEffect"], required: Exclude<QueryPolicy["sideEffect"], "deny">): boolean {

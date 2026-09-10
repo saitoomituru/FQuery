@@ -63,6 +63,28 @@ adapterは観測できた範囲でrequest、response、refusal、rewrite、vendo
 
 Lv5はSphere-aae / AAE側の内部bus adapterと接続receiptが揃うまで`DESIGN-TARGET`であり、現行Gemini / Ollama adapterから暗黙導出しない。
 
+## CLI harnessによるLv1接続
+
+Codex、Claudeその他のassistantが公式CLIで非対話入力と機械可読出力を提供する場合、Host側CLI harnessからLv1 adapterを構成できる。FQueryはvendor名ごとのprocess起動をCoreへ焼き込まず、`@fquery/plugin-sdk`の`createCliHarnessHandler`へHost executorを注入する。
+
+```text
+FQuery plugin
+  -> command_ref + fixed args + stdin
+  -> Host-owned executor
+  -> stdout / exit code / redacted stderr status / run receipt
+  -> adapter-specific decoder
+  -> candidate FAM + adapter provenance
+```
+
+- user inputをshell commandへ連結しない
+- binary path、credential、環境変数、sandbox、network authorityはHostが所有する
+- `command_ref`はHost registryで実commandへ解決し、FAMから任意binaryを起動させない
+- stderr本文やsecretをCore eventへ直書きせず、redaction済みreceipt refを残す
+- exit成功とcandidate decode成功を分離する
+- CLI出力から観測できない内部思考、model identity、vendor policy理由を補完しない
+
+Codex／Claude／Grokという名称だけでは接続成立を意味しない。対象runtimeで利用可能な公式または明示承認済みCLI、非対話契約、revision、実行receiptが揃ったscopeだけをLv1と自己申告する。互換CLIやwrapperをvendor公式実装へ昇格させない。
+
 ## machine contract方針
 
 support claimはopen-world envelopeとして扱う。未知capability、追加観測面、将来fieldを削除しない。Coreは整数Levelの範囲と必要な参照をtransport shapeとして読めるようにしても、Levelの実質充足条件をhard-codeしない。
@@ -73,3 +95,4 @@ support claimはopen-world envelopeとして扱う。未知capability、追加�
 - capability result / FAMLog eventのadapter provenance
 - provider success / failure双方のproducer chain
 - Coreが自己申告を降格しない回帰test
+- Host注入CLI executorの成功、non-zero exit、decode failureを分離する回帰test
