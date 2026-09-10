@@ -181,7 +181,11 @@ function FlowSurface({ nodes, connections, layout, decisions, presentations, nod
     },
     zoomToFit() {
       try {
-        void flow.fitView({ padding: 0.2 });
+        const visibleNodes = flow.getNodes().filter((node) => !node.hidden);
+        if (visibleNodes.length === 0) return false;
+        // 初期3 nodeから動的Foldへ置換した後は、現在のReact Flow storeから
+        // fit対象を明示し、旧node集合を基準にしたviewportを残さない。
+        void flow.fitView({ nodes: visibleNodes, padding: 0.2, duration: 200 });
         return true;
       } catch {
         return false;

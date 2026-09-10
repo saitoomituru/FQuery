@@ -59,3 +59,32 @@ test("fixture分解をGUIから実行し、通信・FAM・投影の境界を観�
   await expect(page.locator('[data-runtime-error="true"]')).toHaveCount(0);
   expect(pageErrors).toEqual([]);
 });
+
+test("狭いviewportでも全体表示で動的Foldを画面内へ収める", async ({ page }) => {
+  await page.setViewportSize({ width: 800, height: 628 });
+  await page.goto("/");
+
+  const toolPaneToggle = page.getByRole("button", { name: "toggle tool pane (T)" });
+  await toolPaneToggle.click();
+  const route = page.locator(".psi-node").first();
+  const responsePromise = page.waitForResponse((response) =>
+    response.request().method() === "POST" && new URL(response.url()).pathname === "/api/decompose",
+  );
+  await route.getByRole("button", { name: "分解を実行" }).click();
+  expect((await responsePromise).status()).toBe(200);
+  await expect(page.locator(".fold-unit-node")).toHaveCount(3);
+
+  await page.locator(".shell").press("Home");
+  await expect.poll(async () => page.evaluate(() => {
+    const nodes = Array.from(document.querySelectorAll<HTMLElement>(".react-flow__node"));
+    const topbar = document.querySelector<HTMLElement>(".topbar")?.getBoundingClientRect();
+    const margin = 2;
+    return {
+      horizontalOverflow: document.documentElement.scrollWidth > innerWidth,
+      outside: nodes.filter((node) => {
+        const rect = node.getBoundingClientRect();
+        return rect.left < -margin || rect.right > innerWidth + margin || rect.top < (topbar?.bottom ?? 0) - margin || rect.bottom > innerHeight + margin;
+      }).map((node) => node.getAttribute("data-id")),
+    };
+  })).toEqual({ horizontalOverflow: false, outside: [] });
+});
