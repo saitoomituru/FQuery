@@ -101,7 +101,10 @@ npm test
 npm run typecheck
 npm run build
 npm run dev # http://127.0.0.1:3000
+npm run test:browser:chrome # install済みGoogle Chromeをheadless操作
 ```
+
+CIのmanaged Chromium、Macの実Chrome自動操作、Safari MCP、User Human Testの準備と状態境界は[`docs/testing/browser-automation.ja.md`](docs/testing/browser-automation.ja.md)を参照してください。
 
 PlaygroundはHost gatewayからrouteを発見し、fixture、Gemini、ローカルOllamaを同じ`fam.decompose`契約で切り替えます。Basic Commons Access Mapperはrevision固定のtest fixtureであり、Manifest／IBDの正本や普遍的な分類規則ではありません。期待設計では分解前にactive refFAMとして注入し、同じrevisionを生成・検証・投影へ通しますが、現行経路は未完了でIssue #41を追跡中です。Gemini credentialはHost側だけで解決され、Browserへは表示用`name`しか返しません。
 

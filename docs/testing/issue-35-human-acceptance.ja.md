@@ -49,6 +49,8 @@
 - 縮小boundaryの「ひらく-DeFold-」で同じ子graphを再描画する。`unFold`は破壊的結合の予約語であり、この操作では実行しない
 - FAM store通知をSession commit後へ移し、unit差替えをλとFoldLog edit recordへ同じ確定revisionから投影する
 - Safari pane tabを固定幅scroll領域にせず、pane幅内へ縮約する
+- PlaywrightでfixtureのGUI操作、HTTP応答、3つの独立Fold、λ投影を実Chrome／CI Chromiumから検証する。800x628の狭幅では`全体表示`後に6 node全てをviewportへ収め、document横overflowを残さない
+- Safari MCPで同じfixture経路を自動観測し、HTTP 200、3 Fold、λ 3行、console 0、runtime error 0、`全体表示`後6/6 node完全表示を確認する。ただしSafari MCP自動観測はSafari Human Testへ昇格しない
 - decompose、edit、validate-edge、recursive-decomposeを`fold.log/0.1.0-alpha` / `oae.record/0.1.0-alpha`として生成し、secret redaction境界を保持する
 - `ja-JP`を既定にし、schema key・URIを翻訳せず`en-US`表示へ切替できる
 
