@@ -37,15 +37,64 @@ unknown != pass
 - `複数参照された == 真理`、`複数参照された == refFAM`と短絡しない。複数参照はまず経験価値の可搬性、独立情報子へ昇格すべきsignalとして扱う
 - 正本思想はZeroRoomLab-manifest `fam-infoton-reference-boundary.ja.md`、FQuery machine contractは[`docs/specification/fam-reference-boundary.ja.md`](docs/specification/fam-reference-boundary.ja.md)を参照する
 
+## Selector / traversal / Fold scope
+
+正本は[`docs/specification/fquery-selector-traversal-normalization.ja.md`](docs/specification/fquery-selector-traversal-normalization.ja.md)。次を一般object / graph操作の基礎契約として扱い、LLM向け都合で別意味へ上書きしない。
+
+```text
+self = current FAM file / module
+this = current node
+self != this
+
+L axis:
+  prev <- this -> next
+
+mL axis:
+  before <- this -> after
+
+containment:
+  parent / children / siblings
+```
+
+- `prev / next`はL軸のstructural position。配置・接続上の前後を指す
+- `before / after`はmL軸のruntime semantic route。実際のrunで意味処理がどこから来てどこへ渡ったかを指し、同じFAM revisionでもrunごとに変化し得る
+- `prev / next`と`before / after`を同義化しない。structural topologyとruntime semantic topologyを一つのedgeへ潰さない
+- arrayはsibling collection / parallel representation、objectはnamed addressable unitsとして正規化する。array indexだけからmL実行順を導出しない
+- layer / role名の意味をCoreへhard-codeしない。`アストラル`、`エレメンタル`、`設計部`、`製造部`等はactive refFAM / Access Map / Registry側のnamespaceである
+- LLM / model / Human ObserverはrefFAMを用いて意味分類できるが、pointer existence、Fold scope、revision、cross-Fold permissionを裁定しない
+- selectorは既定でcurrent Fold scoped。semantic similarityだけで別Foldへ接続しない
+- `this.after.エレメンタル`等は意味次元を操作するcommandではなく、mL traversal先をcurrent Foldのlayer namespaceでselector/filterする表現として扱う。意味次元操作は別operator責務にする
+- 別Foldへ接続する場合は`fam_ref`、明示transition、adapter等のboundary contractを要求する
+
+```text
+Meaning may remain open.
+Pointers may not.
+```
+
 ## Fold参照正規化
 
-- 同一FAM内の`∇φ` / subtree / Fold nodeを複数semantic consumerからshared nodeとして直接参照しない。複数参照が必要になった時点で独立FAM extraction candidateとする
+- current Fold内で`self / this`、`parent / children`、`prev / next`、`before / after`、array / objectの基本relationへlossless normalizationを先に試す
+- 同一FAM内の`∇φ` / subtree / Fold nodeを複数semantic consumerからshared nodeとして直接参照しない。複数参照や別Fold可搬、独立revision等によりlocal normalizationではidentityを保てない時点で独立FAM extraction candidateとする
 - Fold boundaryは原則として独立FAM identityへの参照境界である。Fold内部をparent FAMのcanonical hidden child arrayとして所有し続ける設計へ新規依存を増やさない
+- FAM fileをmoduleとして扱い、cross-FAM referenceをinline copyしない。循環参照はmodule graphとしてvisited path / revisionを管理し、無限inline expansionをしない
 - `まとめる-Fold-`は参照先FAMを削除せずpresentationだけを縮約する
 - `ひらく-DeFold-` / `なんで？-DeFold-`は参照先FAMをresolveしてprojectする。child FAMをparent FAM JSONへinline copyしない
 - `unFold`だけが独立FAM境界や中間表現を破壊し得る。Fold / DeFoldを暗黙にunFoldへ昇格しない
 - React Flowの一枚graph、nested node object、renderer groupをcanonical cross-FAM identityにしない。GUIは複数FAM viewを合成表示するsurfaceである
 - legacy nested subtreeを移行する場合、source revision、extracted FAM identity、node refs、unknown fields、before/after hash、loss statusをreceipt化し、内容を失わない
+
+## Query / adapter境界
+
+- 客観事実を要求するqueryと主観真実を要求するqueryを混同しない
+- objective fact queryはfact-capable adapterへdispatchし、API / SQL / sensor / RAG / record等から再取得・検証可能なsource / provenanceを返せることを要求する
+- subjective truth queryはsemantic / vector-capable adapterへdispatchし、経験・記憶・解釈等の意味近傍candidateを取得可能にする
+- IBD、Neo4j、SQLite、PostgreSQL、vector DB、外部業務DB等のbackend製品名をCore query semanticsへ固定しない
+- semantic retrievalで取得されたcandidateを自動採用しない
+
+```text
+retrieved != adopted
+subjective validity != objective universality
+```
 
 ## 解釈・OAE・authority境界
 
@@ -62,7 +111,7 @@ unknown != pass
 - 一回で完全・網羅・唯一の分解を要求しない。空欄や`unknown`を許し、初回Foldを暫定の最尤候補として扱う
 - 手直し不能な「正解」より、局所編集、branch、revision、差分、Observer／rule付きreceiptから回復できる候補を優先する
 - `なんで？-DeFold-`は必要箇所を段階的に掘り、実際に使った解決元を示す。receiptが無い場合はもっともらしい説明を生成せず`resolution-provenance-unavailable`を返す
-- L/mL/G/Dを一括fan-outへ潰さない。Lはtool／API／adapter chain、mLは判断・解釈chain、GはFold-on-Fold深度、Dは独立Context次元として保持する
+- L/mL/G/Dを一括fan-outへ潰さない。Lはstructural / technology topologyの軸で`prev / next`等の機械参照を持ち、mLは判断・解釈runtime topologyの軸で`before / after`等の意味処理参照を持つ。GはFold-on-Fold深度、Dは独立Context次元として保持する
 - 実行並列性やrenderer都合をcanonical semantic topologyへ逆流させない
 
 人間向けREADME、文書、Issue、commit、PR、code comment、CLI help、検証報告は、互換性を壊さない限り日本語を既定とする。identifier、Schema key、package名、protocol symbolは英語を保持する。
