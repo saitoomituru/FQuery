@@ -36,27 +36,67 @@ fact
 - `.アストラル` / `.エレメンタル`は意味次元を操作するcommandではない。runtime traversal先をcurrent Foldのlayer namespaceでselector/filterする最小例
 - `アストラル` / `エレメンタル`の意味定義はFQuery Coreの責務ではなく、active refFAM / Access Map / Registry側にある
 
-## `sample3.tool-corporate.fam.json`
+## `sample3-1.fam.json` / `sample3-2.fam.json`
 
-目的: **企業内tool-level FAMでL構造とmL実行経路が異なる最小例**を示す。
+目的: **企業内tool-level FAMをmodule / submoduleへ分割し、L構造とmL実行経路を分離する最小例**を示す。
 
 ```text
-L / structural
-開発部 -> 製造 -> 製造3課
-          ├─ 製造1課
-          └─ 製造2課
+sample3-1.fam.json
+Corporate / 案件 FAM
 
-mL / runtime
-製造3課 -> 法務部 -> QA -> 開発部
+開発部 --next--> 製造
+                 │
+                 └─ fam_ref -> ./sample3-2.fam.json
+
+runtime:
+製造 --after--> 法務部 --after--> QA --after--> 開発部
 ```
 
-- `開発部 / 製造 / 製造3課 / 法務部 / QA`はcurrent Corporate Fold内のnamed/addressable unit
-- `製造1課 / 製造2課`は同一`製造`node配下のparallel sibling
-- `this.prev / this.next`はL軸のstructural traversalを示す
-- `this.before / this.after`は案件が実際に通過したmL runtime routeを示す
-- QAから開発部へのrollbackは、structural nextではなく`this.after.開発部`として表現する
-- 法務部やQAの意味・権限・安全基準そのものをCoreへhard-codeしない。企業用refFAM / Registry / adapter側が定義する
-- 「安全基準を満たせない」という内容の正しさをこのfixture自体が証明するものではない。ここで示すのは、指摘を受けた案件がQA監修のもと開発部へ戻るroutingだけである
+```text
+sample3-2.fam.json
+Manufacturing submodule
+
+製造
+  ├─ 製造1課
+  └─ 製造2課
+       ↓ mL after
+    製造3課
+```
+
+- `sample3-1.fam.json`が親FAM module
+- `sample3-2.fam.json`が製造Fold / submodule
+- 親の`製造`nodeは`fam_ref`で子FAMを参照する。参照先を親JSONへinline copyしない
+- 子FAMのroot `λ`は処理結果を返す。`this.parent`でmodule boundaryを暗黙横断しない
+- `開発部 -> 製造`の`next / prev`はL軸のstructural position
+- `製造 -> 法務部 -> QA -> 開発部`の`after / before`はmL軸の実行route
+- `製造1課 / 製造2課`は同一製造node配下のparallel sibling
+- QAから開発部へのrollbackはstructural nextではなくruntime `after`として表現する
+- 法務部、QA、製造部等の意味・権限・規程内容はCoreへhard-codeしない。Corporate Fold用refFAM / Registry / adapter側が定義する
+
+### directory / module hierarchy
+
+同じmodule graphは、Node.jsのpackage / submoduleと同様にdirectory hierarchyへ写像してよい。
+
+例:
+
+```text
+sample3/
+  index.fam.json
+  manufacturing/
+    index.fam.json
+```
+
+この場合も意味は同じで、folder containmentそのものをsemantic truthへ昇格しない。module resolverが`fam_ref`を解決し、FAM identity / Fold boundaryを保持する。
+
+```text
+directory hierarchy
+!= semantic authority
+
+module resolution
+!= inline copy
+```
+
+このsampleでは規約を最小表示するため、flatな`sample3-1.fam.json` / `sample3-2.fam.json`を使用する。
 
 ## `self` / `this`
 
@@ -77,9 +117,9 @@ selectorは既定でcurrent Fold内だけを解決する。
 
 これらは**FAM base / selector規約のサンプル**であり、現行`validateFamDecomposition()`の適合fixtureではない。
 
-現行implementationはdecomposition profileで`∇φ=array`を要求しているため、`sample2.fam.json`および`sample3.tool-corporate.fam.json`はIssue #43の実装が入るまでdecomposition profileでは`not-satisfied`になり得る。
+現行implementationはdecomposition profileで`∇φ=array`を要求しているため、`sample2.fam.json`および`sample3-1.fam.json` / `sample3-2.fam.json`はIssue #43の実装が入るまでdecomposition profileでは`not-satisfied`になり得る。
 
-これはsample2 / sample3をarrayへ直す理由ではない。Issue #43で、base FAM構造、container representation、semantic/runtime topologyを分離して実装する。
+これはsampleをarrayへ直す理由ではない。Issue #43で、base FAM構造、container representation、semantic/runtime topology、module resolutionを分離して実装する。
 
 関連:
 - `docs/specification/fquery-selector-traversal-normalization.ja.md`
