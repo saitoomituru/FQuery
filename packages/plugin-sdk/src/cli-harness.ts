@@ -100,14 +100,7 @@ export function createCliHarnessHandler(
           harnessRef: config.harnessRef,
           ...(decoded.oaeRefs ? { oaeRefs: decoded.oaeRefs } : {}),
         }),
-        execution: {
-          provider: config.providerRef,
-          model: modelRef ?? "unknown",
-          pluginVersion: manifest.pluginVersion,
-          ...(receipt.requestId ? { requestId: receipt.requestId } : {}),
-          termination: receipt.termination,
-          stderrStatus: receipt.stderrStatus,
-        },
+        execution: executionReceipt(manifest, config, receipt, modelRef),
       };
     } catch {
       return {
@@ -122,6 +115,7 @@ export function createCliHarnessHandler(
           ...(config.runtimeRef ? { runtimeRef: config.runtimeRef } : {}),
           harnessRef: config.harnessRef,
         }),
+        execution: executionReceipt(manifest, config, receipt, config.modelRef),
       };
     }
   };
@@ -145,15 +139,26 @@ function failureResult(
       ...(config.runtimeRef ? { runtimeRef: config.runtimeRef } : {}),
       harnessRef: config.harnessRef,
     }),
-    execution: {
-      provider: config.providerRef,
-      model: config.modelRef ?? "unknown",
-      pluginVersion: manifest.pluginVersion,
-      ...(receipt.requestId ? { requestId: receipt.requestId } : {}),
-      termination: receipt.termination,
-      stderrStatus: receipt.stderrStatus,
-    },
+    execution: executionReceipt(manifest, config, receipt, config.modelRef),
   };
+}
+
+function executionReceipt(
+  manifest: PluginManifest,
+  config: CliHarnessAdapterConfig,
+  receipt: CliHarnessExecutionReceipt,
+  modelRef: string | undefined,
+): NonNullable<CapabilityResult["execution"]> {
+  return Object.freeze({
+    provider: config.providerRef,
+    model: modelRef ?? "unknown",
+    pluginVersion: manifest.pluginVersion,
+    ...(receipt.requestId ? { requestId: receipt.requestId } : {}),
+    commandRef: config.commandRef,
+    exitCode: receipt.exitCode,
+    termination: receipt.termination,
+    stderrStatus: receipt.stderrStatus,
+  });
 }
 
 function validateConfig(config: CliHarnessAdapterConfig): void {

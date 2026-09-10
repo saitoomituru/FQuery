@@ -62,7 +62,13 @@ describe("CLI harness adapter", () => {
       adapterChain: [{ harnessRef: "harness://fquery/cli/noninteractive" }],
       oaeRefs: ["oae://test/codex/1"],
     });
-    expect(result.execution?.requestId).toBe("cli-run-1");
+    expect(result.execution).toMatchObject({
+      requestId: "cli-run-1",
+      commandRef: "cli://openai/codex",
+      exitCode: 0,
+      termination: "exited",
+      stderrStatus: "empty",
+    });
   });
 
   it("非zero exitを成功扱いせずredaction済みreceiptだけを参照する", async () => {
@@ -89,7 +95,7 @@ describe("CLI harness adapter", () => {
     const result = await handler(request);
     expect(result).toMatchObject({ transportStatus: "failed", outputStatus: "invalid", reason: "cli-refused-or-failed" });
     expect(result.evidenceRefs).toEqual(["receipt://cli/claude/failure-1"]);
-    expect(result.execution).toMatchObject({ termination: "exited", stderrStatus: "present-redacted" });
+    expect(result.execution).toMatchObject({ commandRef: "cli://anthropic/claude", exitCode: 2, termination: "exited", stderrStatus: "present-redacted" });
   });
 
   it("stdout decode失敗をtransport failureへ偽装しない", async () => {
@@ -103,10 +109,11 @@ describe("CLI harness adapter", () => {
       decodeResponse: (stdout) => ({ value: JSON.parse(stdout) }),
     }, {
       async execute() {
-        return { exitCode: 0, stdout: "not-json", stderrStatus: "empty", termination: "exited", evidenceRefs: [] };
+        return { exitCode: 0, stdout: "not-json", stderrStatus: "empty", termination: "exited", evidenceRefs: [], requestId: "cli-run-decode-failed" };
       },
     });
     const result = await handler(request);
     expect(result).toMatchObject({ transportStatus: "succeeded", outputStatus: "invalid", candidate: "not-json", reason: "cli-output-decode-failed" });
+    expect(result.execution).toMatchObject({ requestId: "cli-run-decode-failed", commandRef: "cli://vendor/unknown", exitCode: 0, termination: "exited" });
   });
 });
