@@ -36,6 +36,28 @@ fact
 - `.アストラル` / `.エレメンタル`は意味次元を操作するcommandではない。runtime traversal先をcurrent Foldのlayer namespaceでselector/filterする最小例
 - `アストラル` / `エレメンタル`の意味定義はFQuery Coreの責務ではなく、active refFAM / Access Map / Registry側にある
 
+## `sample3.tool-corporate.fam.json`
+
+目的: **企業内tool-level FAMでL構造とmL実行経路が異なる最小例**を示す。
+
+```text
+L / structural
+開発部 -> 製造 -> 製造3課
+          ├─ 製造1課
+          └─ 製造2課
+
+mL / runtime
+製造3課 -> 法務部 -> QA -> 開発部
+```
+
+- `開発部 / 製造 / 製造3課 / 法務部 / QA`はcurrent Corporate Fold内のnamed/addressable unit
+- `製造1課 / 製造2課`は同一`製造`node配下のparallel sibling
+- `this.prev / this.next`はL軸のstructural traversalを示す
+- `this.before / this.after`は案件が実際に通過したmL runtime routeを示す
+- QAから開発部へのrollbackは、structural nextではなく`this.after.開発部`として表現する
+- 法務部やQAの意味・権限・安全基準そのものをCoreへhard-codeしない。企業用refFAM / Registry / adapter側が定義する
+- 「安全基準を満たせない」という内容の正しさをこのfixture自体が証明するものではない。ここで示すのは、指摘を受けた案件がQA監修のもと開発部へ戻るroutingだけである
+
 ## `self` / `this`
 
 ```text
@@ -55,9 +77,9 @@ selectorは既定でcurrent Fold内だけを解決する。
 
 これらは**FAM base / selector規約のサンプル**であり、現行`validateFamDecomposition()`の適合fixtureではない。
 
-現行implementationはdecomposition profileで`∇φ=array`を要求しているため、`sample2.fam.json`はIssue #43の実装が入るまでdecomposition profileでは`not-satisfied`になり得る。
+現行implementationはdecomposition profileで`∇φ=array`を要求しているため、`sample2.fam.json`および`sample3.tool-corporate.fam.json`はIssue #43の実装が入るまでdecomposition profileでは`not-satisfied`になり得る。
 
-これはsample2をarrayへ直す理由ではない。Issue #43で、base FAM構造、container representation、semantic/runtime topologyを分離して実装する。
+これはsample2 / sample3をarrayへ直す理由ではない。Issue #43で、base FAM構造、container representation、semantic/runtime topologyを分離して実装する。
 
 関連:
 - `docs/specification/fquery-selector-traversal-normalization.ja.md`
