@@ -129,7 +129,8 @@ export function validateFamDecomposition(value: unknown): FamValidationResult {
   if (!isRecord(psi) || typeof psi.source_text !== "string" || psi.source_text.length === 0) {
     issue(issues, "$.ψ.source_text", "source-text-required", "decomposition FAMには原入力source_textが必要です");
   }
-  if (!Array.isArray(value["∇φ"])) issue(issues, "$.∇φ", "gradient-array-required", "decomposition FAMの∇φはarrayでなければなりません");
+  // ∇φのcontainer shapeはdecomposition profileの実行単位配列ではない。
+  // array / object / scalarをFAM baseのopen-world値として保持し、topologyはNormalizerで別に拘束する。
   const lambda = value.λ;
   if (!isRecord(lambda) || !Array.isArray(lambda.output_units) || lambda.output_units.length === 0) {
     issue(issues, "$.λ.output_units", "output-units-required", "decomposition FAMには1件以上のnested output_unitsが必要です");
@@ -238,15 +239,9 @@ export const FAM_DECOMPOSITION_RESPONSE_SCHEMA: Readonly<Record<string, unknown>
       additionalProperties: true,
       properties: { source_text: { type: "string" }, source_ref: { type: "string" }, source_language: { type: "string" }, observation_status: { type: "string" } },
     },
-    "∇φ": {
-      type: "array",
-      items: {
-        type: "object",
-        required: ["gradient_type", "source_expression", "source_language"],
-        additionalProperties: true,
-        properties: { gradient_type: { type: "string" }, source_expression: { type: "string" }, source_language: { type: "string" } },
-      },
-    },
+    // source gradientの表現とdecomposition topologyを同一array schemaへ固定しない。
+    // profile固有のtopology検証はFAM base採用後のNormalizerへ委譲する。
+    "∇φ": {},
     λ: {
       type: "object",
       required: ["purpose", "output_units", "satisfaction_status"],

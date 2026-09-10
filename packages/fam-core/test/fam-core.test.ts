@@ -82,6 +82,20 @@ describe("FAM JSON Core", () => {
     expect(isFamDecompositionRecord(createLiteralDecompositionFam("雨が降る。", "q://test/guard"))).toBe(true);
   });
 
+  it("decomposition profileはroot ∇φのobject表現をarray topologyへ強制しない", () => {
+    const candidate = structuredClone(createLiteralDecompositionFam("雨が降る。", "q://test/object-gradient")) as unknown as Record<string, unknown>;
+    candidate["∇φ"] = {
+      observation: { gradient_type: "source-observation", source_expression: "雨が降る。", source_language: "ja" },
+    };
+
+    expect(validateFamDecomposition(candidate)).toMatchObject({
+      valid: true,
+      baseStructureStatus: "valid",
+      profileConformance: "satisfied",
+    });
+    expect((FAM_JSON_RESPONSE_SCHEMA.properties as Record<string, unknown>)["∇φ"]).toEqual({});
+  });
+
   it("未知拡張fieldの単独Qをnested FAMと誤認せず保持する", () => {
     const candidate = {
       ψ: "入力",
