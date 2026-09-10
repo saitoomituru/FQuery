@@ -49,6 +49,7 @@ async function evaluateNode(
     let axes = resolved.axes;
     let evidenceRefs: readonly string[] = [];
     let verification: VerificationResult | undefined;
+    let profileValidation: QueryResult["profileValidation"];
 
     for (const operation of query.operations) {
       if (operation.kind === "select") {
@@ -69,6 +70,7 @@ async function evaluateNode(
         value = invoked.value;
         axes = { ...axes, transportStatus: invoked.transportStatus, pluginStatus: invoked.pluginStatus ?? "resolved" };
         evidenceRefs = [...evidenceRefs, ...(invoked.evidenceRefs ?? [])];
+        profileValidation = invoked.profileValidation;
       } else if (operation.kind === "validate") {
         verification = await runVerifier(query, operation.verifierRef, value, context);
       }
@@ -83,6 +85,7 @@ async function evaluateNode(
       queryRef: query.queryId,
       value,
       evidenceRefs,
+      ...(profileValidation ? { profileValidation } : {}),
       ...(verification?.validVariation ? { variationStatus: "valid-variation" as const } : {}),
     };
     emit(context, { eventType: "result", queryRef: query.queryId, status: result.controlStatus });

@@ -13,10 +13,10 @@ describe("Playground gateway", () => {
     const response = await decomposeText({ provider: "fixture", model: "mock-fam-transformer", source: "自然言語テスト" }, { repoRoot });
     expect(response.result).toMatchObject({ transport_status: "succeeded", plugin_status: "resolved", value: { schema_version: "fam.json/0.1.0-draft", ψ: { source_text: "自然言語テスト" }, Q: { unknown_is_absence: false } } });
     expect(JSON.stringify(response)).toContain('"provider":"fixture"');
-    expect(response.access_map).toMatchObject({ kind: "access-map", Q: { authority_ref: "authority://fquery/test-fixture-only" } });
+    expect(response.access_map).toMatchObject({ fam_id: "fam://fquery/test/basic-commons-access-mapper/generic-open-world", kind: "access-map", Q: { authority_ref: "authority://fquery/test-fixture-only" } });
     expect(response.ref_fam_receipt).toMatchObject({
-      profile_ref: "fam://fquery/test/basic-commons-access-mapper",
-      revision_ref: "rev://fquery/test/basic-commons-access-mapper/2",
+      profile_ref: "fam://fquery/test/basic-commons-access-mapper/generic-open-world",
+      revision_ref: "rev://fquery/test/basic-commons-access-mapper/generic-open-world/1",
       resolved_before_provider: true,
       generation_constraint: null,
       post_validation: { appliedStages: ["post-validation"], validationScope: "fam-shape-classification-and-declared-topology-binding", oaeConstraintEvaluations: [] },
@@ -41,6 +41,7 @@ describe("Playground gateway", () => {
       { provider: "gemini", model: "gemini-integration-fixture", source: "雨が降っている。傘を持って出かける。" },
       {
         repoRoot,
+        accessMapPath: "fixtures/test-cases/basic-commons-access-mapper/access-map.fam.json",
         resolverFactory: () => new GeminiFamPlugin({
           model: "gemini-integration-fixture",
           credentialName: "gemini-local",
@@ -65,7 +66,7 @@ describe("Playground gateway", () => {
     ]));
   });
 
-  it("壊れたsemantic topologyをHTTP例外にせずcandidate保持Last Orderで返す", async () => {
+  it("壊れたsemantic topologyをcandidate棄却に使わずObserver評価として返す", async () => {
     const candidate = structuredClone(createLiteralDecompositionFam("A。B。C。", "q://provider/invalid-topology"));
     const units = (candidate.λ as { output_units: Array<{ Q: { unit_ref: string } }> }).output_units;
     (candidate.Q as Record<string, unknown>).semantic_topology_branches = [{
@@ -81,13 +82,8 @@ describe("Playground gateway", () => {
       { repoRoot, resolverFactory: () => ({ async invoke() { return { pluginId: "plugin://test/invalid-topology", transportStatus: "succeeded", outputStatus: "accepted", value: candidate, evidenceRefs: [] }; } }) },
     );
 
-    expect(response.result).toMatchObject({
-      transport_status: "succeeded",
-      control_status: "last-order",
-      candidate: { fam_id: candidate.fam_id },
-      last_order: { code: "FQUERY-REF-FAM-NONCONFORMANT", requested_next: "inspect-and-edit-semantic-topology-or-select-another-ref-fam" },
-    });
-    expect(response.result).not.toHaveProperty("value");
+    expect(response.result).toMatchObject({ transport_status: "succeeded", control_status: "result", value: { fam_id: candidate.fam_id } });
+    expect(response.result).not.toHaveProperty("last_order");
     expect(response.ref_fam_receipt).toMatchObject({ post_validation: null, post_validation_error: { code: "FQUERY-REF-FAM-NONCONFORMANT", reason: expect.stringContaining("semantic-topology-multiple-containment-parents") } });
     expect(response.events).toEqual(expect.arrayContaining([expect.objectContaining({ eventType: "semantic-check", status: "profile-rejected" })]));
   });

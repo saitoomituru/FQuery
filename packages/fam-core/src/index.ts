@@ -129,24 +129,13 @@ export function validateFamDecomposition(value: unknown): FamValidationResult {
   if (!isRecord(psi) || typeof psi.source_text !== "string" || psi.source_text.length === 0) {
     issue(issues, "$.ψ.source_text", "source-text-required", "decomposition FAMには原入力source_textが必要です");
   }
-  const sourceLanguage = isRecord(psi) && typeof psi.source_language === "string" ? psi.source_language : undefined;
-  if (!sourceLanguage) issue(issues, "$.ψ.source_language", "source-language-required", "decomposition FAMには原入力のsource_languageが必要です");
-  if (typeof value.title_language !== "string" || value.title_language.length === 0) issue(issues, "$.title_language", "title-language-required", "title_languageは空でないstringでなければなりません");
   if (!Array.isArray(value["∇φ"])) issue(issues, "$.∇φ", "gradient-array-required", "decomposition FAMの∇φはarrayでなければなりません");
-  else value["∇φ"].forEach((gradient, index) => {
-    if (!isRecord(gradient) || typeof gradient.source_expression !== "string" || gradient.source_expression.length === 0) issue(issues, `$.∇φ[${index}].source_expression`, "root-gradient-source-expression-required", "root gradientには空でないsource_expressionが必要です");
-    if (!isRecord(gradient) || typeof gradient.source_language !== "string" || gradient.source_language.length === 0) issue(issues, `$.∇φ[${index}].source_language`, "gradient-source-language-required", "root gradientには空でないsource_languageが必要です");
-  });
   const lambda = value.λ;
   if (!isRecord(lambda) || !Array.isArray(lambda.output_units) || lambda.output_units.length === 0) {
     issue(issues, "$.λ.output_units", "output-units-required", "decomposition FAMには1件以上のnested output_unitsが必要です");
   } else {
     lambda.output_units.forEach((unit, index) => validateSourceUnit(unit, index, issues));
   }
-  const q = value.Q;
-  if (!isRecord(q) || !Array.isArray(q.unknowns)) issue(issues, "$.Q.unknowns", "unknowns-required", "Q.unknownsはarrayでなければなりません");
-  else validateUnknownEntries(q.unknowns, "$.Q.unknowns", issues);
-  if (!isRecord(q) || q.unknown_is_absence !== false) issue(issues, "$.Q.unknown_is_absence", "unknown-absence-boundary-required", "unknown_is_absenceはfalseでなければなりません");
   return freezeResult(issues, nodePaths, {
     profileConformance: base.valid && issues.length === 0 ? "satisfied" : base.valid ? "not-satisfied" : "not-evaluable",
     profileRef: "profile://fquery/decomposition@0.1.0-draft",
@@ -406,20 +395,14 @@ function validateSourceUnit(
   issues: FamValidationIssue[],
 ): void {
   const path = `$.λ.output_units[${index}]`;
-  if (!isRecord(unit)) return;
-  const psi = unit.ψ;
-  const text = isRecord(psi) ? psi.source_text : undefined;
+  if (!isRecord(unit)) {
+    issue(issues, path, "unit-record-required", "分解unitはobjectでなければなりません");
+    return;
+  }
   const q = unit.Q;
   const userOverride = isRecord(q) && q.edit_origin === "user-override";
-  if (typeof text !== "string" || text.length === 0) issue(issues, `${path}.ψ.source_text`, "unit-source-text-required", "分解unitには原言語source_textが必要です");
-  if (!isRecord(psi) || typeof psi.source_language !== "string" || psi.source_language.length === 0) issue(issues, `${path}.ψ.source_language`, "unit-source-language-required", "分解unitには空でないsource_languageが必要です");
-  validateSourceShape(unit, path, issues);
-  const lambda = unit.λ;
   if (!isRecord(q)) issue(issues, `${path}.Q`, "unit-control-boundary-required", "分解unitにはQ objectが必要です");
   else {
-    requiredString(q, "observer_ref", `${path}.Q`, issues);
-    requiredString(q, "registry_ref", `${path}.Q`, issues);
-    requiredString(q, "fact_scope_ref", `${path}.Q`, issues);
     requiredString(q, "unit_ref", `${path}.Q`, issues);
     requiredString(q, "unit_revision_ref", `${path}.Q`, issues);
     requiredString(q, "parent_fam_ref", `${path}.Q`, issues);
@@ -431,16 +414,14 @@ function validateSourceUnit(
       requiredString(q, "override_observer_ref", `${path}.Q`, issues);
       requiredString(q, "replaces_source_expression", `${path}.Q`, issues);
     }
-    if (!Array.isArray(q.unknowns)) issue(issues, `${path}.Q.unknowns`, "unknowns-required", "unit Q.unknownsはarrayでなければなりません");
-    else validateUnknownEntries(q.unknowns, `${path}.Q.unknowns`, issues);
-    if (q.unknown_is_absence !== false) issue(issues, `${path}.Q.unknown_is_absence`, "unknown-absence-boundary-required", "unit unknown_is_absenceはfalseでなければなりません");
   }
-  if (!isRecord(lambda) || !Array.isArray(lambda.sub_splitters)) {
-    issue(issues, `${path}.λ.sub_splitters`, "sub-splitters-required", "翻訳写本を分離するsub_splitters配列が必要です");
-    return;
+  const lambda = unit.λ;
+  if (isRecord(lambda) && Array.isArray(lambda.sub_splitters)) {
+    const psi = unit.ψ;
+    const text = isRecord(psi) && typeof psi.source_text === "string" ? psi.source_text : undefined;
+    const unitLanguage = isRecord(psi) && typeof psi.source_language === "string" ? psi.source_language : undefined;
+    lambda.sub_splitters.forEach((copy, copyIndex) => validateTranslationCopy(copy, `${path}.λ.sub_splitters[${copyIndex}]`, text, unitLanguage, issues));
   }
-  const unitLanguage = isRecord(psi) && typeof psi.source_language === "string" ? psi.source_language : undefined;
-  lambda.sub_splitters.forEach((copy, copyIndex) => validateTranslationCopy(copy, `${path}.λ.sub_splitters[${copyIndex}]`, typeof text === "string" ? text : undefined, unitLanguage, issues));
 }
 
 function validateSourceShape(unit: Record<string, unknown>, path: string, issues: FamValidationIssue[]): void {

@@ -1,0 +1,96 @@
+{
+  "schema_version": "fam.json/0.1.0-draft",
+  "fam_id": "fam://fquery/test/basic-commons-access-mapper/generic-open-world",
+  "revision_id": "rev://fquery/test/basic-commons-access-mapper/generic-open-world/1",
+  "kind": "access-map",
+  "title": "テスト用Basic Commons Open-world Access Mapper",
+  "index_subjects": ["Access Map", "World", "Astral", "Element", "unknown", "semantic topology"],
+  "ψ": {
+    "source_fold_ref": "fold://fquery/test/decomposition/open-world",
+    "source_registry_ref": "registry://fquery/test/basic-commons@1",
+    "accepted_claim_kinds": ["world-fact", "astral-fact", "element-projection", "unknown"]
+  },
+  "∇φ": {
+    "mapping_rules": [
+      {
+        "rule_id": "rule://fquery/test/basic-commons/world-fact",
+        "source_claim_kind": "world-fact",
+        "target_dimension_ref": "dimension://fquery/test/world",
+        "claim_scope_ref": "scope://world/observer-local",
+        "evidence_scope": ["observer-local", "not-world-global"]
+      },
+      {
+        "rule_id": "rule://fquery/test/basic-commons/astral-fact",
+        "source_claim_kind": "astral-fact",
+        "target_dimension_ref": "dimension://fquery/test/astral",
+        "claim_scope_ref": "scope://astral/observer-local",
+        "evidence_scope": ["observer-local", "not-world-global"]
+      },
+      {
+        "rule_id": "rule://fquery/test/basic-commons/element-projection",
+        "source_claim_kind": "element-projection",
+        "target_dimension_ref": "dimension://fquery/test/element",
+        "claim_scope_ref": "scope://element/observer-local",
+        "evidence_scope": ["observer-local", "not-universal-causality"]
+      },
+      {
+        "rule_id": "rule://fquery/test/basic-commons/unknown",
+        "source_claim_kind": "unknown",
+        "target_dimension_ref": "dimension://fquery/test/unmapped",
+        "claim_scope_ref": "scope://unknown",
+        "evidence_scope": ["unknown", "not-absence"]
+      }
+    ],
+    "fact_extractors": [],
+    "causal_gates": [],
+    "semantic_topology_contract": {
+      "branches_pointer": "/Q/semantic_topology_branches",
+      "selected_branch_ref": "branch://fquery/decomposition/primary",
+      "selection_scope_ref": "scope://fquery/playground/presentation-only",
+      "fields": {
+        "branch_ref": "branch_ref",
+        "observer_ref": "observer_ref",
+        "relations": "relations",
+        "from_unit_ref": "from_unit_ref",
+        "to_unit_ref": "to_unit_ref",
+        "axis": "axis",
+        "relation_kind": "relation_kind",
+        "evidence_refs": "evidence_refs"
+      }
+    },
+    "loss_declarations": [],
+    "source_mutation": false
+  },
+  "λ": {
+    "target_fold_ref": "fold://fquery/test/basic-commons/open-world",
+    "target_dimension_refs": [
+      "dimension://fquery/test/world",
+      "dimension://fquery/test/astral",
+      "dimension://fquery/test/element",
+      "dimension://fquery/test/unmapped"
+    ],
+    "output_kind": "classification-binding"
+  },
+  "Q": {
+    "observer_ref": "observer://fquery/test-fixture-author",
+    "registry_ref": "registry://fquery/test/basic-commons@1",
+    "fact_scope_ref": "world://fquery/test/open-world",
+    "authority_ref": "authority://fquery/test-fixture-only",
+    "unknown_policy": "retain",
+    "unmapped_policy": "retain-unmapped",
+    "fallback_policy": "none",
+    "source_mutation": false,
+    "unknowns": [],
+    "unknown_is_absence": false
+  },
+  "pointers": [],
+  "provenance": {
+    "claim_scope": "TEST_FIXTURE",
+    "source_refs": [
+      "https://github.com/saitoomituru/FQuery/issues/35",
+      "https://github.com/saitoomituru/FQuery/issues/41",
+      "https://github.com/saitoomituru/FQuery/issues/42"
+    ],
+    "source_mutation": false
+  }
+}

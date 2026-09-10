@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { resolveCredential, standaloneCredentialSources } from "@fquery/config";
-import { evaluateQ, Q, toWireQueryResult, type CapabilityProfileBinding, type CapabilityProfileReceipt, type CoreEvent, type PluginResolver, type QueryResult } from "@fquery/core";
+import { evaluateQ, Q, toWireQueryResult, type CapabilityProfileBinding, type CapabilityProfileReceipt, type CoreEvent, type PluginResolver } from "@fquery/core";
 import { createLiteralDecompositionFam, isFamDecompositionRecord, projectDecompositionUnits, projectSemanticTopology, readAccessMapProfile, readFamJson, type SemanticTopologyProjection } from "@fquery/fam-core";
 import { discoverGeminiModels, GeminiFamPlugin } from "@fquery/plugin-gemini";
 import { discoverOllamaModels, OllamaFamPlugin } from "@fquery/plugin-ollama";
@@ -20,6 +20,8 @@ export interface DecomposeRequest { readonly provider: PlaygroundRoute["provider
 export interface GatewayOptions {
   readonly repoRoot: string;
   readonly ollamaBaseUrl?: string;
+  /** testで特定refFAMを明示注入する場合だけ指定する。 */
+  readonly accessMapPath?: string;
   /** gatewayからprovider/Coreまでを同じ経路で検証するための明示的なadapter seam。production既定では使用しない。 */
   readonly resolverFactory?: (request: DecomposeRequest) => PluginResolver;
 }
@@ -67,7 +69,7 @@ export async function decomposeText(request: DecomposeRequest, options: GatewayO
   assertDecomposeRequest(request);
   const events: CoreEvent[] = [];
   // active refFAMはprovider候補完成後のsidecarではなく、呼出し前にrevision固定する。
-  const accessMapDocument = readFamJson(await readFile(join(options.repoRoot, "fixtures/test-cases/basic-commons-access-mapper/access-map.fam.json"), "utf8"));
+  const accessMapDocument = readFamJson(await readFile(join(options.repoRoot, options.accessMapPath ?? "fixtures/test-cases/basic-commons-access-mapper/generic-access-map.fam.json"), "utf8"));
   const accessMap = readAccessMapProfile(accessMapDocument.value);
   const profileBinding: CapabilityProfileBinding = Object.freeze({
     profileRef: accessMap.famId,
@@ -91,7 +93,8 @@ export async function decomposeText(request: DecomposeRequest, options: GatewayO
   if (validation) events.push(Object.freeze({ eventType: "semantic-check", queryRef: result.queryRef, status: "profile-accepted", detail: { profileReceipts: Object.freeze([validation.receipt]), semanticTopologyStatus: validation.topology.status } }));
   if (postValidationError) events.push(Object.freeze({ eventType: "semantic-check", queryRef: result.queryRef, status: "profile-rejected", detail: { profileRef: profileBinding.profileRef, revisionRef: profileBinding.revisionRef, reason: postValidationError } }));
   const generationReceipt = findProfileReceipt(events, profileBinding, "generation-constraint");
-  const presentedResult = postValidationError && result.value !== undefined ? refFamNonconformant(result, postValidationError) : result;
+  // profile観測の不成立はcandidate FAMを棄却する理由ではない。Observer評価をsidecarに残す。
+  const presentedResult = result;
   const topologyProjection = validation?.topology;
   return Object.freeze({
     result: toWireQueryResult(presentedResult),
@@ -140,24 +143,6 @@ function validateWithAccessMap(value: unknown, binding: CapabilityProfileBinding
   });
 }
 
-function refFamNonconformant(result: QueryResult, reason: string): QueryResult {
-  const { value, ...withoutValue } = result;
-  return Object.freeze({
-    ...withoutValue,
-    candidate: value,
-    semanticStatus: "not-evaluated",
-    lambdaStatus: "not-evaluated",
-    controlStatus: "last-order",
-    reason,
-    lastOrder: Object.freeze({
-      code: "FQUERY-REF-FAM-NONCONFORMANT",
-      reason,
-      requestedNext: "inspect-and-edit-semantic-topology-or-select-another-ref-fam",
-      resumeWhen: "ref-fam-conformant-topology-available",
-    }),
-  });
-}
-
 function findProfileReceipt(events: readonly CoreEvent[], binding: CapabilityProfileBinding, stage: CapabilityProfileReceipt["appliedStages"][number]): CapabilityProfileReceipt | undefined {
   for (const event of events) {
     const receipts = event.detail?.profileReceipts;
@@ -177,7 +162,21 @@ function createResolver(request: DecomposeRequest, options: GatewayOptions): Plu
   if (request.provider === "ollama") return new OllamaFamPlugin({ model: request.model, ...(options.ollamaBaseUrl ? { baseUrl: options.ollamaBaseUrl } : {}) });
   return { async invoke(invocation) {
     if (invocation.capability !== "fam.decompose") return undefined;
-    return { pluginId: "plugin://fquery/fixture", transportStatus: "succeeded", value: createLiteralDecompositionFam(String(invocation.input), invocation.queryRef), evidenceRefs: ["fixture://playground/fam-decompose"], execution: { provider: "fixture", model: FIXTURE_MODEL, pluginVersion: "0.1.0-draft.0" } };
+    return {
+      pluginId: "plugin://fquery/fixture",
+      transportStatus: "succeeded",
+      value: createLiteralDecompositionFam(String(invocation.input), invocation.queryRef),
+      evidenceRefs: ["fixture://playground/fam-decompose"],
+      adapterProvenance: {
+        schemaVersion: "fam.adapter-provenance/0.1.0-draft",
+        producerRef: "plugin://fquery/fixture",
+        producerRevision: "0.1.0-draft.0",
+        adapterChain: [{ adapterRef: "plugin://fquery/fixture", adapterRevision: "0.1.0-draft.0", providerRef: "provider://fquery/test-fixture", modelRef: `model://fquery/${FIXTURE_MODEL}`, runtimeRef: "runtime://fquery/playground-node" }],
+        supportClaim: { schemaVersion: "fam.adapter-support/0.1.0-draft", level: 1, capabilityRefs: ["fam.decompose"], observationSurfaces: ["fixture-request", "fixture-response"], limitations: ["test-fixture-only", "no-provider-introspection"] },
+        oaeRefs: [],
+      },
+      execution: { provider: "fixture", model: FIXTURE_MODEL, pluginVersion: "0.1.0-draft.0" },
+    };
   } };
 }
 

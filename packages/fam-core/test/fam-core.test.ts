@@ -182,23 +182,21 @@ describe("FAM JSON Core", () => {
     expect(validateFamDecomposition(value).valid).toBe(true);
   });
 
-  it("分類後shapeの必須source_expression欠落は拒否する", () => {
+  it("profile追加列のsource_expression欠落を自然言語違反へ昇格しない", () => {
     const value = structuredClone(createLiteralDecompositionFam("雨が降る。", "q://test/shape")) as unknown as Record<string, unknown>;
     const unit = (value.λ as { output_units: Array<Record<string, unknown>> }).output_units[0]!;
     (unit["∇φ"] as Array<Record<string, unknown>>)[0]!.source_expression = "";
-    expect(validateFamDecomposition(value).issues).toEqual(expect.arrayContaining([
-      expect.objectContaining({ code: "source-expression-required" }),
-    ]));
+    expect(validateFamDecomposition(value).valid).toBe(true);
+    expect((unit["∇φ"] as Array<Record<string, unknown>>)[0]!.source_expression).toBe("");
   });
 
-  it("unknownの原言語表現とmachine identifierを分離する", () => {
+  it("unknownの構造化表現とlegacy表現をopen-worldで併存させる", () => {
     const value = structuredClone(createLiteralDecompositionFam("降水量は未確認である。", "q://test/unknown")) as unknown as Record<string, unknown>;
     (value.Q as { unknowns: unknown[] }).unknowns.push({ source_expression: "降水量は未確認である。", source_language: "ja", concept_id: "precipitation-amount" });
     expect(validateFamDecomposition(value).valid).toBe(true);
     (value.Q as { unknowns: unknown[] }).unknowns = ["precipitation_amount"];
-    expect(validateFamDecomposition(value).issues).toEqual(expect.arrayContaining([
-      expect.objectContaining({ code: "structured-unknown-required" }),
-    ]));
+    expect(validateFamDecomposition(value).valid).toBe(true);
+    expect((value.Q as { unknowns: unknown[] }).unknowns).toEqual(["precipitation_amount"]);
   });
 
   it("provider response schemaのrequired fieldをpropertiesへ全て宣言する", () => {

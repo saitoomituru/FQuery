@@ -8,7 +8,7 @@ import {
   type DecompositionRequest,
   type PluginManifest,
 } from "@fquery/plugin-sdk";
-import { FAM_DECOMPOSITION_RESPONSE_SCHEMA, normalizeDecompositionProfileInvariants, validateFamDecomposition, validateFamJson, type FamJsonRecord, type FamValidationResult } from "@fquery/fam-core";
+import { FAM_BASE_RESPONSE_SCHEMA, normalizeDecompositionProfileInvariants, validateFamDecomposition, validateFamJson, type FamJsonRecord, type FamValidationResult } from "@fquery/fam-core";
 
 export type OllamaFamCapability = "fam.decompose" | "fam.integrate" | "fam.compare" | "fam.project";
 const CAPABILITIES: readonly OllamaFamCapability[] = ["fam.decompose", "fam.integrate", "fam.compare", "fam.project"];
@@ -52,12 +52,12 @@ export class OllamaFamPlugin implements PluginResolver {
     if (request.sideEffect !== "network") return { pluginId: ollamaPluginManifest.pluginId, pluginStatus: "rejected", transportStatus: "failed", reason: "network-side-effect-not-authorized", adapterProvenance: provenance(this.#options.model, this.#options.baseUrl) };
     try {
       const generate = this.#options.generate ?? ollamaGenerate;
-      let response = await generate({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_DECOMPOSITION_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
+      let response = await generate({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_BASE_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
       let parsed: ParsedFam;
       try {
         parsed = parseFam(response.text);
       } catch (validationError) {
-        response = await generate({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildRepairPrompt(request, validationError), responseSchema: FAM_DECOMPOSITION_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
+        response = await generate({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildRepairPrompt(request, validationError), responseSchema: FAM_BASE_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
         try {
           parsed = parseFam(response.text);
         } catch (repairValidationError) {
@@ -71,26 +71,12 @@ export class OllamaFamPlugin implements PluginResolver {
           };
         }
       }
-      if (!parsed.validation.valid) {
-        return {
-          pluginId: ollamaPluginManifest.pluginId,
-          transportStatus: "succeeded",
-          outputStatus: "profile-nonconformant",
-          candidate: parsed.value,
-          reason: "decomposition-profile-nonconformant",
-          profileValidation: toProfileValidation(parsed.validation),
-          evidenceRefs: [],
-          adapterProvenance: provenance(this.#options.model, this.#options.baseUrl),
-          ...generationProfileReceipts(request),
-          ...(parsed.repairedPaths.length > 0 ? { normalization: { profileRef: parsed.profileRef, repairedPaths: parsed.repairedPaths } } : {}),
-          execution: { provider: "ollama", model: this.#options.model, pluginVersion: ollamaPluginManifest.pluginVersion },
-        };
-      }
       return {
         pluginId: ollamaPluginManifest.pluginId,
         transportStatus: "succeeded",
         outputStatus: "accepted",
         value: parsed.value,
+        profileValidation: toProfileValidation(parsed.validation),
         evidenceRefs: [],
         adapterProvenance: provenance(this.#options.model, this.#options.baseUrl),
         ...generationProfileReceipts(request),
@@ -167,7 +153,7 @@ async function ollamaGenerate(request: OllamaGenerateRequest): Promise<OllamaGen
 }
 
 function buildPrompt(request: CapabilityInvocation): string {
-  return JSON.stringify({ proton_profile: "proton://fquery/fam-json-core@0.1.0-draft", capability: request.capability, source: request.input, ref_profiles: request.profileBindings ?? [], instruction: "Return one fam.json/0.1.0-draft record. Apply every ref_profiles entry whose roles contains generation-constraint using exactly its profileRef and revisionRef; do not invent an undeclared hierarchy, World, Perspective, authority, causality, or boundary rule. Preserve the input context, language mixture, code blocks, identifiers, ordering, and semantic relations. Do not normalize Japanese, English, C, or another register into one language. Unless the request explicitly asks for translation, output the same language and code registers as the corresponding input context; contextual equivalence is required but byte identity is not. Set λ.purpose exactly to the machine token source-decomposition. Every output unit must include ψ, ∇φ, λ, and Q with non-empty source/manifestation language metadata and Observer/Registry/fact-scope/unknown fields. Every Q.unknowns item is {source_expression:<context-preserving expression>,source_language:<declared language or mixed-language tag>,concept_id:<machine identifier>}. If a ref profile declares semantic_topology_contract, use its branches_pointer and field mapping to preserve supported L/mL relations as one or more non-zero-sum branches; emit the selected_branch_ref only when supported, keep alternatives, and omit topology rather than flattening or inventing it when indeterminate. Keep provenance structured. Classification may be wrong and remain editable; do not claim context or hash verification unless a verifier profile actually provides a receipt. Do not return blocks[], RPC/MCP envelopes, FAMLog, or transport events." });
+  return JSON.stringify({ proton_profile: "proton://fquery/fam-json-core@0.1.0-draft", capability: request.capability, source: request.input, ref_profiles: request.profileBindings ?? [], instruction: "Return one open-world fam.json/0.1.0-draft candidate whose only universal required keys are ψ, ∇φ, λ, and Q. For fam.decompose, put editable child FAM units in λ.output_units when the decomposition supports them; each child uses the same four axes. Metadata such as title, language, lineage, unknowns, index, and sub_splitters is optional unless an explicitly supplied ref profile requires it. Apply generation-constraint profiles by their exact refs, but do not turn absent optional fields or natural-language style into invalid content. Preserve language mixtures, code, slang, ordering, ambiguity, causal/dependency relations, alternative interpretations, and nested Fold candidates. Contextual preservation is intended; byte equality and semantic verification are not implied. If a ref profile declares semantic_topology_contract, express supported L/mL relations as non-zero-sum branches. Do not flatten all units merely for transport convenience, and do not invent a selected branch when indeterminate. Empty and unknown fields are allowed. Classification may be wrong and must remain editable. Do not claim context/hash verification without an Observer receipt. Do not return RPC/MCP envelopes or transport events." });
 }
 
 function buildRepairPrompt(request: CapabilityInvocation, error: unknown): string {
