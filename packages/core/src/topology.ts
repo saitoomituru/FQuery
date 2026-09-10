@@ -208,7 +208,7 @@ export function normalizeFamTopology(input: FamTopologyModuleInput): NormalizedF
     };
     mutableNodes.push(node);
 
-    collectSelectors(candidate.value, candidate.sourcePointer, nodeRef, declarations);
+    collectSelectors(candidate.value, candidate.sourcePointer, nodeRef, declarations, issues);
     collectModuleReferences(candidate.value, candidate.sourcePointer, nodeRef, input, moduleReferences);
 
     for (const child of directChildren(candidate.value, candidate.sourcePointer, nodeRef)) {
@@ -321,11 +321,7 @@ export function resolveTopologySelector(
     const qualifier = selector.qualifiers.join(".");
     const addressed = candidates.filter((ref) => topology.nodes.find((node) => node.nodeRef === ref)?.addressKey === qualifier);
     if (addressed.length > 0) candidates = addressed;
-    else {
-      const qualifiedEdges = topology.edges.filter((edge) => edge.layerRefs.includes(qualifier));
-      const allowed = new Set(qualifiedEdges.flatMap((edge) => [edge.fromNodeRef, edge.toNodeRef]));
-      candidates = candidates.filter((ref) => allowed.has(ref));
-    }
+    else candidates = candidates.filter((ref) => edgeMatchesQualifiedTraversal(topology, current.nodeRef, ref, selector.traversal!, qualifier));
   }
   if (candidates.length === 0) return Object.freeze({ status: "unresolved", reason: "selector-target-not-found-in-current-fold", nodeRefs: Object.freeze([]) });
   return Object.freeze({
@@ -387,24 +383,42 @@ function collectSelectors(
   pointer: string,
   nodeRef: string,
   declarations: TopologySelectorDeclaration[],
+  issues: TopologyIssue[],
   root = true,
 ): void {
   if (typeof value === "string") {
     if (value === "self" || value === "this" || value.startsWith("self.") || value.startsWith("this.")) {
       const selector = parseFamSelector(value);
       if (selector) declarations.push(Object.freeze({ nodeRef, sourcePointer: pointer, selector }));
+      else issues.push(freezeIssue("invalid-selector", pointer, value));
     }
     return;
   }
   if (Array.isArray(value)) {
     value.forEach((entry, index) => {
       if (isRecord(entry) && isFamNodeCandidate(entry)) return;
-      collectSelectors(entry, appendPointer(pointer, String(index)), nodeRef, declarations, false);
+      collectSelectors(entry, appendPointer(pointer, String(index)), nodeRef, declarations, issues, false);
     });
     return;
   }
   if (!isRecord(value) || (!root && isFamNodeCandidate(value))) return;
-  for (const [key, entry] of Object.entries(value)) collectSelectors(entry, appendPointer(pointer, key), nodeRef, declarations, false);
+  for (const [key, entry] of Object.entries(value)) collectSelectors(entry, appendPointer(pointer, key), nodeRef, declarations, issues, false);
+}
+
+function edgeMatchesQualifiedTraversal(
+  topology: NormalizedFamTopology,
+  currentNodeRef: string,
+  candidateNodeRef: string,
+  traversal: FamTraversal,
+  qualifier: string,
+): boolean {
+  const kind = traversal === "prev" || traversal === "next" ? "structural" : "runtime";
+  const forward = traversal === "next" || traversal === "after";
+  return topology.edges.some((edge) => edge.kind === kind
+    && edge.layerRefs.includes(qualifier)
+    && (forward
+      ? edge.fromNodeRef === currentNodeRef && edge.toNodeRef === candidateNodeRef
+      : edge.fromNodeRef === candidateNodeRef && edge.toNodeRef === currentNodeRef));
 }
 
 function collectModuleReferences(

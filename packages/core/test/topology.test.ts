@@ -100,6 +100,10 @@ describe("FAM selector / topology normalizer", () => {
       targetKind: "node",
       nodeRefs: [anxiety.nodeRef],
     });
+    expect(resolveTopologySelector(topology, fact.nodeRef, "this.after.エレメンタル")).toMatchObject({
+      status: "unresolved",
+      reason: "selector-target-not-found-in-current-fold",
+    });
   });
 
   it("同じrevisionでLのprev/nextとmLのbefore/afterを別routeとして保持する", async () => {
@@ -200,5 +204,15 @@ describe("FAM selector / topology normalizer", () => {
     });
     expect(parseFamSelector("this.アストラル")).toBeUndefined();
     expect(parseFamSelector("other.next")).toBeUndefined();
+
+    const topology = normalizeFamTopology({
+      moduleRef: "fam://invalid-selector",
+      revisionRef: "revision://invalid-selector/1",
+      foldRef: "fold://invalid-selector",
+      value: { ψ: "this.アストラル", "∇φ": [], λ: "output", Q: {} },
+    });
+    expect(topology.issues).toEqual([
+      expect.objectContaining({ code: "invalid-selector", detail: "this.アストラル" }),
+    ]);
   });
 });
