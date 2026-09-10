@@ -9,6 +9,8 @@ import type {
 
 export { createUnresolvedDecomposition, ManualNlDecomposer, validateDecomposerCandidate } from "./decomposer.js";
 export type * from "./decomposer.js";
+export { asOaeConstraintEvaluationReceipt, validateOaeConstraintEvaluationReceipt } from "./oae-evaluator.js";
+export type * from "./oae-evaluator.js";
 
 export interface PluginManifest {
   readonly schemaVersion: "fquery.plugin/0.1.0-draft";

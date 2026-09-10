@@ -1,4 +1,4 @@
-import type { OaeConstraintEvaluationReceipt } from "./types.js";
+import type { OaeConstraintEvaluationReceipt } from "@fquery/core";
 
 export interface OaeConstraintReceiptValidation {
   readonly valid: boolean;
@@ -6,8 +6,8 @@ export interface OaeConstraintReceiptValidation {
 }
 
 /**
- * domain固有ruleの中身やobserver verdictの真偽は裁定しない。
- * 外部evaluatorが返したOAE拘束評価receiptの参照束縛と状態整合だけを検証する。
+ * evaluator adapter向けの任意helper。Coreはこの判定を呼ばず、返されたOAEを保存する。
+ * domain ruleの中身とObserver verdictの真偽は、このhelperも裁定しない。
  */
 export function validateOaeConstraintEvaluationReceipt(value: unknown): OaeConstraintReceiptValidation {
   const issues: string[] = [];
@@ -28,6 +28,10 @@ export function validateOaeConstraintEvaluationReceipt(value: unknown): OaeConst
   if (value.ruleConformance === "not-evaluable" && isStringArray(value.issueCodes) && value.issueCodes.length === 0) issues.push("oae-constraint-not-evaluable-reason-required");
 
   return Object.freeze({ valid: issues.length === 0, issues: Object.freeze(issues) });
+}
+
+export function asOaeConstraintEvaluationReceipt(value: unknown): OaeConstraintEvaluationReceipt | undefined {
+  return validateOaeConstraintEvaluationReceipt(value).valid ? value as OaeConstraintEvaluationReceipt : undefined;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {

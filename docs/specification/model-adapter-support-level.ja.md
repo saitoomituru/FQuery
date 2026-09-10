@@ -47,6 +47,8 @@ Coreが行わないこと:
 
 申告と実測が食い違う場合、Human、別model、instrument、上位System等が評価OAEを追加する。複数の評価OAEは非ゼロサムで併存できる。
 
+OAE recordの任意shape / rule-conformance helperは`@fquery/plugin-sdk`のevaluator adapter境界に置く。`@fquery/core`は評価関数をexportせず、typed envelopeと参照を搬送する。
+
 ## 拒否・書換えと理由
 
 adapterは観測できた範囲でrequest、response、refusal、rewrite、vendorが表明したreason / policy refを保存する。理由が取得できない場合は`reason-unavailable`を保持し、vendorの意図や内部判断を遡及生成しない。
@@ -71,4 +73,3 @@ support claimはopen-world envelopeとして扱う。未知capability、追加�
 - capability result / FAMLog eventのadapter provenance
 - provider success / failure双方のproducer chain
 - Coreが自己申告を降格しない回帰test
-
