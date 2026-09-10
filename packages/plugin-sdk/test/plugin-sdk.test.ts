@@ -14,6 +14,13 @@ const echoManifest: PluginManifest = {
   unknownPolicy: "retain",
   lastOrderPolicy: "return-envelope",
   implementation: { language: "typescript", runtime: "node" },
+  famSupport: {
+    schemaVersion: "fam.adapter-support/0.1.0-draft",
+    level: 0,
+    capabilityRefs: [],
+    observationSurfaces: [],
+    limitations: ["FAM transportを申告しないtest echo"],
+  },
 };
 
 describe("PluginRegistry", () => {
@@ -25,6 +32,32 @@ describe("PluginRegistry", () => {
     expect(result.pluginStatus).toBe("resolved");
     expect(result.transportStatus).toBe("succeeded");
     expect(result.lambdaStatus).toBe("not-evaluated");
+  });
+
+  it("自己申告LevelをCoreが認証・降格せずeventへ保存する", async () => {
+    const registry = new PluginRegistry();
+    registry.register({
+      ...echoManifest,
+      pluginId: "plugin://test/self-declared-native",
+      capabilities: ["fam.native"],
+      famSupport: {
+        schemaVersion: "fam.adapter-support/0.1.0-draft",
+        level: 5,
+        capabilityRefs: ["fam.native"],
+        observationSurfaces: ["test-declared-internal-bus"],
+        limitations: ["third-party-oae-not-provided"],
+      },
+    }, ({ input }) => ({ value: input, transportStatus: "succeeded" }));
+    const events: import("@fquery/core").CoreEvent[] = [];
+    const query = Q({ kind: "literal", value: "candidate" }, { queryId: "q://test/support-claim", operations: [{ kind: "invoke", capability: "fam.native" }] });
+    await evaluateQ(query, { pluginResolver: registry, emit: (event) => events.push(event) });
+    expect(events.find((event) => event.eventType === "plugin-call-end")?.detail).toMatchObject({
+      adapterProvenance: {
+        producerRef: "plugin://test/self-declared-native",
+        supportClaim: { level: 5, limitations: ["third-party-oae-not-provided"] },
+        oaeRefs: [],
+      },
+    });
   });
 
   it("重複capabilityを黙って上書きしない", () => {

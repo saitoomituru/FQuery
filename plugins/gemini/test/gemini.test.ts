@@ -15,6 +15,7 @@ describe("GeminiFamPlugin", () => {
     expect(result.value).toMatchObject({ schema_version: "fam.json/0.1.0-draft", ψ: { source_text: "source" }, Q: { unknown_is_absence: false } });
     const callEnd = events.find((event) => event.eventType === "plugin-call-end");
     expect(callEnd?.detail).toMatchObject({ execution: { provider: "google", model: "gemini-2.5-flash", pluginVersion: "0.1.0-draft.0", credentialName: "gemini-local", requestId: "request-fixture" } });
+    expect(callEnd?.detail).toMatchObject({ adapterProvenance: { producerRef: "plugin://fquery/gemini", supportClaim: { level: 1 }, adapterChain: [{ providerRef: "provider://google/gemini", modelRef: "model://google/gemini-2.5-flash" }] } });
     expect(JSON.stringify(events)).not.toContain("not-a-real-key");
   });
   it("revision固定refFAMをprovider promptとCore receiptへ通す", async () => {

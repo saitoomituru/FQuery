@@ -127,6 +127,41 @@ export interface OaeConstraintEvaluationReceipt {
   readonly issueCodes: readonly string[];
 }
 
+export type FamAdapterSupportLevel = 0 | 1 | 2 | 3 | 4 | 5;
+
+/**
+ * adapter自身の申告。Coreは実質充足を認証・降格せず、そのまま記録する。
+ */
+export interface FamAdapterSupportClaim {
+  readonly schemaVersion: "fam.adapter-support/0.1.0-draft";
+  readonly level: FamAdapterSupportLevel;
+  readonly capabilityRefs: readonly string[];
+  readonly observationSurfaces: readonly string[];
+  readonly limitations: readonly string[];
+  readonly [extension: string]: unknown;
+}
+
+export interface AdapterChainHop {
+  readonly adapterRef: string;
+  readonly adapterRevision: string;
+  readonly providerRef?: string;
+  readonly modelRef?: string;
+  readonly runtimeRef?: string;
+  readonly harnessRef?: string;
+  readonly [extension: string]: unknown;
+}
+
+/** FAM候補を誰がどの経路で生成したかを保存するtransport receipt。 */
+export interface AdapterProvenanceReceipt {
+  readonly schemaVersion: "fam.adapter-provenance/0.1.0-draft";
+  readonly producerRef: string;
+  readonly producerRevision: string;
+  readonly adapterChain: readonly AdapterChainHop[];
+  readonly supportClaim?: FamAdapterSupportClaim;
+  readonly oaeRefs: readonly string[];
+  readonly [extension: string]: unknown;
+}
+
 export interface CapabilityResult {
   readonly pluginId: string;
   readonly pluginStatus?: "resolved" | "rejected";
@@ -138,6 +173,7 @@ export interface CapabilityResult {
   readonly candidate?: unknown;
   readonly profileValidation?: CapabilityProfileValidation;
   readonly evidenceRefs?: readonly string[];
+  readonly adapterProvenance?: AdapterProvenanceReceipt;
   readonly reason?: string;
   /** 実際に適用した段階だけを記録する。意図されたrolesの宣言とは分離する。 */
   readonly profileReceipts?: readonly CapabilityProfileReceipt[];

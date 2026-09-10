@@ -1,5 +1,6 @@
 import type { CapabilityInvocation, CapabilityResult, PluginResolver } from "@fquery/core";
 import {
+  createAdapterProvenance,
   createUnresolvedDecomposition,
   validateDecomposerCandidate,
   type Decomposer,
@@ -24,6 +25,13 @@ export const ollamaPluginManifest: PluginManifest = Object.freeze({
   unknownPolicy: "retain",
   lastOrderPolicy: "return-envelope",
   implementation: { language: "typescript", runtime: "node" },
+  famSupport: Object.freeze({
+    schemaVersion: "fam.adapter-support/0.1.0-draft",
+    level: 1,
+    capabilityRefs: CAPABILITIES,
+    observationSurfaces: ["provider-request", "provider-response", "transport-failure"],
+    limitations: ["stream-disabled", "thinking-disabled", "model-identity-not-proven", "internal-bus-not-observed"],
+  } as const),
 });
 
 export interface OllamaModel { readonly name: string; readonly size?: number; readonly family?: string }
@@ -41,7 +49,7 @@ export class OllamaFamPlugin implements PluginResolver {
 
   async invoke(request: CapabilityInvocation): Promise<CapabilityResult | undefined> {
     if (!CAPABILITIES.includes(request.capability as OllamaFamCapability)) return undefined;
-    if (request.sideEffect !== "network") return { pluginId: ollamaPluginManifest.pluginId, pluginStatus: "rejected", transportStatus: "failed", reason: "network-side-effect-not-authorized" };
+    if (request.sideEffect !== "network") return { pluginId: ollamaPluginManifest.pluginId, pluginStatus: "rejected", transportStatus: "failed", reason: "network-side-effect-not-authorized", adapterProvenance: provenance(this.#options.model, this.#options.baseUrl) };
     try {
       const generate = this.#options.generate ?? ollamaGenerate;
       let response = await generate({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_DECOMPOSITION_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
@@ -58,6 +66,7 @@ export class OllamaFamPlugin implements PluginResolver {
             transportStatus: "succeeded",
             outputStatus: "invalid",
             reason: repairValidationError instanceof Error ? repairValidationError.message : "ollama-output-invalid",
+            adapterProvenance: provenance(this.#options.model, this.#options.baseUrl),
             execution: { provider: "ollama", model: this.#options.model, pluginVersion: ollamaPluginManifest.pluginVersion },
           };
         }
@@ -71,6 +80,7 @@ export class OllamaFamPlugin implements PluginResolver {
           reason: "decomposition-profile-nonconformant",
           profileValidation: toProfileValidation(parsed.validation),
           evidenceRefs: [],
+          adapterProvenance: provenance(this.#options.model, this.#options.baseUrl),
           ...generationProfileReceipts(request),
           ...(parsed.repairedPaths.length > 0 ? { normalization: { profileRef: parsed.profileRef, repairedPaths: parsed.repairedPaths } } : {}),
           execution: { provider: "ollama", model: this.#options.model, pluginVersion: ollamaPluginManifest.pluginVersion },
@@ -82,6 +92,7 @@ export class OllamaFamPlugin implements PluginResolver {
         outputStatus: "accepted",
         value: parsed.value,
         evidenceRefs: [],
+        adapterProvenance: provenance(this.#options.model, this.#options.baseUrl),
         ...generationProfileReceipts(request),
         ...(parsed.repairedPaths.length > 0 ? { normalization: { profileRef: parsed.profileRef, repairedPaths: parsed.repairedPaths } } : {}),
         execution: { provider: "ollama", model: this.#options.model, pluginVersion: ollamaPluginManifest.pluginVersion },
@@ -91,10 +102,19 @@ export class OllamaFamPlugin implements PluginResolver {
         pluginId: ollamaPluginManifest.pluginId,
         transportStatus: "failed",
         reason: error instanceof Error ? error.message : "ollama-call-failed",
+        adapterProvenance: provenance(this.#options.model, this.#options.baseUrl),
         execution: { provider: "ollama", model: this.#options.model, pluginVersion: ollamaPluginManifest.pluginVersion },
       };
     }
   }
+}
+
+function provenance(model: string, baseUrl: string) {
+  return createAdapterProvenance(ollamaPluginManifest, {
+    providerRef: "provider://ollama/local",
+    modelRef: `model://ollama/${model}`,
+    runtimeRef: `runtime://${baseUrl}`,
+  });
 }
 
 export class OllamaNlDecomposer implements Decomposer {

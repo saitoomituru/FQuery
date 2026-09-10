@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { resolveCredential, type CredentialSource } from "@fquery/config";
 import type { CapabilityInvocation, CapabilityResult, PluginResolver } from "@fquery/core";
 import {
+  createAdapterProvenance,
   createUnresolvedDecomposition,
   validateDecomposerCandidate,
   type Decomposer,
@@ -26,6 +27,13 @@ export const geminiPluginManifest: PluginManifest = Object.freeze({
   unknownPolicy: "retain",
   lastOrderPolicy: "return-envelope",
   implementation: { language: "typescript", runtime: "node" },
+  famSupport: Object.freeze({
+    schemaVersion: "fam.adapter-support/0.1.0-draft",
+    level: 1,
+    capabilityRefs: CAPABILITIES,
+    observationSurfaces: ["provider-request", "provider-response", "provider-request-id", "transport-failure"],
+    limitations: ["astral-history-not-observed", "model-identity-not-proven", "internal-bus-not-observed"],
+  } as const),
 });
 
 export interface GeminiGenerateRequest { readonly apiKey: string; readonly model: string; readonly prompt: string; readonly responseSchema: Readonly<Record<string, unknown>>; readonly signal?: AbortSignal }
@@ -44,9 +52,9 @@ export class GeminiFamPlugin implements PluginResolver {
   constructor(options: GeminiPluginOptions) { this.#options = Object.freeze({ ...options, credentialSources: Object.freeze([...options.credentialSources]) }); }
   async invoke(request: CapabilityInvocation): Promise<CapabilityResult | undefined> {
     if (!CAPABILITIES.includes(request.capability as GeminiFamCapability)) return undefined;
-    if (request.sideEffect !== "network") return { pluginId: geminiPluginManifest.pluginId, pluginStatus: "rejected", transportStatus: "failed", reason: "network-side-effect-not-authorized" };
+    if (request.sideEffect !== "network") return { pluginId: geminiPluginManifest.pluginId, pluginStatus: "rejected", transportStatus: "failed", reason: "network-side-effect-not-authorized", adapterProvenance: provenance(this.#options.model) };
     const resolved = await resolveCredential({ name: this.#options.credentialName, keyVariable: "GEMINI_API_KEY" }, this.#options.credentialSources);
-    if (!resolved?.credential.key) return { pluginId: "plugin://fquery/gemini", transportStatus: "failed", reason: `credential-not-found:${this.#options.credentialName}` };
+    if (!resolved?.credential.key) return { pluginId: "plugin://fquery/gemini", transportStatus: "failed", reason: `credential-not-found:${this.#options.credentialName}`, adapterProvenance: provenance(this.#options.model) };
     try {
       const generate = this.#options.generate ?? googleGenerate;
       let response = await generate({ apiKey: resolved.credential.key, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_DECOMPOSITION_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
@@ -58,7 +66,7 @@ export class GeminiFamPlugin implements PluginResolver {
         try {
           parsed = parseFam(response.text);
         } catch (repairValidationError) {
-          return { pluginId: geminiPluginManifest.pluginId, transportStatus: "succeeded", outputStatus: "invalid", reason: errorReason(repairValidationError, resolved.credential.key, "gemini-output-invalid"), execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name, ...(response.requestId ? { requestId: response.requestId } : {}) } };
+          return { pluginId: geminiPluginManifest.pluginId, transportStatus: "succeeded", outputStatus: "invalid", reason: errorReason(repairValidationError, resolved.credential.key, "gemini-output-invalid"), adapterProvenance: provenance(this.#options.model), execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name, ...(response.requestId ? { requestId: response.requestId } : {}) } };
         }
       }
       if (!parsed.validation.valid) {
@@ -70,16 +78,25 @@ export class GeminiFamPlugin implements PluginResolver {
           reason: "decomposition-profile-nonconformant",
           profileValidation: toProfileValidation(parsed.validation),
           evidenceRefs: [],
+          adapterProvenance: provenance(this.#options.model),
           ...generationProfileReceipts(request),
           ...(parsed.repairedPaths.length > 0 ? { normalization: { profileRef: parsed.profileRef, repairedPaths: parsed.repairedPaths } } : {}),
           execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name, ...(response.requestId ? { requestId: response.requestId } : {}) },
         };
       }
-      return { pluginId: geminiPluginManifest.pluginId, transportStatus: "succeeded", outputStatus: "accepted", value: parsed.value, evidenceRefs: [], ...generationProfileReceipts(request), ...(parsed.repairedPaths.length > 0 ? { normalization: { profileRef: parsed.profileRef, repairedPaths: parsed.repairedPaths } } : {}), execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name, ...(response.requestId ? { requestId: response.requestId } : {}) } };
+      return { pluginId: geminiPluginManifest.pluginId, transportStatus: "succeeded", outputStatus: "accepted", value: parsed.value, evidenceRefs: [], adapterProvenance: provenance(this.#options.model), ...generationProfileReceipts(request), ...(parsed.repairedPaths.length > 0 ? { normalization: { profileRef: parsed.profileRef, repairedPaths: parsed.repairedPaths } } : {}), execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name, ...(response.requestId ? { requestId: response.requestId } : {}) } };
     } catch (error) {
-      return { pluginId: geminiPluginManifest.pluginId, transportStatus: "failed", reason: errorReason(error, resolved.credential.key, "gemini-call-failed"), execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name } };
+      return { pluginId: geminiPluginManifest.pluginId, transportStatus: "failed", reason: errorReason(error, resolved.credential.key, "gemini-call-failed"), adapterProvenance: provenance(this.#options.model), execution: { provider: "google", model: this.#options.model, pluginVersion: geminiPluginManifest.pluginVersion, credentialName: resolved.credential.name } };
     }
   }
+}
+
+function provenance(model: string) {
+  return createAdapterProvenance(geminiPluginManifest, {
+    providerRef: "provider://google/gemini",
+    modelRef: `model://google/${model}`,
+    runtimeRef: "runtime://google/gemini-api",
+  });
 }
 
 export class GeminiNlDecomposer implements Decomposer {

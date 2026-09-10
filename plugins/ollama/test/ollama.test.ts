@@ -13,6 +13,7 @@ describe("OllamaFamPlugin", () => {
     expect(result.transportStatus).toBe("succeeded");
     expect(result.value).toMatchObject({ schema_version: "fam.json/0.1.0-draft", Q: { unknown_is_absence: false } });
     expect(events.find((event) => event.eventType === "plugin-call-end")?.detail).toMatchObject({ execution: { provider: "ollama", model: "qwen3:8b", pluginVersion: "0.1.0-draft.0" } });
+    expect(events.find((event) => event.eventType === "plugin-call-end")?.detail).toMatchObject({ adapterProvenance: { producerRef: "plugin://fquery/ollama", supportClaim: { level: 1, limitations: expect.arrayContaining(["stream-disabled", "thinking-disabled"]) }, adapterChain: [{ modelRef: "model://ollama/qwen3:8b" }] } });
   });
   it("revision固定refFAMをprovider promptとCore receiptへ通す", async () => {
     const generate = vi.fn(async () => ({ text: JSON.stringify(createLiteralDecompositionFam("雨。", "q://test/ref-profile")) }));

@@ -1,4 +1,11 @@
-import type { CapabilityInvocation, CapabilityResult, PluginResolver, QueryPolicy } from "@fquery/core";
+import type {
+  AdapterProvenanceReceipt,
+  CapabilityInvocation,
+  CapabilityResult,
+  FamAdapterSupportClaim,
+  PluginResolver,
+  QueryPolicy,
+} from "@fquery/core";
 
 export { createUnresolvedDecomposition, ManualNlDecomposer, validateDecomposerCandidate } from "./decomposer.js";
 export type * from "./decomposer.js";
@@ -15,6 +22,8 @@ export interface PluginManifest {
   readonly unknownPolicy: "retain";
   readonly lastOrderPolicy: "return-envelope";
   readonly implementation: { readonly language: string; readonly runtime: string };
+  /** plugin自身のscope付き申告。CoreまたはRegistryによる認証値ではない。 */
+  readonly famSupport: FamAdapterSupportClaim;
 }
 
 export type PluginHandler = (request: CapabilityInvocation) => Promise<Omit<CapabilityResult, "pluginId">> | Omit<CapabilityResult, "pluginId">;
@@ -45,14 +54,41 @@ export class PluginRegistry implements PluginResolver {
     const registration = this.#byCapability.get(request.capability);
     if (!registration) return undefined;
     if (!allowsSideEffect(request.sideEffect, registration.manifest.sideEffect)) {
-      return { pluginId: registration.manifest.pluginId, pluginStatus: "rejected", transportStatus: "failed", reason: `side-effect-not-authorized:${registration.manifest.sideEffect}` };
+      return { pluginId: registration.manifest.pluginId, pluginStatus: "rejected", transportStatus: "failed", reason: `side-effect-not-authorized:${registration.manifest.sideEffect}`, adapterProvenance: createAdapterProvenance(registration.manifest) };
     }
     if (registration.manifest.authority.required && registration.manifest.authority.scopes.length > 0) {
-      return { pluginId: registration.manifest.pluginId, pluginStatus: "rejected", transportStatus: "failed", reason: `authority-required:${registration.manifest.authority.scopes.join(",")}` };
+      return { pluginId: registration.manifest.pluginId, pluginStatus: "rejected", transportStatus: "failed", reason: `authority-required:${registration.manifest.authority.scopes.join(",")}`, adapterProvenance: createAdapterProvenance(registration.manifest) };
     }
     const result = await registration.handler(request);
-    return { ...result, pluginId: registration.manifest.pluginId, pluginStatus: result.pluginStatus ?? "resolved" };
+    return { ...result, pluginId: registration.manifest.pluginId, pluginStatus: result.pluginStatus ?? "resolved", adapterProvenance: result.adapterProvenance ?? createAdapterProvenance(registration.manifest) };
   }
+}
+
+export function createAdapterProvenance(
+  manifest: PluginManifest,
+  scope: {
+    readonly providerRef?: string;
+    readonly modelRef?: string;
+    readonly runtimeRef?: string;
+    readonly harnessRef?: string;
+    readonly oaeRefs?: readonly string[];
+  } = {},
+): AdapterProvenanceReceipt {
+  return Object.freeze({
+    schemaVersion: "fam.adapter-provenance/0.1.0-draft",
+    producerRef: manifest.pluginId,
+    producerRevision: manifest.pluginVersion,
+    adapterChain: Object.freeze([Object.freeze({
+      adapterRef: manifest.pluginId,
+      adapterRevision: manifest.pluginVersion,
+      ...(scope.providerRef ? { providerRef: scope.providerRef } : {}),
+      ...(scope.modelRef ? { modelRef: scope.modelRef } : {}),
+      ...(scope.runtimeRef ? { runtimeRef: scope.runtimeRef } : {}),
+      ...(scope.harnessRef ? { harnessRef: scope.harnessRef } : {}),
+    })]),
+    supportClaim: manifest.famSupport,
+    oaeRefs: Object.freeze([...(scope.oaeRefs ?? [])]),
+  });
 }
 
 export function allowsSideEffect(allowed: QueryPolicy["sideEffect"], required: Exclude<QueryPolicy["sideEffect"], "deny">): boolean {
@@ -72,4 +108,6 @@ function validateManifest(manifest: PluginManifest): void {
   if (!manifest.pluginId) throw new TypeError("pluginId is required");
   if (manifest.capabilities.length === 0) throw new TypeError("at least one capability is required");
   if (new Set(manifest.capabilities).size !== manifest.capabilities.length) throw new TypeError("duplicate capability in manifest");
+  if (manifest.famSupport.schemaVersion !== "fam.adapter-support/0.1.0-draft") throw new TypeError("unsupported FAM support claim schemaVersion");
+  if (!Number.isInteger(manifest.famSupport.level) || manifest.famSupport.level < 0 || manifest.famSupport.level > 5) throw new TypeError("FAM support level must be an integer from 0 to 5");
 }
