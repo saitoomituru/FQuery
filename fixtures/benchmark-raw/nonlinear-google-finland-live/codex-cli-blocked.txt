@@ -1,0 +1,22 @@
+2026-09-11: codex CLI (ChatGPT account auth, v0.152.0) was attempted 4 times for Candidate A
+generation, once with the account-default model and three explicit -m/-c overrides
+(gpt-5.6-sol, gpt-5-codex, o3). All four attempts failed identically before any
+generation occurred:
+
+  ERROR: {"type":"error","status":400,"error":{"type":"invalid_request_error",
+  "message":"The '<model>' model is not supported when using Codex with a ChatGPT account."}}
+
+codex doctor confirms auth mode is "chatgpt" (not API-key), and this machine's own
+~/.codex rollout history shows gpt-5.6-sol has succeeded thousands of times via the
+"vscode"/"subagent" integration routes, but almost never via the raw "exec"/"cli" route
+used here (source counts: subagent:other=78, vscode=58, subagent:thread_spawn=19, cli=7,
+exec=1 prior to this session). This looks like a genuine account/plan-tier restriction on
+the bare `codex exec` CLI path in this environment, not a transient error or a flag
+mistake. RESOURCE-WAIT, not redesigned around by guessing further model names.
+
+Candidate A was produced instead by the current Claude Code session (this repository's
+existing fixtures/benchmark/nonlinear-fpga-post.json already has precedent for an
+assistant session self-labeling as an observer://.../current-session candidate generator),
+applying the same prompt.txt used for the Gemini leg. This is transparently a different
+methodological shape than "independent third-party Codex CLI run" and is labeled as such
+in the fixture (observerRef: observer://anthropic/claude-code/current-session).

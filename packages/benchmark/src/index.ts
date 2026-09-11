@@ -5,7 +5,7 @@ export { assessNegativeFixture, validateNegativeFixture } from "./negative-fixtu
 export type * from "./negative-fixture.js";
 export { classifyEffectiveOneLiner, observePsiInterfaces } from "./psi-observability.js";
 export type * from "./psi-observability.js";
-export { compareNonlinearObserverOae, validateNonlinearObserverOae } from "./nonlinear-observer.js";
+export { compareNonlinearObserverOae, extractTopologyFromFam, validateNonlinearObserverOae } from "./nonlinear-observer.js";
 export type * from "./nonlinear-observer.js";
 
 export interface BenchmarkTarget {

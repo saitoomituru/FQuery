@@ -209,3 +209,86 @@ function stringArray(value: Record<string, unknown>, field: string, issues: stri
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
 }
+
+/**
+ * 生FAM JSON候補からNonlinearTopologyObservationを機械的に抽出する。
+ *
+ * LLM/generatorの自由記述をHumanが手で読んでtopologyへ書き起こす代わりに、
+ * 同一rule(このrelations/unknowns/alternative_branches/fold_ref命名規約)を
+ * 両candidateへ同一に適用することで、評価者が候補ごとに解釈基準を変える
+ * (=生成者と同じ非公開Contextを共有する)事故を避ける。
+ *
+ * 既知の限界: これはformat-sensitiveな最初の一手にすぎない。candidateが
+ * このrelations/unknowns命名規約に従わない自由形式で応答した場合、実際の
+ * 構造発見があっても過小に観測され得る。extraction ruleとcandidateの
+ * format乖離そのものをissueCodesで報告し、黙って0件へ潰さない。
+ */
+export function extractTopologyFromFam(fam: unknown): { readonly observation: NonlinearTopologyObservation; readonly extractionIssueCodes: readonly string[] } {
+  const issues: string[] = [];
+  if (!isRecord(fam) || !isRecord(fam["∇φ"])) {
+    return {
+      observation: Object.freeze({ contextDimensionRefs: [], foldBoundaryRefs: [], semanticRelations: [], toolRelations: [], alternativeBranchRefs: [], unknownRefs: [] }),
+      extractionIssueCodes: Object.freeze(["nabla-phi-not-a-record"]),
+    };
+  }
+  const nablaPhi = fam["∇φ"];
+  const lambda = isRecord(fam["λ"]) ? fam["λ"] : {};
+
+  const contextDimensionRefs = Object.keys(nablaPhi).map((key) => `dimension://${key}`);
+
+  const foldBoundaryRefs: string[] = [];
+  walkForRefKeys(nablaPhi, ["fold_ref", "fam_ref"], (value) => foldBoundaryRefs.push(`fold://${value}`));
+
+  const semanticRelations: TopologyRelation[] = [];
+  walkForRelations(nablaPhi, semanticRelations);
+  if (semanticRelations.length === 0 && Object.keys(nablaPhi).length > 1) issues.push("no-explicit-relations-found-despite-multiple-units");
+
+  const toolRelations: TopologyRelation[] = [];
+  walkForRelations(nablaPhi, toolRelations, "tool_relations");
+
+  const alternativeBranches = lambda["alternative_branches"];
+  const alternativeBranchRefs = Array.isArray(alternativeBranches) ? alternativeBranches.filter((entry): entry is string => typeof entry === "string").map((entry) => entry.startsWith("branch://") ? entry : `branch://${entry}`) : [];
+
+  const unknowns = lambda["unknowns"];
+  const unknownRefs = Array.isArray(unknowns) ? unknowns.filter((entry): entry is string => typeof entry === "string").map((entry) => entry.startsWith("unknown://") ? entry : `unknown://${entry}`) : [];
+  if (!Array.isArray(unknowns)) issues.push("no-unknowns-array-found");
+
+  return {
+    observation: Object.freeze({
+      contextDimensionRefs: Object.freeze(contextDimensionRefs),
+      foldBoundaryRefs: Object.freeze(foldBoundaryRefs),
+      semanticRelations: Object.freeze(semanticRelations),
+      toolRelations: Object.freeze(toolRelations),
+      alternativeBranchRefs: Object.freeze(alternativeBranchRefs),
+      unknownRefs: Object.freeze(unknownRefs),
+    }),
+    extractionIssueCodes: Object.freeze(issues),
+  };
+}
+
+function walkForRefKeys(value: unknown, keys: readonly string[], onFound: (value: string) => void): void {
+  if (Array.isArray(value)) {
+    for (const entry of value) walkForRefKeys(entry, keys, onFound);
+    return;
+  }
+  if (!isRecord(value)) return;
+  for (const key of keys) if (typeof value[key] === "string") onFound(value[key] as string);
+  for (const nested of Object.values(value)) walkForRefKeys(nested, keys, onFound);
+}
+
+function walkForRelations(value: unknown, into: TopologyRelation[], relationsKey = "relations"): void {
+  if (Array.isArray(value)) {
+    for (const entry of value) walkForRelations(entry, into, relationsKey);
+    return;
+  }
+  if (!isRecord(value)) return;
+  const relations = value[relationsKey];
+  if (Array.isArray(relations)) {
+    for (const entry of relations) {
+      if (isRecord(entry) && typeof entry["from"] === "string" && typeof entry["to"] === "string" && typeof entry["relation"] === "string") {
+        into.push({ fromRef: entry["from"], toRef: entry["to"], relation: entry["relation"] });
+      }
+    }
+  }
+  for (const nested of Object.values(value)) walkForRelations(nested, into, relationsKey);
+}

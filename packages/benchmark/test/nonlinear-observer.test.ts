@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { describe, expect, it } from "vitest";
 import {
   compareNonlinearObserverOae,
+  extractTopologyFromFam,
   validateNonlinearObserverOae,
   type NonlinearObserverOae,
 } from "../src/index.js";
@@ -50,5 +51,62 @@ describe("nonlinear Observer OAE comparison", () => {
     const { observations } = await replayFixture();
     const right = { ...observations[1]!, subjectRevisionRef: "revision://other" };
     expect(() => compareNonlinearObserverOae(observations[0]!, right)).toThrow("subject-revision-mismatch");
+  });
+});
+
+describe("extractTopologyFromFam (live comparison用の機械的抽出)", () => {
+  async function loadCandidateA(): Promise<unknown> {
+    const path = new URL(
+      "../../../fixtures/benchmark-raw/nonlinear-google-finland-live/candidate-a.claude.fam.json",
+      import.meta.url,
+    );
+    return JSON.parse(await readFile(path, "utf8"));
+  }
+
+  it("2026-09-11 live run: Claudeが生成した実candidateからrelations/fold_ref/unknowns/alternative_branchesを抽出する", async () => {
+    const fam = await loadCandidateA();
+    const { observation, extractionIssueCodes } = extractTopologyFromFam(fam);
+
+    expect(observation.contextDimensionRefs).toEqual([
+      "dimension://investment_commitment",
+      "dimension://data_center_expansion",
+      "dimension://energy_agreement",
+    ]);
+    expect(observation.foldBoundaryRefs).toEqual(["fold://fam://google-finland-2026/energy-agreement/fortum-loviisa"]);
+    expect(observation.semanticRelations).toEqual([
+      { fromRef: "investment_commitment", toRef: "data_center_expansion", relation: "funds" },
+      { fromRef: "investment_commitment", toRef: "energy_agreement", relation: "co-occurs-with" },
+    ]);
+    expect(observation.unknownRefs).toHaveLength(5);
+    expect(observation.alternativeBranchRefs).toHaveLength(2);
+    expect(extractionIssueCodes).toEqual([]);
+  });
+
+  it("relations/unknownsを持たないcandidateは0件を黙って通さずissueCodesへ残す", () => {
+    const flatCandidate = { "ψ": {}, "∇φ": { a: {}, b: {} }, "λ": {}, "Q": {} };
+    const { observation, extractionIssueCodes } = extractTopologyFromFam(flatCandidate);
+    expect(observation.semanticRelations).toEqual([]);
+    expect(extractionIssueCodes).toContain("no-explicit-relations-found-despite-multiple-units");
+    expect(extractionIssueCodes).toContain("no-unknowns-array-found");
+  });
+
+  it("λが非record形状(∇φがrecordでない等)でも例外を投げずunknown抽出failureとして返す", () => {
+    const malformed = { "ψ": {}, "∇φ": "not-a-record", "λ": {}, "Q": {} };
+    const { observation, extractionIssueCodes } = extractTopologyFromFam(malformed);
+    expect(observation).toEqual({ contextDimensionRefs: [], foldBoundaryRefs: [], semanticRelations: [], toolRelations: [], alternativeBranchRefs: [], unknownRefs: [] });
+    expect(extractionIssueCodes).toEqual(["nabla-phi-not-a-record"]);
+  });
+
+  it("2026-09-11 live run記録: gemini-flash系2 modelが同一schemaで再現した縮退応答は候補として不採用のまま保持する", async () => {
+    // fixtures/benchmark-raw/nonlinear-google-finland-live/candidate-b.gemini.degenerate-output.gemini-3.5-flash.json
+    // (gemini-flash-latest / gemini-3.5-flash両方で再現)はFQuery自身のvalidateDecomposerCandidate
+    // によりprofile-nonconformantとしてrejectされた。extractTopologyFromFamはこの無効candidateへ
+    // 適用しない(有効化・救済しない)。詳細はfixtures/benchmark配下のreceiptとFQuery issueを参照。
+    const path = new URL(
+      "../../../fixtures/benchmark-raw/nonlinear-google-finland-live/candidate-b.gemini.degenerate-output.gemini-3.5-flash.json",
+      import.meta.url,
+    );
+    const raw = JSON.parse(await readFile(path, "utf8")) as { readonly status: string };
+    expect(raw.status).toBe("profile-nonconformant");
   });
 });
