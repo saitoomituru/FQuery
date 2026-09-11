@@ -4,6 +4,7 @@ export { projectLegacyQStatus, summarizeAsLegacyQStatus } from "./legacy-status.
 export { planParallelFold } from "./parallel-fold.js";
 export { reprojectFoldGraph } from "./fold-reprojection.js";
 export { assessFamExtraction, resolveFamModuleGraph } from "./module-graph.js";
+export { InMemoryFamDocumentStore, createFamModuleResolver } from "./document-store.js";
 export { normalizeFamTopology, parseFamSelector, resolveTopologySelector, validateTopologyLayerReferences } from "./topology.js";
 export { projectTopologyForPresentation, projectTopologyForRunner } from "./topology-projection.js";
 export { parseQuery, Q, toWireQueryResult } from "./q.js";
@@ -13,5 +14,6 @@ export type * from "./legacy-status.js";
 export type * from "./parallel-fold.js";
 export type * from "./fold-reprojection.js";
 export type * from "./module-graph.js";
+export type * from "./document-store.js";
 export type * from "./topology.js";
 export type * from "./topology-projection.js";
