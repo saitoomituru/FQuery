@@ -8,7 +8,7 @@ import {
   type DecompositionRequest,
   type PluginManifest,
 } from "@fquery/plugin-sdk";
-import { FAM_BASE_RESPONSE_SCHEMA, normalizeDecompositionProfileInvariants, validateFamDecomposition, validateFamJson, type FamJsonRecord, type FamValidationResult } from "@fquery/fam-core";
+import { FAM_DECOMPOSITION_RESPONSE_SCHEMA, normalizeDecompositionProfileInvariants, validateFamDecomposition, validateFamJson, type FamJsonRecord, type FamValidationResult } from "@fquery/fam-core";
 
 export type OllamaFamCapability = "fam.decompose" | "fam.integrate" | "fam.compare" | "fam.project";
 const CAPABILITIES: readonly OllamaFamCapability[] = ["fam.decompose", "fam.integrate", "fam.compare", "fam.project"];
@@ -52,12 +52,12 @@ export class OllamaFamPlugin implements PluginResolver {
     if (request.sideEffect !== "network") return { pluginId: ollamaPluginManifest.pluginId, pluginStatus: "rejected", transportStatus: "failed", reason: "network-side-effect-not-authorized", adapterProvenance: provenance(this.#options.model, this.#options.baseUrl) };
     try {
       const generate = this.#options.generate ?? ollamaGenerate;
-      let response = await generate({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_BASE_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
+      let response = await generate({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_DECOMPOSITION_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
       let parsed: ParsedFam;
       try {
         parsed = parseFam(response.text);
       } catch (validationError) {
-        response = await generate({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildRepairPrompt(request, validationError), responseSchema: FAM_BASE_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
+        response = await generate({ baseUrl: this.#options.baseUrl, model: this.#options.model, prompt: buildRepairPrompt(request, validationError), responseSchema: FAM_DECOMPOSITION_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
         try {
           parsed = parseFam(response.text);
         } catch (repairValidationError) {

@@ -10,7 +10,7 @@ import {
   type DecompositionRequest,
   type PluginManifest,
 } from "@fquery/plugin-sdk";
-import { FAM_BASE_RESPONSE_SCHEMA, normalizeDecompositionProfileInvariants, validateFamDecomposition, validateFamJson, type FamJsonRecord, type FamValidationResult } from "@fquery/fam-core";
+import { FAM_DECOMPOSITION_RESPONSE_SCHEMA, normalizeDecompositionProfileInvariants, validateFamDecomposition, validateFamJson, type FamJsonRecord, type FamValidationResult } from "@fquery/fam-core";
 
 export type GeminiFamCapability = "fam.decompose" | "fam.integrate" | "fam.compare" | "fam.project";
 const CAPABILITIES: readonly GeminiFamCapability[] = ["fam.decompose", "fam.integrate", "fam.compare", "fam.project"];
@@ -57,12 +57,12 @@ export class GeminiFamPlugin implements PluginResolver {
     if (!resolved?.credential.key) return { pluginId: "plugin://fquery/gemini", transportStatus: "failed", reason: `credential-not-found:${this.#options.credentialName}`, adapterProvenance: provenance(this.#options.model) };
     try {
       const generate = this.#options.generate ?? googleGenerate;
-      let response = await generate({ apiKey: resolved.credential.key, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_BASE_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
+      let response = await generate({ apiKey: resolved.credential.key, model: this.#options.model, prompt: buildPrompt(request), responseSchema: FAM_DECOMPOSITION_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
       let parsed: ParsedFam;
       try {
         parsed = parseFam(response.text);
       } catch (validationError) {
-        response = await generate({ apiKey: resolved.credential.key, model: this.#options.model, prompt: buildRepairPrompt(request, validationError), responseSchema: FAM_BASE_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
+        response = await generate({ apiKey: resolved.credential.key, model: this.#options.model, prompt: buildRepairPrompt(request, validationError), responseSchema: FAM_DECOMPOSITION_RESPONSE_SCHEMA, ...(request.signal ? { signal: request.signal } : {}) });
         try {
           parsed = parseFam(response.text);
         } catch (repairValidationError) {

@@ -1,11 +1,22 @@
 import { describe, expect, it, vi } from "vitest";
 import { explicitSource } from "@fquery/config";
 import { evaluateQ, Q, type CoreEvent } from "@fquery/core";
-import { createLiteralDecompositionFam } from "@fquery/fam-core";
+import { createLiteralDecompositionFam, FAM_DECOMPOSITION_RESPONSE_SCHEMA } from "@fquery/fam-core";
 import type { DecompositionRequest } from "@fquery/plugin-sdk";
 import { discoverGeminiModels, GeminiFamPlugin, GeminiNlDecomposer } from "../src/index.js";
 
 describe("GeminiFamPlugin", () => {
+  it("2026-09-11回帰: responseSchemaに無制約FAM_BASE_RESPONSE_SCHEMAではなくFAM_DECOMPOSITION_RESPONSE_SCHEMAを要求する", async () => {
+    // Issue #45: λ:{}無制約のFAM_BASE_RESPONSE_SCHEMAをresponseJsonSchemaへ渡すと、
+    // parseFam()が常にvalidateFamDecomposition()で検証するにも関わらずmodelへ構造の
+    // 手がかりが無く、output_units_*の同義語variant keyを大量生成する縮退が実機で
+    // 再現した(gemini-flash-latest / gemini-3.5-flash双方)。
+    const generate = vi.fn(async () => ({ text: JSON.stringify(createLiteralDecompositionFam("source", "q://test/schema-choice")) }));
+    const plugin = new GeminiFamPlugin({ model: "gemini-2.5-flash", credentialName: "gemini-local", credentialSources: [explicitSource([{ name: "gemini-local", key: "not-a-real-key" }])], generate });
+    await plugin.invoke({ queryRef: "q://test/schema-choice", capability: "fam.decompose", input: "source", sideEffect: "network" });
+    expect(generate.mock.calls[0]![0].responseSchema).toBe(FAM_DECOMPOSITION_RESPONSE_SCHEMA);
+  });
+
   it("fake clientで再帰FAMとmodel routeを返す", async () => {
     const generate = vi.fn(async () => ({ text: JSON.stringify(createLiteralDecompositionFam("source", "q://test/gemini")), requestId: "request-fixture" }));
     const plugin = new GeminiFamPlugin({ model: "gemini-2.5-flash", credentialName: "gemini-local", credentialSources: [explicitSource([{ name: "gemini-local", key: "not-a-real-key" }])], generate });

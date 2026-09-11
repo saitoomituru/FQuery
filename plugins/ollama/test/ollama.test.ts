@@ -1,10 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 import { evaluateQ, Q, type CoreEvent } from "@fquery/core";
-import { createLiteralDecompositionFam } from "@fquery/fam-core";
+import { createLiteralDecompositionFam, FAM_DECOMPOSITION_RESPONSE_SCHEMA } from "@fquery/fam-core";
 import type { DecompositionRequest } from "@fquery/plugin-sdk";
 import { discoverOllamaModels, OllamaFamPlugin, OllamaNlDecomposer } from "../src/index.js";
 
 describe("OllamaFamPlugin", () => {
+  it("2026-09-11回帰(FQuery#45同種): responseSchemaに無制約FAM_BASE_RESPONSE_SCHEMAではなくFAM_DECOMPOSITION_RESPONSE_SCHEMAを要求する", async () => {
+    const generate = vi.fn(async () => ({ text: JSON.stringify(createLiteralDecompositionFam("source", "q://test/schema-choice")) }));
+    const plugin = new OllamaFamPlugin({ model: "qwen3:8b", generate });
+    await plugin.invoke({ queryRef: "q://test/schema-choice", capability: "fam.decompose", input: "source", sideEffect: "network" });
+    expect(generate.mock.calls[0]![0].responseSchema).toBe(FAM_DECOMPOSITION_RESPONSE_SCHEMA);
+  });
+
   it("fake transportで自然言語を再帰FAMへ分解する", async () => {
     const generate = vi.fn(async () => ({ text: JSON.stringify(createLiteralDecompositionFam("雨が降っているので傘を持つ", "q://test/ollama")) }));
     const plugin = new OllamaFamPlugin({ model: "qwen3:8b", generate });
