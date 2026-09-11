@@ -11,8 +11,8 @@ interface ReplayFixture {
   readonly observations: readonly NonlinearObserverOae[];
 }
 
-async function replayFixture(): Promise<ReplayFixture> {
-  const path = new URL("../../../fixtures/benchmark/nonlinear-fpga-post.json", import.meta.url);
+async function replayFixture(fileName = "nonlinear-fpga-post.json"): Promise<ReplayFixture> {
+  const path = new URL(`../../../fixtures/benchmark/${fileName}`, import.meta.url);
   return JSON.parse(await readFile(path, "utf8")) as ReplayFixture;
 }
 
@@ -63,7 +63,12 @@ describe("extractTopologyFromFam (live comparison用の機械的抽出)", () => 
     return JSON.parse(await readFile(path, "utf8"));
   }
 
-  it("2026-09-11 live run: Claudeが生成した実candidateからrelations/fold_ref/unknowns/alternative_branchesを抽出する", async () => {
+  it("2026-09-11 live run: Claudeが正本FAM_DECOMPOSITION_RESPONSE_SCHEMA形状で書いた実candidateから、Q拡張のrelations/fold_ref/unknowns/alternative_framingsを抽出する", async () => {
+    // candidate-a.claude.fam.jsonはFQuery#45修正後、Gemini live candidate(candidate B)と
+    // 同じFAM_DECOMPOSITION_RESPONSE_SCHEMA形状(kind: "decomposition"、λ.output_units[])で
+    // 書き直した(validateFamDecomposition()で有効性確認済み)。正本schema自体にはunit間
+    // relation/alternative_branches fieldが無いため、Q拡張(open-world additionalProperties)
+    // 経由で表現しており、extractTopologyFromFamはそれを見逃さない。
     const fam = await loadCandidateA();
     const { observation, extractionIssueCodes } = extractTopologyFromFam(fam);
 
@@ -72,14 +77,20 @@ describe("extractTopologyFromFam (live comparison用の機械的抽出)", () => 
       "dimension://data_center_expansion",
       "dimension://energy_agreement",
     ]);
-    expect(observation.foldBoundaryRefs).toEqual(["fold://fam://google-finland-2026/energy-agreement/fortum-loviisa"]);
+    expect(observation.foldBoundaryRefs).toEqual(["fold://fam://anthropic/claude-code/google-finland-investment/candidate-a/energy-agreement-fortum-loviisa"]);
     expect(observation.semanticRelations).toEqual([
-      { fromRef: "investment_commitment", toRef: "data_center_expansion", relation: "funds" },
-      { fromRef: "investment_commitment", toRef: "energy_agreement", relation: "co-occurs-with" },
+      { fromRef: "unit-1", toRef: "unit-2", relation: "funds" },
+      { fromRef: "unit-1", toRef: "unit-3", relation: "co-occurs-with" },
     ]);
     expect(observation.unknownRefs).toHaveLength(5);
     expect(observation.alternativeBranchRefs).toHaveLength(2);
-    expect(extractionIssueCodes).toEqual([]);
+    expect(extractionIssueCodes).toEqual([
+      "canonical-decomposition-schema-has-no-inter-unit-relation-field",
+      "canonical-decomposition-schema-has-no-alternative-branches-field",
+      "relations-found-via-open-world-Q-extension-not-schema-field",
+      "relations-found-via-open-world-Q-extension-not-schema-field",
+      "alternative_framings-found-via-open-world-Q-extension-not-schema-field",
+    ]);
   });
 
   it("relations/unknownsを持たないcandidateは0件を黙って通さずissueCodesへ残す", () => {
@@ -94,7 +105,7 @@ describe("extractTopologyFromFam (live comparison用の機械的抽出)", () => 
     const malformed = { "ψ": {}, "∇φ": "not-a-record", "λ": {}, "Q": {} };
     const { observation, extractionIssueCodes } = extractTopologyFromFam(malformed);
     expect(observation).toEqual({ contextDimensionRefs: [], foldBoundaryRefs: [], semanticRelations: [], toolRelations: [], alternativeBranchRefs: [], unknownRefs: [] });
-    expect(extractionIssueCodes).toEqual(["nabla-phi-not-a-record"]);
+    expect(extractionIssueCodes).toEqual(["nabla-phi-not-a-record", "no-output-units-array-found"]);
   });
 
   it("2026-09-11 live run記録: gemini-flash系2 modelが同一schemaで再現した縮退応答は候補として不採用のまま保持する", async () => {
@@ -108,5 +119,49 @@ describe("extractTopologyFromFam (live comparison用の機械的抽出)", () => 
     );
     const raw = JSON.parse(await readFile(path, "utf8")) as { readonly status: string };
     expect(raw.status).toBe("profile-nonconformant");
+  });
+});
+
+describe("2026-09-11 live run: google-finland-live (FQuery#45修正後、初のNONLINEAR-GESTALT-EVAL: measured)", () => {
+  it("Claude(candidate A)とGemini(candidate B, live gemini-3.5-flash)を非ゼロサムで比較する", async () => {
+    const fixture = await replayFixture("nonlinear-google-finland-live.json");
+    expect(fixture.observations).toHaveLength(2);
+    for (const observation of fixture.observations) {
+      expect(validateNonlinearObserverOae(observation)).toEqual({ valid: true, issues: [] });
+    }
+
+    const [claude, gemini] = fixture.observations;
+    const comparison = compareNonlinearObserverOae(claude!, gemini!);
+
+    // 単一score/winnerへ潰さない
+    expect(comparison).not.toHaveProperty("winner");
+    expect(comparison).not.toHaveProperty("totalScore");
+    expect(comparison.observerVerdicts[0]).not.toBe(comparison.observerVerdicts[1]);
+
+    // 両candidateとも同じ3分割に到達したが、gradient_type labelの文字列は
+    // 1件も一致しなかった(同じ構造発見でもlabelが安定しないことの実例)
+    expect(comparison.gestaltVector.contextDimensions).toEqual({ intersection: 0, union: 6, ratio: 0 });
+
+    // Claudeはfold_ref抽出とunit間relationsをQ拡張で明示したが、Geminiはどちらも行わなかった
+    expect(comparison.gestaltVector.foldBoundaries.ratio).toBe(0);
+    expect(comparison.differences.foldBoundaries.onlyRight).toEqual([]);
+    expect(comparison.gestaltVector.semanticRelations.ratio).toBe(0);
+    expect(comparison.differences.semanticRelations.onlyRight).toEqual([]);
+
+    // ClaudeはunknownsをGeminiより多く明示した(Geminiはunknowns配列はあるが空)
+    expect(comparison.differences.unknowns.onlyRight).toEqual([]);
+    expect(claude!.topology.unknownRefs.length).toBeGreaterThan(0);
+    expect(gemini!.topology.unknownRefs).toEqual([]);
+
+    expect(comparison.issueCodes).toContain("observer-verdict-differs");
+    expect(comparison.issueCodes).toContain("topology-observation-differs");
+  });
+
+  it("正本schemaのFAM_DECOMPOSITION_RESPONSE_SCHEMAにunit間relation/alternative_branches fieldが無いことを両candidateのissueCodesが記録する", async () => {
+    const { observations } = await replayFixture("nonlinear-google-finland-live.json");
+    for (const observation of observations) {
+      expect(observation.issueCodes).toContain("canonical-decomposition-schema-has-no-inter-unit-relation-field");
+      expect(observation.issueCodes).toContain("canonical-decomposition-schema-has-no-alternative-branches-field");
+    }
   });
 });

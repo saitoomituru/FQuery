@@ -224,16 +224,40 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * format乖離そのものをissueCodesで報告し、黙って0件へ潰さない。
  */
 export function extractTopologyFromFam(fam: unknown): { readonly observation: NonlinearTopologyObservation; readonly extractionIssueCodes: readonly string[] } {
-  const issues: string[] = [];
-  if (!isRecord(fam) || !isRecord(fam["∇φ"])) {
+  if (!isRecord(fam)) {
     return {
-      observation: Object.freeze({ contextDimensionRefs: [], foldBoundaryRefs: [], semanticRelations: [], toolRelations: [], alternativeBranchRefs: [], unknownRefs: [] }),
-      extractionIssueCodes: Object.freeze(["nabla-phi-not-a-record"]),
+      observation: EMPTY_TOPOLOGY_OBSERVATION,
+      extractionIssueCodes: Object.freeze(["fam-not-a-record"]),
     };
   }
-  const nablaPhi = fam["∇φ"];
   const lambda = isRecord(fam["λ"]) ? fam["λ"] : {};
+  if (Array.isArray(lambda["output_units"])) return extractFromCanonicalDecomposition(fam, lambda["output_units"]);
+  if (isRecord(fam["∇φ"])) return extractFromAdHocShape(fam, fam["∇φ"], lambda);
+  return {
+    observation: EMPTY_TOPOLOGY_OBSERVATION,
+    extractionIssueCodes: Object.freeze(["nabla-phi-not-a-record", "no-output-units-array-found"]),
+  };
+}
 
+const EMPTY_TOPOLOGY_OBSERVATION: NonlinearTopologyObservation = Object.freeze({
+  contextDimensionRefs: [],
+  foldBoundaryRefs: [],
+  semanticRelations: [],
+  toolRelations: [],
+  alternativeBranchRefs: [],
+  unknownRefs: [],
+});
+
+/**
+ * ad-hoc shape: ∇φがnamed unitのrecordで、relations/unknowns/alternative_branches
+ * 命名規約に従う自由形式candidate(例: PLI実行LLMが本schemaを知らずに書いたcandidate)。
+ */
+function extractFromAdHocShape(
+  fam: Record<string, unknown>,
+  nablaPhi: Record<string, unknown>,
+  lambda: Record<string, unknown>,
+): { readonly observation: NonlinearTopologyObservation; readonly extractionIssueCodes: readonly string[] } {
+  const issues: string[] = [];
   const contextDimensionRefs = Object.keys(nablaPhi).map((key) => `dimension://${key}`);
 
   const foldBoundaryRefs: string[] = [];
@@ -259,6 +283,89 @@ export function extractTopologyFromFam(fam: unknown): { readonly observation: No
       foldBoundaryRefs: Object.freeze(foldBoundaryRefs),
       semanticRelations: Object.freeze(semanticRelations),
       toolRelations: Object.freeze(toolRelations),
+      alternativeBranchRefs: Object.freeze(alternativeBranchRefs),
+      unknownRefs: Object.freeze(unknownRefs),
+    }),
+    extractionIssueCodes: Object.freeze(issues),
+  };
+}
+
+/**
+ * FQuery正本のFAM_DECOMPOSITION_RESPONSE_SCHEMA形状(kind: "decomposition"、
+ * λ.output_units[]配列)。実providerの`fam.decompose`出力はこちらになる。
+ *
+ * 既知の限界: このschema自体にunit間の明示的relation fieldや
+ * alternative_branches fieldが存在しない(output_units[].∇φはunit内部の
+ * gradient一覧であり、unit間の因果/依存関係を表すfieldはschemaに無い)。
+ * したがってこのshapeのcandidateはsemanticRelations/alternativeBranchRefsが
+ * 常に空になり得る。これはextraction ruleの欠陥ではなく、正本schemaが
+ * unit間関係を表現する場所を持たないという別の(#42 flat-fan-out議論と
+ * 関連し得る)アーキテクチャ上の観測であり、issueCodesで明示する。
+ */
+function extractFromCanonicalDecomposition(
+  fam: Record<string, unknown>,
+  outputUnits: readonly unknown[],
+): { readonly observation: NonlinearTopologyObservation; readonly extractionIssueCodes: readonly string[] } {
+  const issues: string[] = [
+    "canonical-decomposition-schema-has-no-inter-unit-relation-field",
+    "canonical-decomposition-schema-has-no-alternative-branches-field",
+  ];
+
+  const contextDimensionRefs: string[] = [];
+  for (const unit of outputUnits) {
+    if (!isRecord(unit)) continue;
+    const gradients = unit["∇φ"];
+    if (!Array.isArray(gradients)) continue;
+    for (const gradient of gradients) {
+      if (isRecord(gradient) && typeof gradient["gradient_type"] === "string") contextDimensionRefs.push(`dimension://${gradient["gradient_type"]}`);
+    }
+  }
+  if (contextDimensionRefs.length === 0 && outputUnits.length > 0) issues.push("no-gradient-type-found-in-any-output-unit");
+
+  const foldBoundaryRefs: string[] = [];
+  walkForRefKeys(fam, ["fold_ref", "fam_ref"], (value) => foldBoundaryRefs.push(`fold://${value}`));
+
+  // schema必須ではないが、observerがQへ独自拡張したrelations/alternative_framings/
+  // alternative_branchesがあれば見逃さない(open-world FAMはadditionalProperties: true)。
+  const semanticRelations: TopologyRelation[] = [];
+  const alternativeBranchRefs: string[] = [];
+  let foundUnknownsArray = false;
+  const unknownRefs: string[] = [];
+  const scanQExtensions = (value: unknown): void => {
+    if (!isRecord(value)) return;
+    const relations = value["relations"];
+    if (Array.isArray(relations)) {
+      issues.push("relations-found-via-open-world-Q-extension-not-schema-field");
+      for (const entry of relations) {
+        if (isRecord(entry) && typeof entry["from"] === "string" && typeof entry["to"] === "string" && typeof entry["relation"] === "string") {
+          semanticRelations.push({ fromRef: entry["from"], toRef: entry["to"], relation: entry["relation"] });
+        }
+      }
+    }
+    for (const key of ["alternative_framings", "alternative_branches"]) {
+      const branches = value[key];
+      if (Array.isArray(branches)) {
+        issues.push(`${key}-found-via-open-world-Q-extension-not-schema-field`);
+        for (const entry of branches) if (typeof entry === "string") alternativeBranchRefs.push(entry.startsWith("branch://") ? entry : `branch://${entry}`);
+      }
+    }
+    const unknowns = value["unknowns"];
+    if (Array.isArray(unknowns)) {
+      foundUnknownsArray = true;
+      for (const entry of unknowns) if (typeof entry === "string") unknownRefs.push(entry.startsWith("unknown://") ? entry : `unknown://${entry}`);
+    }
+  };
+  scanQExtensions(fam["Q"]);
+  for (const unit of outputUnits) if (isRecord(unit)) scanQExtensions(unit["Q"]);
+  if (!foundUnknownsArray) issues.push("no-unknowns-array-found");
+  else if (unknownRefs.length === 0) issues.push("unknowns-array-present-but-empty");
+
+  return {
+    observation: Object.freeze({
+      contextDimensionRefs: Object.freeze(contextDimensionRefs),
+      foldBoundaryRefs: Object.freeze(foldBoundaryRefs),
+      semanticRelations: Object.freeze(semanticRelations),
+      toolRelations: Object.freeze([]),
       alternativeBranchRefs: Object.freeze(alternativeBranchRefs),
       unknownRefs: Object.freeze(unknownRefs),
     }),
