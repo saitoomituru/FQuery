@@ -1,6 +1,8 @@
 # Issue #43 Selector / Topology Normalizer Human Acceptance
 
-状態: `CORE-IMPLEMENTATION-CANDIDATE / HUMAN-TEST-PENDING`
+状態: `CORE-IMPLEMENTATION-CANDIDATE / AUTOMATED-VERIFIED / HUMAN-GATE-DEFERRED-TO-GUI-INTEGRATION`
+
+2026-09-11: [Human Gate位置決定規約](human-gate-position-policy.ja.md)に基づき、この文書単独のHuman Gateは廃止する。CoreはGUI／providerを経由しないため、Humanが判断できる実体験が無く、agentの自動test/CI検証で完了扱いとする。以下のsample1/2/3確認項目は破棄せず、IBD #3/#4のstorage adapterがGUIへ接続され、agentがbrowser MCPで自動検証した後の統合Human Test（#35/#37/#5系）へ引き継ぐ。
 
 ## 境界
 
@@ -92,3 +94,5 @@ Last Order:
 ```
 
 `PASS`前はIssue #43をcloseせず、Core実装完了を名乗らない。`FAIL / HOLD`では観測したpointer、期待、実値、再現commandを残す。
+
+**2026-09-11時点の運用**: 上記verdict様式は単独Human Gateとしては使用しない。GUI統合後のHuman Test（#35/#37/#5系文書）でsample1/2/3相当の確認を行う際にこの様式を再利用する。
