@@ -1,0 +1,45 @@
+{
+  "ψ": {
+    "situation": "Qがfold-on-fold nesting depth Gを跨いで解釈するとき、物理世界scopeと形而上学scopeをどこで切り分けるかを問う",
+    "declared_position": "この定規はCommons(共有基盤)向けの最小サンプルであり、開発者個人の内面信仰・私的形而上学(いわゆるゲーミング宇宙論)そのものの記述ではない。普遍真理・唯一正しいrefFAMとして提示しない"
+  },
+  "∇φ": {
+    "g_boundary_method": {
+      "ψ": "this.parent",
+      "∇φ": {
+        "question": "現在のFold-on-Fold nesting depth Gはいくつか。そのFoldはどのfact_scope候補に属するか",
+        "method": [
+          "G < 5 のFoldは既定でmundane/physical fact_scope候補とする",
+          "G >= 5 のFoldは既定でmetaphysical/spiritual fact_scope候補とする",
+          "境界値5はこのCommonsサンプル固有の慣習値であり、FQuery Coreの既定値ではない。上位QueryのAccess Map / Registryが明示的に上書きできる",
+          "G境界を跨いだ主張は、それだけでobjective universalへ昇格しない。scope、Observer、Registryを明示したまま保持する"
+        ],
+        "non_claims": [
+          "G >= 5のFoldに実在する神格・霊・存在等があるかどうかをこの定規は判定しない",
+          "G < 5のFoldがG >= 5のFoldより真であるとこの定規は判定しない",
+          "逆にG >= 5のFoldがG < 5のFoldより深遠であるとも判定しない"
+        ]
+      },
+      "λ": "classification-method",
+      "Q": {}
+    },
+    "reuse_invitation": {
+      "ψ": "this.parent",
+      "∇φ": {
+        "note": "本fileは著者個人の詳細な信仰体系(特定の神道流派、特定神学、その他固有の宗教的主張)を記述したものではない。G境界の解釈方法だけを示す最小骨格である",
+        "invitation": "利用者は自分自身のref.fam.jsonを自由に作成してよい。本fileを複製・改変・破棄してよく、承認や互換性証明を必要としない"
+      },
+      "λ": "usage-note",
+      "Q": {}
+    }
+  },
+  "λ": {
+    "purpose": "G軸境界の解釈方法(fact-freeな定規)を示すCommons最小サンプル。個別の物理的・霊的主張そのものではない",
+    "reuse_invitation": "これは唯一の正本ではない。任意のref.fam.jsonを自由に作ってよい"
+  },
+  "Q": {
+    "declared_position_ref": "position://commons/gaming-cosmology-sample/basic",
+    "fact_scope_policy": "this-file-declares-no-facts",
+    "adjudication": "core-does-not-adjudicate-refFAM-correctness"
+  }
+}

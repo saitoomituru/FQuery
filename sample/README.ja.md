@@ -4,6 +4,8 @@
 
 将来利用し得るmetadata、evidence、adapter候補、実装parameterを例示目的で盛らない。必要なprofileが追加要求する情報は、各profile / refFAM / Access Map / Q拡張側で扱う。
 
+refFAM自体の最小サンプル（fact-freeな定規の例）は[`refFAM/`](refFAM/README.ja.md)を参照する。これらのsample1〜3とは別目的（Topology正規化ではなくrefFAM content shapeの例示）であり、唯一の正本でもない。
+
 ## `sample1.fam.json`
 
 目的: **arrayによるparallel sibling representation**だけを示す。
