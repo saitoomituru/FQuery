@@ -1,0 +1,120 @@
+{
+  "Ψ": "AtlantisDOC開発環境スプリッターとしてコードや思想やテストケースなどのルート分離するための構造体",
+  "∇φ": {
+    "G7 World": {
+      "label": "開発環境やマシンの資産境界やネットワークや法律やイデオロギーなどのガバナンスなどの基本制約条件をスプリットする。この時点で個人の自我の話なのかどのレイヤーの話なのかが切り分けられる。主観世界なのか技術の話なのか？",
+      "Ψ": "this.parent",
+      "∇φ": {
+        "Q.file.fit": [
+          "world/*.reffam.json"
+        ]
+      },
+      "λ": "this.after.*pointer",
+      "Q": {
+        "plugin": [
+          "@fam/stndio"
+        ]
+      }
+    },
+    "G6 Position": {
+      "label": "社会的立場や役割ポジションなどを定義する。法人格立場やAI人格立場やユーザーや開発者やエンドユーザーとは？サードパーティとは？などの形而上学ポジショントーク",
+      "Ψ": "this.parent",
+      "∇φ": {
+        "Q.file.fit": [
+          "Position/*.reffam.json"
+        ]
+      },
+      "λ": "this.after.G5Causality",
+      "Q": {
+        "plugin": [
+          "@fam/stndio"
+        ]
+      }
+    },
+    "G5 Causality": {
+      "label": "決裁権やセキュリティ境界や取り決めや契約やルールやプロジェクトビジョンなど",
+      "Ψ": "this.parent",
+      "∇φ": {
+        "Q.file.fit": [
+          "Position/*.reffam.json"
+        ]
+      },
+      "λ": "this.after.G4ObjectiveParty",
+      "Q": {
+        "plugin": [
+          "@fam/stndio"
+        ]
+      }
+    },
+    "G4 ObjectiveParty": {
+      "label": "パーティ目標やオーガナイゼーション目的やプロジェクト粒度などの目的",
+      "Ψ": "this.parent",
+      "∇φ": {
+        "Q.file.fit": [
+          "Objective/*.reffam.json",
+          "org/*.reffam.json",
+          "Party/*.reffam.json"
+        ]
+      },
+      "λ": "this.after.G3DistributionArena",
+      "Q": {
+        "plugin": [
+          "@fam/stndio"
+        ]
+      }
+    },
+    "G3 DistributionArena": {
+      "label": "実行ランナーやIDEや環境概念",
+      "Ψ": "this.parent",
+      "∇φ": {
+        "Q.file.fit": [
+          "ide/*.reffam.json",
+          "runner/*.reffam.json",
+          "os/*.reffam.json"
+        ]
+      },
+      "λ": "this.after.G2Mission",
+      "Q": {
+        "plugin": [
+          "@fam/stndio"
+        ]
+      }
+    },
+    "G2 Mission": {
+      "label": "今回のミッション",
+      "Ψ": "this.parent",
+      "∇φ": {
+        "Q.file.fit": [
+          "devinstance/*.reffam.json",
+          "instanceghost/*.reffam.json",
+          "git/*.reffam.json"
+        ]
+      },
+      "λ": "this.after.G1RealitySubstrat",
+      "Q": {
+        "plugin": [
+          "@fam/stndio"
+        ]
+      }
+    },
+    "G1 RealitySubstrate": {
+      "label": "現実物理",
+      "Ψ": "this.parent",
+      "∇φ": {
+        "Q.file.fit": [
+          "bearmetal/*.reffam.json",
+          "programminglang/*.reffam.json",
+          "architect/*.reffam.json"
+        ]
+      },
+      "λ": "this.parent",
+      "Q": {
+        "plugin": [
+          "@fam/stndio"
+        ]
+      }
+    }
+  },
+  "λ": "FAM",
+  "Q": {}
+}
