@@ -110,9 +110,15 @@ Fold    可逆・presentation。別refFAM/FAM文書を取り寄せて結合す�
 DeFold  可逆・局所編集。既存Foldを開いて再展開する。破壊しない
 unFold  不可逆・生成。モデルに新規の何かを合成させる
           例: Q(scope).unFold.<method>(input)
+          例: Q(scope).unFold.embed(text) — textをembedding modelがvectorへ
+              非可逆合成する(IBD Pool Occurrence DriverのMATCH occurrenceが使う入力)
 ```
 
 Fold/DeFoldは「既存のものを取り寄せる/開き直す」操作で可逆、unFoldは「新規に生成する」操作で不可逆という区別を持つ。
+
+### unFoldの非可逆性はDeFold原本の生存で相殺される(2026-09-14追記)
+
+unFold結果(embedding vector等)自体は元sourceへ戻せないが、入力になったDeFold原本(可逆・非破壊保持されるFAM/text)が生存している限り、unFoldはいつでも別のmodel・別のInfinite Core adapterで再実行できる。「どのunFold実行手段(embeddingベンダー等)を選ぶか」は、DeFold原本の保存さえ怠らなければ後戻り不能な選択にならない。IBD `docs/architecture/pool-occurrence-driver.ja.md`の`source_document`lossless保持契約は、この原則の具体的な実装である。
 
 ## 5. 戻り値は常にFAM
 
@@ -135,6 +141,10 @@ Q(FAMスコープ参照 or refFAM).prompt("自然言語input")
 ```
 
 FQueryの外部API(呼び出し側から見た入口)とFAM文書内部のnode間呼び出しは、同一記法`Q(scope).method(args)`へ統一される。
+
+### embeddingはInfinite Coreのcapability resolution例そのもの(2026-09-14追記)
+
+Issue #39(FAM CoreとInfinite Coreの責務分離)は、Capability resolutionの実例として`semantic.embedding.search`を既に挙げており、候補targetとして`Node adapter / Python adapter / PostgreSQL extension / vector DB / GPU runtime / remote MCP tool`を列挙している。IBD Pool Occurrence DriverのMATCH occurrence(ベクトル近傍)が必要とするembedding計算はこのcapability resolutionそのものであり、IBD自身がembeddingベンダー・実行媒体を決定するのではなく、Infinite Coreのcapability/protocol解決へ委譲する。
 
 ## 7. `⊥`(Last Order)とOAE記録(2026-09-13追記、Issue #50由来)
 
