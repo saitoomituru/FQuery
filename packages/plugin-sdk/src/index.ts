@@ -14,6 +14,15 @@ export type * from "./oae-evaluator.js";
 export { createCliHarnessHandler } from "./cli-harness.js";
 export type * from "./cli-harness.js";
 export { createAdapterProvenance } from "./provenance.js";
+export {
+  compileQCall,
+  extractQCalls,
+  parseQCallKey,
+  resolveEffectiveQ,
+  resolvePathForScope,
+  resolveQForCall,
+} from "./q-compiler.js";
+export type * from "./q-compiler.js";
 
 export interface PluginManifest {
   readonly schemaVersion: "fquery.plugin/0.1.0-draft";

@@ -118,6 +118,8 @@ reject/blocked時にこの契約をどう保つかは、2026-09-13の実装調�
 
 残るUNKNOWNは、`CapabilityResult.value`が型として`unknown`のままであり、それが常にFAM形状であることをTypeScript型として強制していない点。refFAMの`Q(scope).method`記法を`CapabilityInvocation`/`PluginRegistry.invoke()`へ変換するadapter層を書く際に、`value`をFAM型へ絞り込む作業が必要になる。
 
+**2026-09-13訂正**: `packages/plugin-sdk/test/q-compiler.test.ts`で実証した結果、`candidate`保持は`pluginStatus:"rejected"`(`transportStatus:"failed"`経路)では**保持されない**——`evaluator.ts`のこの分岐は`reason`と構造化`lastOrder`(`code:"FQUERY-PLUGIN-REJECTED"`)のみを返す。`candidate`保持は`outputStatus:"profile-nonconformant"`(transportは成功したがprofile不適合)という別軸の契約である。「reject/blocked時も例外を投げず構造化状態を返す」契約自体は実証済みだが、「rejectでもcandidateを保持する」は誤りだったので訂正する。
+
 ## 6. モデル/実行系の選択をCoreへ焼き込まない
 
 `Q(scope).prompt(text)`等が実際にどのモデル・どの実行系実装で処理されるかを、Coreへ固定・焼き込みしない。`Q.plugin`宣言とそのbindingがFAM構造体側で解決する。
