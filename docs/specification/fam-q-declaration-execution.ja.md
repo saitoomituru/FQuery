@@ -84,6 +84,20 @@ Q.plugin: [..., "@fam/*-llm-adapter"]  → Q(scope).prompt(text) が呼べる
 
 Coreは「pluginが存在するか」だけを宣言的に確認する(Core責務)。「そのpluginが実行時に実際に機能する状態か」(例: 外部接続が実際に確立しているか)はplugin自身の実行時責務であり、Coreはここへ踏み込まない。
 
+### 3.1 既存Core ABIとの対応(2026-09-13調査)
+
+この`Q(scope).method(args)`呼び出しは、ゼロから実装するものではなく、`packages/core/src/types.ts`の`CapabilityInvocation`/`CapabilityResult`と`packages/plugin-sdk`の`PluginManifest`/`PluginRegistry`という既存ABIへ変換して実装できる見通しが立っている。
+
+```text
+Q(scope).method(args)
+  ↓ 変換
+CapabilityInvocation { capability: "method名(dot-namespace)", input: args, profileBindings: [scope解決結果] }
+  ↓ PluginRegistry.invoke()
+CapabilityResult { pluginStatus, value, candidate, reason, ... }
+```
+
+`capability`文字列は既にdot-namespace実例(`plugins/gemini`の`"fam.decompose"`)を持つため、`file.fit`/`unFold.pict`という命名はこの既存規約とそのまま整合する。`profileBindings`は`Q.plugin`宣言のtree-scoped解決結果を運ぶ器として転用できる。実装で新規に書く必要があるのは主に「`Q(this.fold)`のtree-walk解決アルゴリズム」と「`Q.plugin`宣言配列から`PluginRegistry.register()`への実際の紐付けコード」であり、Capability invocation ABI自体は再利用できる。
+
 ## 4. Fold / DeFold / unFold
 
 ```text
@@ -100,7 +114,9 @@ Fold/DeFoldは「既存のものを取り寄せる/開き直す」操作で可�
 
 `Q(scope).method(args)`の戻り値は、methodが何であっても常にFAM形式である(jQueryの全メソッドが`jQuery`オブジェクトを返しchainできるのと同型)。生のバイト列・生テキスト・生例外を直接露出しない。取得したFAMは、そのまま別の`Q(...)`呼び出しの入力scopeとして渡せる。
 
-reject/blocked時にこの契約をどう保つか(`Q.status: blocked`のようなmarkerを持つFAMを返すか、例外を許容するか)は`UNKNOWN`のまま残す。
+reject/blocked時にこの契約をどう保つかは、2026-09-13の実装調査で解消済み。`packages/core/src/types.ts`の`CapabilityResult`(`pluginStatus?: "resolved" | "rejected"`、`transportStatus`、`outputStatus?`、`candidate?`、`reason?`)が既に「例外を投げず、rejectでも構造化状態とlosslessなcandidateを保持する」という契約を実装済みである。`Q(scope).method(args)`の戻り値契約は、この既存`CapabilityResult`形状を土台にすればよく、新規のstatus markerを発明する必要はない。
+
+残るUNKNOWNは、`CapabilityResult.value`が型として`unknown`のままであり、それが常にFAM形状であることをTypeScript型として強制していない点。refFAMの`Q(scope).method`記法を`CapabilityInvocation`/`PluginRegistry.invoke()`へ変換するadapter層を書く際に、`value`をFAM型へ絞り込む作業が必要になる。
 
 ## 6. モデル/実行系の選択をCoreへ焼き込まない
 
