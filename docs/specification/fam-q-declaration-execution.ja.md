@@ -150,7 +150,7 @@ Core既存の`LastOrder`(`{code, reason, requestedNext, resumeWhen}`、`packages
 "Q": {
   "⊥": {
     "code": "FQUERY-FOLD-CYCLE-DETECTED",
-    "reason": "スプリッターが無関係なdomainへ流れたため他の枝をlast-orderした",
+    "reason": "Pool Occurrence Driverが無関係なdomainへ流れたため他の枝をlast-orderした",
     "requestedNext": "select-another-branch-or-widen-scope",
     "resumeWhen": "explicit-scope-widening"
   }
@@ -160,7 +160,7 @@ Core既存の`LastOrder`(`{code, reason, requestedNext, resumeWhen}`、`packages
 ### 発火条件
 
 - fold-chain解決(`this.fold`等)で循環参照を検出した場合
-- スプリッターが分解結果を無関係に見えるdomainへ流し込んだ場合、その時点で他の兄弟枝へ`⊥`を発行する(枝を削除せず、非ゼロサムで保持したまま「これ以上進めない」と明示する)
+- IBD Pool Occurrence Driver(旧スプリッター、2026-09-13改称。詳細はIBD `docs/architecture/pool-occurrence-driver.ja.md`)が分解結果を無関係に見えるdomainへ流し込んだ場合、その時点で他の兄弟枝へ`⊥`を発行する(枝を削除せず、非ゼロサムで保持したまま「これ以上進めない」と明示する)
 - `QueryPolicy.limits`(maxDepth/maxNodes/timeoutMs)超過時(Core既存`checkLimits()`と同型)
 
 ### OAE記録
