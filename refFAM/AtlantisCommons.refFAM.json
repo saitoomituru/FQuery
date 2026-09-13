@@ -1,125 +1,80 @@
 {
-  "Ψ": "AtlantisDOC開発環境スプリッターとしてコードや思想やテストケースなどのルート分離するための構造体",
+  "ψ": "AtlantisDOC開発環境スプリッターとしてコードや思想やテストケースなどのルート分離するための構造体",
   "∇φ": {
     "G7 World": {
       "label": "開発環境やマシンの資産境界やネットワークや法律やイデオロギーなどのガバナンスなどの基本制約条件をスプリットする。この時点で個人の自我の話なのかどのレイヤーの話なのかが切り分けられる。主観世界なのか技術の話なのか？",
       "note": "このG7〜G1のFold7GレジストリはSphereOS Atlantis/無印スフィアOS 3x4x由来のreferential draftであり、FQuery Coreの永久固定仕様ではない。別の階層構造が必要ならCoreへ焼き込まず、別registryへforkして良い(fork=別SphereOS distributionの話であり、このIssueの範囲外)",
-      "Ψ": "this.parent",
+      "ψ": "this.parent",
       "∇φ": {
-        "Q.file.fit": [
-          "world/*.reffam.json"
-        ]
+        "Q(self).file.fit": ["world/*.reffam.json"]
       },
-      "λ": "this.after.*pointer",
-      "Q": {
-        "plugin": [
-          "@fam/stndio"
-        ]
-      }
+      "λ": "next",
+      "Q": {}
     },
     "G6 Position": {
       "label": "社会的立場や役割ポジションなどを定義する。法人格立場やAI人格立場やユーザーや開発者やエンドユーザーとは？サードパーティとは？などの形而上学ポジショントーク",
-      "note": "MAGIスキル/アーキエンジェル系の意味カーネルが刺さる場所。ランタイム化した時点でインストール先マシンのシステム管理者が触るインストールサブセット・systemd相当のカーネル機能になる。ユーザーランド(G5以下)からはsudoingでここへ昇格できるがreject可能でOAEへ記録される。L軸の(決定論的・literalな)sudoとは別概念であり混同しない",
-      "Ψ": "this.parent",
+      "note": "MAGIスキル/アーキエンジェル系の意味カーネルが刺さる場所。ランタイム化した時点でインストール先マシンのシステム管理者が触るインストールサブセット・systemd相当のカーネル機能になる。ユーザーランド(G5以下)からはsudoingでここへ昇格できるがreject可能でOAEへ記録される。L軸の(決定論的・literalな)sudoとは別概念であり混同しない。以下のQ.pluginはこのnode固有のshallow override例(@fam/magi-audit は未実装のplaceholder名)。overrideしたので、下のQ(this).file.fitはこの拡張済みcapability setを使って呼び出す(Q(self)ならroot直下のstdioだけを使う呼び出しになり、こことは別の実効capabilityになる)",
+      "ψ": "this.parent",
       "∇φ": {
-        "Q.file.fit": [
-          "Position/*.reffam.json"
-        ]
+        "Q(this).file.fit": ["Position/*.reffam.json"]
       },
-      "λ": "this.after.G5Causality",
+      "λ": "next",
       "Q": {
-        "plugin": [
-          "@fam/stndio"
-        ]
+        "plugin": ["@fam/stndio", "@fam/magi-audit"]
       }
     },
     "G5 Causality": {
       "label": "決裁権やセキュリティ境界や取り決めや契約やルールやプロジェクトビジョンなど",
       "note": "App開発者が触るSDK境界。これより下(G4以下)がユーザーランド。userlandからG5/G6へはsudoingで明示的に越境し、POSIXと同様rejectがあり得、OAEへbashログ的に記録される",
-      "Ψ": "this.parent",
+      "ψ": "this.parent",
       "∇φ": {
-        "Q.file.fit": [
-          "Causality/*.reffam.json"
-        ]
+        "Q(self).file.fit": ["Causality/*.reffam.json"]
       },
-      "λ": "this.after.G4ObjectiveParty",
-      "Q": {
-        "plugin": [
-          "@fam/stndio"
-        ]
-      }
+      "λ": "next",
+      "Q": {}
     },
     "G4 ObjectiveParty": {
       "label": "パーティ目標やオーガナイゼーション目的やプロジェクト粒度などの目的",
-      "Ψ": "this.parent",
+      "ψ": "this.parent",
       "∇φ": {
-        "Q.file.fit": [
-          "Objective/*.reffam.json",
-          "org/*.reffam.json",
-          "Party/*.reffam.json"
-        ]
+        "Q(self).file.fit": ["Objective/*.reffam.json", "org/*.reffam.json", "Party/*.reffam.json"]
       },
-      "λ": "this.after.G3DistributionArena",
-      "Q": {
-        "plugin": [
-          "@fam/stndio"
-        ]
-      }
+      "λ": "next",
+      "Q": {}
     },
     "G3 DistributionArena": {
       "label": "実行ランナーやIDEや環境概念",
-      "Ψ": "this.parent",
+      "ψ": "this.parent",
       "∇φ": {
-        "Q.file.fit": [
-          "ide/*.reffam.json",
-          "runner/*.reffam.json",
-          "os/*.reffam.json"
-        ]
+        "Q(self).file.fit": ["ide/*.reffam.json", "runner/*.reffam.json", "os/*.reffam.json"]
       },
-      "λ": "this.after.G2Mission",
-      "Q": {
-        "plugin": [
-          "@fam/stndio"
-        ]
-      }
+      "λ": "next",
+      "Q": {}
     },
     "G2 Mission": {
       "label": "今回のミッション",
-      "Ψ": "this.parent",
+      "ψ": "this.parent",
       "∇φ": {
-        "Q.file.fit": [
-          "devinstance/*.reffam.json",
-          "instanceghost/*.reffam.json",
-          "git/*.reffam.json"
-        ]
+        "Q(self).file.fit": ["devinstance/*.reffam.json", "instanceghost/*.reffam.json", "git/*.reffam.json"]
       },
-      "λ": "this.after.G1RealitySubstrate",
-      "Q": {
-        "plugin": [
-          "@fam/stndio"
-        ]
-      }
+      "λ": "next",
+      "Q": {}
     },
     "G1 RealitySubstrate": {
       "label": "現実物理",
-      "Ψ": "this.parent",
+      "ψ": "this.parent",
       "∇φ": {
-        "Q.file.fit": [
-          "bearmetal/*.reffam.json",
-          "programminglang/*.reffam.json",
-          "architect/*.reffam.json"
-        ]
+        "Q(self).file.fit": ["bearmetal/*.reffam.json", "programminglang/*.reffam.json", "architect/*.reffam.json"]
       },
       "λ": "this.parent",
-      "Q": {
-        "plugin": [
-          "@fam/stndio"
-        ]
-      }
+      "Q": {}
     }
   },
   "λ": "FAM",
   "Q": {
-    "axis_disambiguation": "この'G7〜G1'はFold7Gの意味的スコープレジストリ(ordinal registry)であり、docs/specification/fold-boundary-runner.ja.mdが定義する'G(Gravity)= FAM reference pathの深度'やIBD docs/architecture/context-dimension-os-and-ibdsdk.ja.mdの'Fold nesting G'(いずれもFAM/Fold参照の交差回数を数えるscalar)とは別軸。同じ記号Gを使うが自動変換・同一視しない(local decomposition depth != Fold G slot)"
+    "plugin": ["@fam/stndio"],
+    "axis_disambiguation": "この'G7〜G1'はFold7Gの意味的スコープレジストリ(ordinal registry)であり、docs/specification/fold-boundary-runner.ja.mdが定義する'G(Gravity)= FAM reference pathの深度'やIBD docs/architecture/context-dimension-os-and-ibdsdk.ja.mdの'Fold nesting G'(いずれもFAM/Fold参照の交差回数を数えるscalar)とは別軸。同じ記号Gを使うが自動変換・同一視しない(local decomposition depth != Fold G slot)",
+    "resolution": "Q(this) > Q(this.parent) > Q(this.fold) > Q(self) の順でtree-scoped解決する(Vue provide/inject型)。Qは宣言(declaration)専用: どのpluginがこのscopeで有効かのbindingだけを持つ。宣言しないnodeはこのchainを継承し、宣言したnodeはそのfieldだけをshallow overrideする(deep-mergeしない、配列も丸ごと差し替え)。overrideは意図的な差分点を可視化するためのものであり、暗黙のmerge/silent rewriteは行わない。'fold'はQ(scope).file.fitで開かれる別refFAM文書(Fold-on-Fold境界)を跨いだ継承chainのprimitiveで、self/this/parent/children/prev/next/before/afterに次ぐ拡張候補(要: fquery-selector-traversal-normalization.ja.mdへの正式追加)。'next'/'prev'はこのファイルの∇φキー挿入順(ECMAScriptの文字列key列挙順保証)にそのまま乗る",
+    "execution_primitives": "ψ/∇φ/λはすべて実行(execution)要素であり、Qだけが宣言(declaration)専用。実行はQ(scope).method(args)という統一呼び出しで表され、戻り値は常にFAM(reject/blocked時もQ.status等のmarkerを持つFAMとして返し、生の例外やnullにしない、という前提で未確定)。method名前空間はscopeに束縛されたQ.pluginが何を提供するかで決まる: file.fit(pattern)=FAM実行(別refFAM文書を取り寄せてFold結合)、prompt(text)=自然言語prompt実行(LLM/Infinite Core呼び出し)、voice(streamOrWav)=音声入力実行、unFold.pict(imgStruct)=不可逆な生成実行(画像等をモデルに新規合成させる、Fold/DeFoldの可逆な取り寄せ・局所編集とは種別が違う)。どのモデル/Infinite Coreが実際に処理するかはCoreへ焼き込まずFAM構造体側で解決する。この構造体全体をmanagementするOSがSphereOSであり、自我/persona/ロボット用途(SphereASTRO)はその一consumerに過ぎず構造上の特権を持たない。外部からFQueryを呼ぶ場合もQ(FAMスコープ参照 or refFAM).prompt(text)のように内部と同じ記法を使う"
   }
 }

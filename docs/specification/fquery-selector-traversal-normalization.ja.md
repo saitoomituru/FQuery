@@ -167,6 +167,17 @@ Corporate Foldから`アストラル`を暗黙探索したり、Self Foldから`
 
 科学、主観、信仰、制度をFold境界なしにsemantic similarityだけで直結すると、仮説・測定・目的・合意のscopeが混線する。Coreは意味を裁定しなくても、cross-Fold pointerを機械拘束することでこのcategory errorを防ぐ。
 
+### 6.1 `fold` primitive(提案、2026-09-13)
+
+`self/this/parent/children/prev/next/before/after`に次ぐ9個目のscope primitiveとして`fold`を追加提案する。
+
+```text
+this.fold
+  = このnodeが属するFold境界(=別FAM/refFAM文書として開かれた包含Fold)
+```
+
+`Q(this.fold)`のように`Q`軸の解決scope指定として使う。詳細は[`fam-q-declaration-execution.ja.md`](fam-q-declaration-execution.ja.md)を参照。本節では primitive名の予約のみ行い、具体的な解決アルゴリズム(別文書を開いた際に「fold」が指す実体をどう識別するか)は`UNKNOWN`のまま残す。
+
 ## 7. FAM module / cross-file reference
 
 FAM fileはmoduleとして扱う。
