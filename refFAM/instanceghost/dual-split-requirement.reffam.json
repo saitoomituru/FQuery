@@ -1,0 +1,33 @@
+{
+  "ψ": {
+    "situation": "反実仮想(counterfactual)や復元候補が、WorldとInstance Ghostのどちらか片方だけを分岐させてよいかを問う",
+    "declared_position": "この定規はG2 Mission配下のinstanceghost最小サンプルであり、出典はSphereOS-Atlantis `magi/0.2.1/validate_temporal_receipt.py`とAGENTS.mdのMAGI節"
+  },
+  "∇φ": {
+    "split_method": {
+      "ψ": "this.parent",
+      "∇φ": {
+        "question": "この反実仮想/restore候補は、WorldとInstance Ghostを両方分岐させているか、それとも片方だけを分岐させているか",
+        "method": [
+          "反実仮想はSource WorldとSource Instance Ghostを変更せず、7D Foldの別World/別Instance Ghostへ隔離する",
+          "TargetはSourceから分岐(split)しなければならず、World単独/Instance Ghost単独の分岐(lone-split)は失敗modeとして検出する",
+          "この不変条件はG2 Missionの寿命内で局所的に成立するものであり、G4 Objective以上の合意を自動的に含意しない"
+        ],
+        "non_claims": [
+          "Instance Ghostの正式schema/stable IDをこの定規が確定させるとは主張しない"
+        ]
+      },
+      "λ": "classification-method",
+      "Q": {}
+    }
+  },
+  "λ": {
+    "purpose": "G2 Mission配下のInstance Ghost dual-split不変条件の問い方だけを示す最小サンプル",
+    "reuse_invitation": "これは唯一の正本ではない。任意のinstanceghost/*.reffam.jsonを自由に作ってよい"
+  },
+  "Q": {
+    "declared_position_ref": "position://commons/g2-instanceghost/dual-split",
+    "fact_scope_policy": "this-file-declares-no-facts",
+    "adjudication": "core-does-not-adjudicate-refFAM-correctness"
+  }
+}

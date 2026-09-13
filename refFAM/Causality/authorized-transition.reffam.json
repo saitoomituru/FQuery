@@ -1,0 +1,33 @@
+{
+  "ψ": {
+    "situation": "下位層(G1〜G4)で技術的に実行・観測できたという事実だけで、上位層(G6 Position/G7 World)の契約・合意を書き換えてよいかを問う",
+    "declared_position": "この定規はG5 Causality最小サンプルであり、出典はZeroRoomLab-manifest note/20260819-2212__SphereDOS_Fold7G_Fold8G_registry_upgrade_memo.ja.mdのG5節"
+  },
+  "∇φ": {
+    "transition_method": {
+      "ψ": "this.parent",
+      "∇φ": {
+        "question": "state Aからstate Bへのこの変化は、どのauthorized transition(再合意/契約変更/訂正/謝辞/賠償/revert/rollback/save-load/branch fork/GM裁定/authorized projection)を経ているか",
+        "method": [
+          "No Upward Silent Rewrite: 下位のexecution/observationだけを理由に上位World/Positionの契約・意味を暗黙変更しない。下位から上位へはproposal/event/evidence/request/receiptとして渡す",
+          "No Downward Magical Authority: 上位で「許されている」と書かれているだけを理由に下位のexecution authorityを生成しない",
+          "G5-mediated Transition: 上位state変更は明示されたCausality contractを通す"
+        ],
+        "non_claims": [
+          "特定のtransition token/schemaをこの定規が確定させるとは主張しない(stable IDやschema field名はUNKNOWNのまま)"
+        ]
+      },
+      "λ": "classification-method",
+      "Q": {}
+    }
+  },
+  "λ": {
+    "purpose": "G5 Causality(正当な状態遷移の境界)の問い方だけを示す最小サンプル",
+    "reuse_invitation": "これは唯一の正本ではない。任意のCausality/*.reffam.jsonを自由に作ってよい"
+  },
+  "Q": {
+    "declared_position_ref": "position://commons/g5-causality/authorized-transition",
+    "fact_scope_policy": "this-file-declares-no-facts",
+    "adjudication": "core-does-not-adjudicate-refFAM-correctness"
+  }
+}

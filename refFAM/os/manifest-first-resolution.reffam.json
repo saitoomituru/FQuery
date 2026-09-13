@@ -1,0 +1,33 @@
+{
+  "ψ": {
+    "situation": "「開発shell(ローカルdev環境)」と「standalone OS runtime」を同一のものとして扱ってよいかを問う",
+    "declared_position": "この定規はG3 Distribution/Arena配下のos最小サンプルであり、SphereOS-Atlantis SPHERE-DOS.ja.mdの4-Surface導入モデルを一般化する"
+  },
+  "∇φ": {
+    "resolution_method": {
+      "ψ": "this.parent",
+      "∇φ": {
+        "question": "起動しようとしている環境/contextはどの手順で解決されるべきか、また「OSである」ことが成立する条件は何か",
+        "method": [
+          "manifest-first resolution: 明示manifestを最優先し、次にowner namespace内のdefault manifestを探索し、それも無ければnoneへ降格する。外部組織のmanifestを推測しない",
+          "workspace/fork deployment、.vendor submodule、PLI Context Alias、Fork-on-Live/DevContainer等、複数の環境接続surfaceをbinding強度別に区別し、一つの固定手順へ潰さない",
+          "「local development shell」と「standalone OS runtime」を別概念として区別し、片方が未実装(NOT_IMPLEMENTED)でも他方の主張へ持ち込まない"
+        ],
+        "non_claims": [
+          "特定OS/runtime実装がこの定規から唯一導出されるとは主張しない"
+        ]
+      },
+      "λ": "classification-method",
+      "Q": {}
+    }
+  },
+  "λ": {
+    "purpose": "G3 os層の環境解決順序と「OSである」ことの成立条件の問い方だけを示す最小サンプル",
+    "reuse_invitation": "これは唯一の正本ではない。任意のos/*.reffam.jsonを自由に作ってよい"
+  },
+  "Q": {
+    "declared_position_ref": "position://commons/g3-os/manifest-first-resolution",
+    "fact_scope_policy": "this-file-declares-no-facts",
+    "adjudication": "core-does-not-adjudicate-refFAM-correctness"
+  }
+}

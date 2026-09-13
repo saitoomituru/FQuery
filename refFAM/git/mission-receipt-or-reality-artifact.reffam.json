@@ -1,0 +1,33 @@
+{
+  "ψ": {
+    "situation": "1つのgit commitを、G2 Missionのreceipt(作業完了の証跡)として扱うか、G1 Reality/Substrateの実体(file/Git object)として扱うかを問う",
+    "declared_position": "この定規はG2 Mission配下のgit最小サンプルであり、AtlantisCommons.refFAM.jsonがgit/*.reffam.jsonをG2 Mission配下に置く一方、ZeroRoomLab-manifest Fold7GメモはG1 Realityの例としてfile/Git objectを挙げている、という軸の重なりをそのまま提示する"
+  },
+  "∇φ": {
+    "dual_axis_method": {
+      "ψ": "this.parent",
+      "∇φ": {
+        "question": "このgit commit/branchは、どの軸から見ているか(G2 MissionのAIM synchronization・handoff・receiptとしてか、G1 Realityの実体/substrateとしてか)によって扱いが変わり得る",
+        "method": [
+          "同じgit commitでも、Mission完了のreceiptとして見る軸と、substrate上の実体として見る軸を同一視せず、どちらの軸からの問いかを明示する",
+          "commit message layer分類(eng/phil/theory/docs/meta等)、small verified commits、silent Registry rewrite禁止といった規約はG2 Mission軸(作業単位の正当性)の話として扱う",
+          "commit object自体のbyte整合性・CID・署名検証はG1 Reality軸(実体としての正当性)の話として扱う"
+        ],
+        "non_claims": [
+          "gitがG2とG1のどちらか一方に確定的に属すると、この定規は判定しない(意図的にopenのまま残す)"
+        ]
+      },
+      "λ": "classification-method",
+      "Q": {}
+    }
+  },
+  "λ": {
+    "purpose": "gitがG2 Mission軸とG1 Reality軸の両方から問われ得ることを明示する最小サンプル",
+    "reuse_invitation": "これは唯一の正本ではない。任意のgit/*.reffam.jsonを自由に作ってよい"
+  },
+  "Q": {
+    "declared_position_ref": "position://commons/g2-git/mission-or-reality",
+    "fact_scope_policy": "this-file-declares-no-facts",
+    "adjudication": "core-does-not-adjudicate-refFAM-correctness"
+  }
+}

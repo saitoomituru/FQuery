@@ -1,0 +1,33 @@
+{
+  "ψ": {
+    "situation": "開発中のinstance(セッション/agent実行環境)をfork・再起動・rehydrateしたとき、それが「同じ」ものだと何を根拠に言えるかを問う",
+    "declared_position": "この定規はG2 Mission配下のdevinstance最小サンプルであり、確立した固有語彙(instanceghost等)とは別に、devinstance自体の一般的な問いを立てる。この語彙自体はSphereOS-Atlantis/manifestに確立した対応概念がまだ無く、その空白を明示する"
+  },
+  "∇φ": {
+    "continuity_method": {
+      "ψ": "this.parent",
+      "∇φ": {
+        "question": "このdev instanceをfork/再起動/rehydrateした際、identity継続性として何が主張されているか(state、履歴、role、契約のどれが引き継がれるか)",
+        "method": [
+          "instance fork時に引き継がれるもの(state)と引き継がれないもの(role、権限)を明示的に分ける",
+          "「同じinstanceだ」という主張を、単なる連番やprocess再起動から自動的に導出しない",
+          "この概念に確立した正本が無いことを隠さず、UNKNOWNとして保持する"
+        ],
+        "non_claims": [
+          "devinstanceという語がSphereOS Atlantis/manifestの確立語彙であるとこの定規は主張しない"
+        ]
+      },
+      "λ": "classification-method",
+      "Q": {}
+    }
+  },
+  "λ": {
+    "purpose": "G2 Mission配下のdev instance identity継続性の問い方だけを示す最小サンプル(語彙未確立の明示込み)",
+    "reuse_invitation": "これは唯一の正本ではない。任意のdevinstance/*.reffam.jsonを自由に作ってよい"
+  },
+  "Q": {
+    "declared_position_ref": "position://commons/g2-devinstance/identity-continuity",
+    "fact_scope_policy": "this-file-declares-no-facts",
+    "adjudication": "core-does-not-adjudicate-refFAM-correctness"
+  }
+}

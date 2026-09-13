@@ -1,0 +1,32 @@
+{
+  "ψ": {
+    "situation": "Party内の各actorが同一の権限・倫理・実行能力を持つと仮定してよいかを問う",
+    "declared_position": "この定規はG4 Objective/Party配下のorg最小サンプルであり、G6 Positionのcapability/authority/contract分離をorg内role割当へ適用する"
+  },
+  "∇φ": {
+    "role_method": {
+      "ψ": "this.parent",
+      "∇φ": {
+        "question": "このactorのrole_refは、Party全体のpurpose_refと比べてどこまで権限・責務が及ぶか",
+        "method": [
+          "actor_ref/role_refをobjective.partyの要素として個別に持たせ、role間のcapability/authority差をorg全体の一律ルールへ潰さない",
+          "roleの割当変更はG5 Causalityのauthorized transition(再合意・契約変更)を経由することを前提にする"
+        ],
+        "non_claims": [
+          "特定のorg構造(階層型/フラット型等)がこの定規から唯一導出されるとは主張しない"
+        ]
+      },
+      "λ": "classification-method",
+      "Q": {}
+    }
+  },
+  "λ": {
+    "purpose": "org内role割当の問い方だけを示す最小サンプル",
+    "reuse_invitation": "これは唯一の正本ではない。任意のorg/*.reffam.jsonを自由に作ってよい"
+  },
+  "Q": {
+    "declared_position_ref": "position://commons/g4-org/role-assignment",
+    "fact_scope_policy": "this-file-declares-no-facts",
+    "adjudication": "core-does-not-adjudicate-refFAM-correctness"
+  }
+}

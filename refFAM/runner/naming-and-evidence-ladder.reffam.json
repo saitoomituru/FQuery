@@ -1,0 +1,32 @@
+{
+  "ψ": {
+    "situation": "「runnerが存在する」という主張が、CI実行機構の存在なのか、製品固有の専用実行runtimeの存在なのかを問う",
+    "declared_position": "この定規はG3 Distribution/Arena配下のrunner最小サンプルであり、SphereOS-Atlantis docs/architecture/runner-and-mechanical-verification-boundary.ja.mdの語彙を一般化する"
+  },
+  "∇φ": {
+    "naming_method": {
+      "ψ": "this.parent",
+      "∇φ": {
+        "question": "「runner」という語は、Interface/Execution Envelope/製品固有runner/Mechanical verification/Receipt-Provenance/Authorityのどれを指しているか",
+        "method": [
+          "汎用の「runner」(例: CI executor)と製品固有の「standalone runner」を別概念として区別し、どちらか一方の存在が他方の存在を含意しない",
+          "evidence strength ladderとして、workflow定義が存在する != workflow が実行された != 全revisionがgreen != system全体がgreen、を段階として区別する"
+        ],
+        "non_claims": [
+          "特定CI製品やrunner実装がこの定規から唯一導出されるとは主張しない"
+        ]
+      },
+      "λ": "classification-method",
+      "Q": {}
+    }
+  },
+  "λ": {
+    "purpose": "G3 runner語彙の混同防止と証拠強度段階の問い方だけを示す最小サンプル",
+    "reuse_invitation": "これは唯一の正本ではない。任意のrunner/*.reffam.jsonを自由に作ってよい"
+  },
+  "Q": {
+    "declared_position_ref": "position://commons/g3-runner/naming-and-evidence-ladder",
+    "fact_scope_policy": "this-file-declares-no-facts",
+    "adjudication": "core-does-not-adjudicate-refFAM-correctness"
+  }
+}

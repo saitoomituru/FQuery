@@ -1,0 +1,34 @@
+{
+  "ψ": {
+    "situation": "ある実行環境で確認できたbare-metal挙動を、他machine/他platformへ無条件に一般化してよいかを問う",
+    "declared_position": "この定規はG1 Reality/Substrate配下のbearmetal最小サンプルであり、出典はfold-nic `docs/development/stage0-bare-metal-runtime.ja.md`"
+  },
+  "∇φ": {
+    "reference_machine_method": {
+      "ψ": "this.parent",
+      "∇φ": {
+        "question": "この動作確認は、どの参照machine(architecture/OS/runtime/deployment mode/network bind default)に固定されたものか、それとも一般化された主張か",
+        "method": [
+          "固定された参照machine tupleを明示し、再検証なしに他platformへ拡張しない",
+          "baseline safety condition(root不使用、既定loopback bind、1024以下port拒否、CAS root pathをhome/workspace rootと同一にしない、size/object上限、atomic publish+hash再検証、path traversal/symlink escape拒否、取得済みbinaryの自動実行禁止)を明示的に列挙する",
+          "単一binaryのStage 0であっても、fold-gateway/fold-store/fold-peer/adapter等の論理モジュール境界を維持し、将来の別process分離に備える",
+          "仮想化(Docker等)導入のtrigger条件(3+ node mesh、partition/reconnect、quota付きpeer、悪意あるpeer、Linux CI再現等)を明示し、無条件にbare-metalへ留まらない"
+        ],
+        "non_claims": [
+          "特定machine上の確認結果が全platformで成立するとこの定規は主張しない"
+        ]
+      },
+      "λ": "classification-method",
+      "Q": {}
+    }
+  },
+  "λ": {
+    "purpose": "G1 bearmetal層の参照machine固定とbaseline safety conditionの問い方だけを示す最小サンプル",
+    "reuse_invitation": "これは唯一の正本ではない。任意のbearmetal/*.reffam.jsonを自由に作ってよい"
+  },
+  "Q": {
+    "declared_position_ref": "position://commons/g1-bearmetal/reference-machine",
+    "fact_scope_policy": "this-file-declares-no-facts",
+    "adjudication": "core-does-not-adjudicate-refFAM-correctness"
+  }
+}

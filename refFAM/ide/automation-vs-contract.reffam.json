@@ -1,0 +1,32 @@
+{
+  "ψ": {
+    "situation": "IDE層の自動化機能が、既存のCLI/Manifest/PLI契約そのものを置き換える、と暗黙に見なしてよいかを問う",
+    "declared_position": "この定規はG3 Distribution/Arena配下のide最小サンプルであり、SphereOS-Atlantis README「次世代IDE Runner開発線」の設計原則を一般化する"
+  },
+  "∇φ": {
+    "boundary_method": {
+      "ψ": "this.parent",
+      "∇φ": {
+        "question": "このIDE機能は、既存の実行可能surface(CLI/PLI/Manifest)を自動化しているだけか、それともその契約自体を新規に定義し直しているか",
+        "method": [
+          "IDE surfaceは既存operable surfaceの上に自動化(manifest discovery、Context/Flavor/Role injection、audit観測等)を足す層であり、下位契約を所有し直さない",
+          "「Dev grade(未安定)」と「Stable/LTS」というmaturity状態を明示し、未完成をstableと偽装しない"
+        ],
+        "non_claims": [
+          "特定IDE製品がこの定規から唯一の正解として導出されるとは主張しない"
+        ]
+      },
+      "λ": "classification-method",
+      "Q": {}
+    }
+  },
+  "λ": {
+    "purpose": "G3 ide層(自動化 vs 契約所有)の問い方だけを示す最小サンプル",
+    "reuse_invitation": "これは唯一の正本ではない。任意のide/*.reffam.jsonを自由に作ってよい"
+  },
+  "Q": {
+    "declared_position_ref": "position://commons/g3-ide/automation-vs-contract",
+    "fact_scope_policy": "this-file-declares-no-facts",
+    "adjudication": "core-does-not-adjudicate-refFAM-correctness"
+  }
+}

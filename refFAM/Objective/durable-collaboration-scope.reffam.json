@@ -1,0 +1,33 @@
+{
+  "ψ": {
+    "situation": "一回のMission(G2)と、それより寿命が長い共同目的(寺子屋/開発部/Raid/Campaign/Issue/Branch/研究team)をどう区別するかを問う",
+    "declared_position": "この定規はG4 Objective/Party最小サンプルであり、出典はZeroRoomLab-manifest note/20260819-2212__SphereDOS_Fold7G_Fold8G_registry_upgrade_memo.ja.mdのG4節"
+  },
+  "∇φ": {
+    "scope_method": {
+      "ψ": "this.parent",
+      "∇φ": {
+        "question": "この目的はMission単発の話か、それともdurable collaboration scope(Objective)の話か",
+        "method": [
+          "objective.purpose_ref / party[].actor_ref・role_ref / durable_tasks / merge_policy_refという候補field形状で、目的と役割分担を分けて記述する",
+          "Mission完了後のreceipt/artifact/OAEをIssue/branch/guild houseへ戻す境界はObjective側の責務候補とする",
+          "Missionの寿命とObjectiveの寿命を混同せず、Mission1回の失敗をObjective全体の失敗へ自動昇格させない"
+        ],
+        "non_claims": [
+          "特定のobjective schema field名をこの定規が確定させるとは主張しない"
+        ]
+      },
+      "λ": "classification-method",
+      "Q": {}
+    }
+  },
+  "λ": {
+    "purpose": "G4 Objective(durable collaboration scope)の問い方だけを示す最小サンプル",
+    "reuse_invitation": "これは唯一の正本ではない。任意のObjective/*.reffam.jsonを自由に作ってよい"
+  },
+  "Q": {
+    "declared_position_ref": "position://commons/g4-objective/durable-scope",
+    "fact_scope_policy": "this-file-declares-no-facts",
+    "adjudication": "core-does-not-adjudicate-refFAM-correctness"
+  }
+}

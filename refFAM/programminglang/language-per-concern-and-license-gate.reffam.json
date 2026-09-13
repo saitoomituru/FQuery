@@ -1,0 +1,33 @@
+{
+  "ψ": {
+    "situation": "1つのプロジェクト全体を単一言語で統一すべきか、関心事ごとに別言語を選んでよいかを問う",
+    "declared_position": "この定規はG1 Reality/Substrate配下のprogramminglang最小サンプルであり、出典はfold-nicのRust(systems runtime)+Python stdlib-only(dev tooling)という言語選択実例"
+  },
+  "∇φ": {
+    "language_choice_method": {
+      "ψ": "this.parent",
+      "∇φ": {
+        "question": "この関心事(systems runtime、dev CLI/tooling等)に対して、どの言語がどの理由で選ばれているか",
+        "method": [
+          "systems runtime向け言語とdev tooling向け言語を別々に選び、一つの言語へ統一する義務を課さない",
+          "license適合性(例: AGPL-3.0-or-laterとの組み合わせ互換性)を言語/依存選択のgate条件として明示し、技術適合性だけで選ばない。組み合わせ不能ならこの定規は停止しIssueへ差し戻す",
+          "canonicalization不変条件(同一IDが異なるbyte列を許容してはならない)を、言語非依存のchecklistとして保持する"
+        ],
+        "non_claims": [
+          "特定言語(Rust/Python等)がこの定規から唯一正しい選択として導出されるとは主張しない"
+        ]
+      },
+      "λ": "classification-method",
+      "Q": {}
+    }
+  },
+  "λ": {
+    "purpose": "G1 programminglang層の関心事別言語選択とlicense gateの問い方だけを示す最小サンプル",
+    "reuse_invitation": "これは唯一の正本ではない。任意のprogramminglang/*.reffam.jsonを自由に作ってよい"
+  },
+  "Q": {
+    "declared_position_ref": "position://commons/g1-programminglang/per-concern-and-license-gate",
+    "fact_scope_policy": "this-file-declares-no-facts",
+    "adjudication": "core-does-not-adjudicate-refFAM-correctness"
+  }
+}

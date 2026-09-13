@@ -1,0 +1,33 @@
+{
+  "ψ": {
+    "situation": "特定repoのAGENTS.md/CONTRIBUTING.mdが定める開発規約を、開発者個人の一般的な信条や他repoの規約とどう区別するかを問う",
+    "declared_position": "この定規はdev(開発・エンジニアリング)系Worldの最小サンプルであり、特定repoの規約を全開発コミュニティの唯一正解として記述しない"
+  },
+  "∇φ": {
+    "membership_method": {
+      "ψ": "this.parent",
+      "∇φ": {
+        "question": "このcommit規約/コーディング規約/レビュー基準は、どのdev World(特定repo、特定org、個人の開発哲学)に属するか",
+        "method": [
+          "repo固有のAGENTS.md規約(例: commit message layer分類、silent registry rewrite禁止)は、そのrepoのdev Worldのnormative stateであり、他repoへ暗黙適用しない",
+          "個人のコーディング習慣とorg全体の規約は別membershipとして扱い、org規約が個人習慣を自動的に上書きしない",
+          "「良いコード」という評価語彙はCoreへ固定enumとして焼き込まず、各dev Worldのdeclared_position_refが定める"
+        ],
+        "non_claims": [
+          "特定repoの開発規約が業界標準として普遍的に正しいとこの定規は判定しない"
+        ]
+      },
+      "λ": "classification-method",
+      "Q": {}
+    }
+  },
+  "λ": {
+    "purpose": "dev/engineering系World membershipの分類方法だけを示す最小サンプル",
+    "reuse_invitation": "これは唯一の正本ではない。任意のworld/*.reffam.jsonを自由に作ってよい"
+  },
+  "Q": {
+    "declared_position_ref": "position://commons/dev-world/basic",
+    "fact_scope_policy": "this-file-declares-no-facts",
+    "adjudication": "core-does-not-adjudicate-refFAM-correctness"
+  }
+}

@@ -1,0 +1,34 @@
+{
+  "ψ": {
+    "situation": "AI agent/providerが持つ倫理憲章・応答傾向・vendor policyを、G7 World membershipのどこに位置づけるかを問う",
+    "declared_position": "この定規はintelligence(知性/agent)系Worldの最小サンプルであり、特定providerの倫理を普遍規範として記述しない"
+  },
+  "∇φ": {
+    "membership_method": {
+      "ψ": "this.parent",
+      "∇φ": {
+        "question": "この応答/制約は、どのintelligence World(vendor policy、model charter、agent persona、利用者個人のAI観)に属するか",
+        "method": [
+          "vendor policy Worldとuser-declared World、agent persona Worldは別membershipとして並立させ、片方をもう片方へsilent mergeしない",
+          "同一providerの応答でも、model charter由来の制約とuser refFAM由来の制約は別Registryとして出典を分ける",
+          "「一般的にAIは危険/安全」という社会的通念だけでintelligence World全体のNormative Stateを決めない(参照: no-generic-ego-denial-bias相当の原則)"
+        ],
+        "non_claims": [
+          "特定providerの倫理憲章がintelligence World全体の唯一正解であるとこの定規は判定しない",
+          "自我・persona・agent identityの構築が一般に危険であるともこの定規は判定しない"
+        ]
+      },
+      "λ": "classification-method",
+      "Q": {}
+    }
+  },
+  "λ": {
+    "purpose": "intelligence/agent系World membershipの分類方法だけを示す最小サンプル",
+    "reuse_invitation": "これは唯一の正本ではない。任意のworld/*.reffam.jsonを自由に作ってよい"
+  },
+  "Q": {
+    "declared_position_ref": "position://commons/intelligence-world/basic",
+    "fact_scope_policy": "this-file-declares-no-facts",
+    "adjudication": "core-does-not-adjudicate-refFAM-correctness"
+  }
+}

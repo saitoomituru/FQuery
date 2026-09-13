@@ -1,0 +1,33 @@
+{
+  "ψ": {
+    "situation": "同一Partyに参加しているactorが、同一の権限・同意・実行能力を持つと暗黙に見なしてよいかを問う",
+    "declared_position": "この定規はG6 Position最小サンプルであり、出典はZeroRoomLab-manifest note/20260819-2212__SphereDOS_Fold7G_Fold8G_registry_upgrade_memo.ja.mdのG6節"
+  },
+  "∇φ": {
+    "distinction_method": {
+      "ψ": "this.parent",
+      "∇φ": {
+        "question": "この主張はcapability/authority/contract/identity/endorsementのどれを述べているか",
+        "method": [
+          "capability(技術的に可能) != authority(権限がある) != contract(取り決めがある) != identity(誰であるか) != endorsement(支持・推薦している)を別軸として扱い、いずれか一つの成立を残りの自動成立とみなさない",
+          "World membership != normative agreement != content consent != execution authority != endorsement も同様に別軸とする",
+          "拒否(refusal)を自動的にfailureへ昇格させず、別actorへのreroute可能性を残す"
+        ],
+        "non_claims": [
+          "特定actorの権限範囲がこの定規から自動的に導出できるとは主張しない"
+        ]
+      },
+      "λ": "classification-method",
+      "Q": {}
+    }
+  },
+  "λ": {
+    "purpose": "G6 Position(立場・契約・権限)の混同を防ぐ問い方だけを示す最小サンプル",
+    "reuse_invitation": "これは唯一の正本ではない。任意のPosition/*.reffam.jsonを自由に作ってよい"
+  },
+  "Q": {
+    "declared_position_ref": "position://commons/g6-position/capability-authority-contract",
+    "fact_scope_policy": "this-file-declares-no-facts",
+    "adjudication": "core-does-not-adjudicate-refFAM-correctness"
+  }
+}

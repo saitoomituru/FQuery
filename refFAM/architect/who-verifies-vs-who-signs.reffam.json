@@ -1,0 +1,33 @@
+{
+  "ψ": {
+    "situation": "protocol仕様の生成責任・具体実装(vessel)責任・ローカル検証環境責任を1つの主体へ集約してよいか、また署名生成と署名検証を同一主体へ集約してよいかを問う",
+    "declared_position": "この定規はG1 Reality/Substrate配下のarchitect最小サンプルであり、出典はfold-nic `docs/architecture/repository-boundary.ja.md`"
+  },
+  "∇φ": {
+    "boundary_method": {
+      "ψ": "this.parent",
+      "∇φ": {
+        "question": "この責務は「protocol生成」「実装vessel」「local dev world」「署名生成/鍵管理」「署名検証/canonical byte管理」のどれに属するか",
+        "method": [
+          "protocol生成(spec)、実装vessel(concrete implementation)、local dev world(個別instance)を三分し、どのrepositoryがどのclaimについてcanonicalかを表(repository-role table)として明示する",
+          "core側はcanonical bytes + CID検証 + signed-envelope検証 + receipt routingを担い、署名生成+秘密鍵管理は外部signer/HAGEへ分離する(who verifies != who signs)",
+          "protocolを特定の物理network layer番号として固定せず、Identity/Authority/Capability/Provenance/Transportを交渉するInter-World Protocolとして非physicalに記述する"
+        ],
+        "non_claims": [
+          "特定のrepository構成/署名基盤がこの定規から唯一正しい設計として導出されるとは主張しない"
+        ]
+      },
+      "λ": "classification-method",
+      "Q": {}
+    }
+  },
+  "λ": {
+    "purpose": "G1 architect層の責務三分と署名生成/検証分離の問い方だけを示す最小サンプル",
+    "reuse_invitation": "これは唯一の正本ではない。任意のarchitect/*.reffam.jsonを自由に作ってよい"
+  },
+  "Q": {
+    "declared_position_ref": "position://commons/g1-architect/who-verifies-vs-who-signs",
+    "fact_scope_policy": "this-file-declares-no-facts",
+    "adjudication": "core-does-not-adjudicate-refFAM-correctness"
+  }
+}
