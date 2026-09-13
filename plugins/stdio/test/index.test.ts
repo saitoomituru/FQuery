@@ -1,8 +1,10 @@
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, afterEach, beforeEach } from "vitest";
 import { evaluateQ } from "@fquery/core";
 import { compileQCall, extractQCalls, resolveQForCall, type FamTreeNode } from "@fquery/plugin-sdk";
-import { readFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 import { StdioFamPlugin } from "../src/index.js";
 
 const refFamDir = fileURLToPath(new URL("../../../refFAM/", import.meta.url));
@@ -58,6 +60,76 @@ describe("StdioFamPlugin.invoke (file.fit)", () => {
     const plugin = new StdioFamPlugin({ baseDir: refFamDir });
     const result = await plugin.invoke({ queryRef: "q://test/other", capability: "prompt", input: "x", sideEffect: "read" });
     expect(result).toBeUndefined();
+  });
+});
+
+describe("StdioFamPlugin.invoke (file.write)", () => {
+  let writeDir: string;
+
+  beforeEach(() => {
+    writeDir = mkdtempSync(join(tmpdir(), "fquery-stdio-write-test-"));
+  });
+
+  afterEach(() => {
+    rmSync(writeDir, { recursive: true, force: true });
+  });
+
+  it("指定pathへFAM JSONを書き込み、file.fitで読み返せる", async () => {
+    const plugin = new StdioFamPlugin({ baseDir: writeDir });
+    const fam = { ψ: "written-by-test", "∇φ": {}, λ: "stub", Q: {} };
+    const writeResult = await plugin.invoke({
+      queryRef: "q://test/write",
+      capability: "file.write",
+      input: { path: "written/sample.reffam.json", fam },
+      sideEffect: "write",
+    });
+    expect(writeResult?.transportStatus).toBe("succeeded");
+
+    const fitResult = await plugin.invoke({
+      queryRef: "q://test/write-then-fit",
+      capability: "file.fit",
+      input: ["written/*.reffam.json"],
+      sideEffect: "read",
+    });
+    const matches = fitResult?.value as { fam: unknown }[];
+    expect(matches).toHaveLength(1);
+    expect(matches[0]!.fam).toEqual(fam);
+  });
+
+  it("baseDir外へのpath traversalは書き込まずrejectする", async () => {
+    const plugin = new StdioFamPlugin({ baseDir: writeDir });
+    const result = await plugin.invoke({
+      queryRef: "q://test/write-traversal",
+      capability: "file.write",
+      input: { path: "../../etc/escaped.json", fam: { ψ: "x", "∇φ": {}, λ: "x", Q: {} } },
+      sideEffect: "write",
+    });
+    expect(result?.pluginStatus).toBe("rejected");
+    expect(result?.reason).toBe("path-traversal-outside-base-dir-rejected");
+  });
+
+  it("write以外のsideEffectはrejectする", async () => {
+    const plugin = new StdioFamPlugin({ baseDir: writeDir });
+    const result = await plugin.invoke({
+      queryRef: "q://test/write-wrong-side-effect",
+      capability: "file.write",
+      input: { path: "sample.reffam.json", fam: {} },
+      sideEffect: "read",
+    });
+    expect(result?.pluginStatus).toBe("rejected");
+    expect(result?.reason).toBe("write-side-effect-not-authorized");
+  });
+
+  it("pathまたはfamが欠けている入力はrejectする", async () => {
+    const plugin = new StdioFamPlugin({ baseDir: writeDir });
+    const result = await plugin.invoke({
+      queryRef: "q://test/write-missing-fields",
+      capability: "file.write",
+      input: { path: "" },
+      sideEffect: "write",
+    });
+    expect(result?.pluginStatus).toBe("rejected");
+    expect(result?.reason).toBe("file-write-input-must-have-path-and-fam");
   });
 });
 
