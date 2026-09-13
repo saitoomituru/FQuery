@@ -2,6 +2,14 @@
 
 API key不要のlocalhost検証面。`@fquery/ui-react`（React + React Flow）をPresentation surfaceとし、engineはfixture decision portとgatewayで代替する。
 
+## identity: FAM Debug Console(2026-09-13追記)
+
+「Playground」は暫定名であり、正しい位置づけは**FAM Debug Console**——manifest `docs/theory/infoton-engineering.ja.md` 6.1節「Hamiltonトポロジーとの関係」が定義する**Fold Time Machine**(非破壊バックアップ・admin modeでの`Q`書き換え)の実際のGUI実装である。RAW FAM編集(`panes/sections.tsx`のNode Panel、Q tab)、Inspector paneは既にこの機能の一部を担っている。
+
+継続ループ(常駐実行、ロボット制御ループ等)はFQuery単体のスコープではない。それはAstro/SphereOS Atlantisへ組み込まれた際に発生する実行文脈であり、FQuery Core/pluginはこの実行形態を知らないし関与しない(§7参照 `docs/specification/fam-q-declaration-execution.ja.md`のFQuery Core/Plugin/Sphere-Astro三層責務と同型)。FAM Debug Console自体はワンショット実行・検証面のまま設計する。
+
+Issue #5(React Flow Node Viewer / IDE Host integration)がこのidentityの実装先である。GUI実装本体はRoadmap Gate(#44)のCore安定化ゲート通過まで着手しない。
+
 ```bash
 npm run dev      # http://127.0.0.1:3000
 ```

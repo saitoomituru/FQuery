@@ -167,6 +167,12 @@ Core既存の`LastOrder`(`{code, reason, requestedNext, resumeWhen}`、`packages
 
 `⊥`が発火した事実は、`packages/plugin-sdk`の`OaeConstraintEvaluationReceipt`と同じ設計思想(Coreはdomain固有の成立条件を裁定せず、参照束縛と確定可能性だけを保持する)に沿った、fold last-order専用のOAE receipt型として記録する。Core本体(`packages/core/src/types.ts`)への型追加は不要で、plugin-sdk層のadapter実装で足りる(`IMPLEMENTATION-PENDING`)。
 
+### OAE発行はFQuery Core自身の責務ではない(2026-09-13追記)
+
+FQuery Coreは`OaeConstraintEvaluationReceipt`等のOAE receipt型のみを保持し、判定・発行は行わない(`packages/plugin-sdk/src/oae-evaluator.ts`のコメント「Coreはこの判定を呼ばず、返されたOAEを保存する」が実装として裏付け)。実際のOAE発行はFQuery pluginの責務であり、domain ruleの内容・Observer verdictの真偽というOAEの「意味」自体はさらに上位のSphere/Astroへ委譲される(IBD `docs/architecture/pool-occurrence-driver.ja.md`§7.2と同型の三層構造)。
+
+DeFold(fold-chain解決)のたびに`⊥`条件を通過し得ることは上記で確定済み。unFold(生成)や推論についても、実行のたびにOAE記録機会が生じるという同型の拡張が自然に想定されるが、これは未設計(`IMPLEMENTATION-PENDING`)であり、本節はfold last-order(`⊥`)の場合のみを正本として確定している。
+
 ## Non-goals
 
 - SphereOS Atlantis/ASTRO固有の責務分界、Fold7G固有vocabularyをこの中立docへ含めること(→ manifest正本を参照)
