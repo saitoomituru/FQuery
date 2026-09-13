@@ -1,4 +1,4 @@
-import type { CapabilityProfileBinding, QueryNode } from "@fquery/core";
+import type { CapabilityProfileBinding, LastOrder, QueryNode } from "@fquery/core";
 import { Q as buildQueryNode } from "@fquery/core";
 
 /**
@@ -7,6 +7,12 @@ import { Q as buildQueryNode } from "@fquery/core";
  * lowerするcompiler。Issue #49で決定した通り、QueryInput/QueryOperationの
  * 閉じたunion型は変更しない。scope解決(self/this/parent/fold)はここで行い、
  * 結果はEvaluationContext.profileBindings経由でevaluateQ()へ渡す。
+ *
+ * Issue #50: 無限/循環参照は防ぐのではなく、どこで・なぜ打ち切ったかを
+ * `⊥`(Core既存のLastOrder形状を再利用)として非破壊的に記録する。解決不能な
+ * scope(this.foldの現状、根でのthis.parent、存在しないpath)は例外を投げず、
+ * すべて{status:"bottom", lastOrder}を返す。詳細:
+ * docs/specification/fam-q-declaration-execution.ja.md §7
  */
 
 export type QScope = "self" | "this" | "this.parent" | "this.fold";
@@ -23,6 +29,11 @@ export interface FamTreeNode {
   readonly "∇φ"?: Record<string, unknown>;
   readonly [key: string]: unknown;
 }
+
+/** 解決成功、または非破壊的な打ち切り(⊥/LastOrder)のどちらかを表す。 */
+export type Bottomed<T> =
+  | { readonly status: "resolved"; readonly value: T }
+  | { readonly status: "bottom"; readonly lastOrder: LastOrder };
 
 const Q_CALL_KEY_PATTERN = /^Q\((self|this|this\.parent|this\.fold)\)\.(.+)$/;
 
@@ -46,17 +57,37 @@ export function extractQCalls(node: Record<string, unknown>): readonly QCall[] {
 
 /**
  * scope keywordを、resolveEffectiveQへ渡すpath(rootからの∇φキー列)へ変換する。
- * this.foldは別refFAM文書を跨ぐ解決が必要でここでは未実装のため例外にする。
+ * this.foldは別refFAM文書を跨ぐ識別アルゴリズムがIssue #50で未確定のため、
+ * 例外ではなく`⊥`(bottom)として返す(未実装であることを隠さない)。
  */
-export function resolvePathForScope(targetPath: readonly string[], scope: QScope): readonly string[] {
+export function resolvePathForScope(targetPath: readonly string[], scope: QScope): Bottomed<readonly string[]> {
   switch (scope) {
-    case "self": return [];
-    case "this": return targetPath;
+    case "self": return { status: "resolved", value: [] };
+    case "this": return { status: "resolved", value: targetPath };
     case "this.parent": {
-      if (targetPath.length === 0) throw new TypeError("q-scope-this-parent-has-no-parent-at-root");
-      return targetPath.slice(0, -1);
+      if (targetPath.length === 0) {
+        return {
+          status: "bottom",
+          lastOrder: {
+            code: "FQUERY-FOLD-NO-PARENT-AT-ROOT",
+            reason: "self-is-root-and-has-no-parent",
+            requestedNext: "use-self-or-this-scope-instead",
+            resumeWhen: "not-applicable-at-root",
+          },
+        };
+      }
+      return { status: "resolved", value: targetPath.slice(0, -1) };
     }
-    case "this.fold": throw new TypeError("q-scope-this-fold-not-yet-implemented");
+    case "this.fold":
+      return {
+        status: "bottom",
+        lastOrder: {
+          code: "FQUERY-FOLD-SCOPE-NOT-YET-IMPLEMENTED",
+          reason: "cross-document-fold-identity-undecided(issue-50)",
+          requestedNext: "track-issue-50-design-decision",
+          resumeWhen: "this-fold-resolution-algorithm-decided",
+        },
+      };
   }
 }
 
@@ -64,24 +95,35 @@ export function resolvePathForScope(targetPath: readonly string[], scope: QScope
  * rootからpathまでの各levelのQを、Vue provide/inject型のtree-scoped chainとして
  * shallow override合成する(deep-mergeしない、配列も丸ごと差し替え)。
  * chain[0]=self(root)、chain[last]=path終端のnode。innermostが各fieldを上書きする。
+ * pathの途中に存在しないsegmentがあれば例外ではなく`⊥`を返す。
  */
-export function resolveEffectiveQ(document: FamTreeNode, path: readonly string[]): Record<string, unknown> {
+export function resolveEffectiveQ(document: FamTreeNode, path: readonly string[]): Bottomed<Record<string, unknown>> {
   const chain: Record<string, unknown>[] = [isRecord(document.Q) ? document.Q : {}];
   let current: FamTreeNode = document;
   for (const segment of path) {
     const children = current["∇φ"];
     if (!isRecord(children) || !isRecord(children[segment])) {
-      throw new TypeError(`q-fam-tree-path-not-found:${segment}`);
+      return {
+        status: "bottom",
+        lastOrder: {
+          code: "FQUERY-FOLD-PATH-NOT-FOUND",
+          reason: `segment-not-found:${segment}`,
+          requestedNext: "inspect-∇φ-path-or-select-another-scope",
+          resumeWhen: "path-corrected",
+        },
+      };
     }
     current = children[segment] as FamTreeNode;
     chain.push(isRecord(current.Q) ? current.Q : {});
   }
-  return Object.assign({}, ...chain);
+  return { status: "resolved", value: Object.assign({}, ...chain) };
 }
 
 /** callのscopeへ従って、document内のtargetPathから見た実効Qを解決する。 */
-export function resolveQForCall(document: FamTreeNode, targetPath: readonly string[], call: QCall): Record<string, unknown> {
-  return resolveEffectiveQ(document, resolvePathForScope(targetPath, call.scope));
+export function resolveQForCall(document: FamTreeNode, targetPath: readonly string[], call: QCall): Bottomed<Record<string, unknown>> {
+  const scopePath = resolvePathForScope(targetPath, call.scope);
+  if (scopePath.status === "bottom") return scopePath;
+  return resolveEffectiveQ(document, scopePath.value);
 }
 
 export interface CompiledQCall {
@@ -95,11 +137,12 @@ export interface CompileQCallOptions {
 }
 
 /**
- * QCall + 解決済みeffectiveQを、既存evaluateQ()がそのまま受け取れる
- * QueryNode + profileBindingsへ変換する。QueryNode自体はscopeを知らない
- * (scope解決はこの関数呼び出し前に完了している)。
+ * QCall + 解決済みeffectiveQ(またはbottom)を、既存evaluateQ()がそのまま
+ * 受け取れるQueryNode + profileBindingsへ変換する。effectiveQがbottomなら
+ * そのまま`⊥`を伝播し、QueryNodeを組み立てない。
  */
-export function compileQCall(call: QCall, effectiveQ: Record<string, unknown>, options: CompileQCallOptions): CompiledQCall {
+export function compileQCall(call: QCall, effectiveQ: Bottomed<Record<string, unknown>>, options: CompileQCallOptions): Bottomed<CompiledQCall> {
+  if (effectiveQ.status === "bottom") return effectiveQ;
   const queryNode = buildQueryNode(
     { kind: "literal", value: call.args },
     {
@@ -108,7 +151,7 @@ export function compileQCall(call: QCall, effectiveQ: Record<string, unknown>, o
       policy: { sideEffect: options.sideEffect ?? "read" },
     },
   );
-  return Object.freeze({ queryNode, profileBindings: pluginsToProfileBindings(effectiveQ) });
+  return { status: "resolved", value: Object.freeze({ queryNode, profileBindings: pluginsToProfileBindings(effectiveQ.value) }) };
 }
 
 /**

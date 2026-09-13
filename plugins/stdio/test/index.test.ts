@@ -68,7 +68,9 @@ describe("end-to-end: AtlantisCommons.refFAM.json G7 World -> evaluateQ() -> 実
     expect(call).toBeDefined();
 
     const effectiveQ = resolveQForCall(atlantisCommons, ["G7 World"], call!);
-    const { queryNode, profileBindings } = compileQCall(call!, effectiveQ, { queryId: "q://test/g7-real-file-fit" });
+    const compiled = compileQCall(call!, effectiveQ, { queryId: "q://test/g7-real-file-fit" });
+    if (compiled.status === "bottom") throw new Error(`expected resolved but got bottom: ${JSON.stringify(compiled.lastOrder)}`);
+    const { queryNode, profileBindings } = compiled.value;
 
     const plugin = new StdioFamPlugin({ baseDir: refFamDir });
     const result = await evaluateQ(queryNode, { pluginResolver: plugin, profileBindings });

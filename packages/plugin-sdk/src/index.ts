@@ -23,6 +23,8 @@ export {
   resolveQForCall,
 } from "./q-compiler.js";
 export type * from "./q-compiler.js";
+export { asFoldLastOrderReceipt, createFoldLastOrderReceipt, validateFoldLastOrderReceipt } from "./fold-last-order.js";
+export type * from "./fold-last-order.js";
 
 export interface PluginManifest {
   readonly schemaVersion: "fquery.plugin/0.1.0-draft";
