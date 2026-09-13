@@ -8,7 +8,7 @@
       "ψ": "this.parent",
       "∇φ": {
         "question": "この動作確認は、どの参照machine(architecture/OS/runtime/deployment mode/network bind default)に固定されたものか、それとも一般化された主張か",
-        "method": [
+        "Q(this).prompt": [
           "固定された参照machine tupleを明示し、再検証なしに他platformへ拡張しない",
           "baseline safety condition(root不使用、既定loopback bind、1024以下port拒否、CAS root pathをhome/workspace rootと同一にしない、size/object上限、atomic publish+hash再検証、path traversal/symlink escape拒否、取得済みbinaryの自動実行禁止)を明示的に列挙する",
           "単一binaryのStage 0であっても、fold-gateway/fold-store/fold-peer/adapter等の論理モジュール境界を維持し、将来の別process分離に備える",

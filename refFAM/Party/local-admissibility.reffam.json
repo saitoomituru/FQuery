@@ -8,7 +8,7 @@
       "ψ": "this.parent",
       "∇φ": {
         "question": "このtaskはParty全員のglobal consensusを要求する話か、それともtask単位のlocal admissibilityで足りる話か",
-        "method": [
+        "Q(this).prompt": [
           "Local Admissibility, not Global Consensus: Party全員が全taskへ同意することを要求せず、task単位でactor admissibilityを解決する",
           "Refusal is not automatically Failure: 特定actorのdeclineをMission全体のfailureへ自動昇格しない。reroute/別actorへのhandoff候補を残す"
         ],

@@ -8,8 +8,15 @@
       "ψ": "this.parent",
       "∇φ": {
         "question": "起動しようとしている環境/contextはどの手順で解決されるべきか、また「OSである」ことが成立する条件は何か",
-        "method": [
-          "manifest-first resolution: 明示manifestを最優先し、次にowner namespace内のdefault manifestを探索し、それも無ければnoneへ降格する。外部組織のmanifestを推測しない",
+        "Q(this).prompt.sequence": {
+          "steps": [
+            "明示manifestを最優先する",
+            "明示manifestが無ければowner namespace内のdefault manifestを探索する",
+            "それも無ければnoneへ降格する。外部組織のmanifestを推測しない"
+          ],
+          "order": "strict"
+        },
+        "Q(this).prompt": [
           "workspace/fork deployment、.vendor submodule、PLI Context Alias、Fork-on-Live/DevContainer等、複数の環境接続surfaceをbinding強度別に区別し、一つの固定手順へ潰さない",
           "「local development shell」と「standalone OS runtime」を別概念として区別し、片方が未実装(NOT_IMPLEMENTED)でも他方の主張へ持ち込まない"
         ],

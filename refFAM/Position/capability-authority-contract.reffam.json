@@ -8,7 +8,7 @@
       "ψ": "this.parent",
       "∇φ": {
         "question": "この主張はcapability/authority/contract/identity/endorsementのどれを述べているか",
-        "method": [
+        "Q(this).prompt": [
           "capability(技術的に可能) != authority(権限がある) != contract(取り決めがある) != identity(誰であるか) != endorsement(支持・推薦している)を別軸として扱い、いずれか一つの成立を残りの自動成立とみなさない",
           "World membership != normative agreement != content consent != execution authority != endorsement も同様に別軸とする",
           "拒否(refusal)を自動的にfailureへ昇格させず、別actorへのreroute可能性を残す"

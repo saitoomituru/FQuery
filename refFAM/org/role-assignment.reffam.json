@@ -8,7 +8,7 @@
       "ψ": "this.parent",
       "∇φ": {
         "question": "このactorのrole_refは、Party全体のpurpose_refと比べてどこまで権限・責務が及ぶか",
-        "method": [
+        "Q(this).prompt": [
           "actor_ref/role_refをobjective.partyの要素として個別に持たせ、role間のcapability/authority差をorg全体の一律ルールへ潰さない",
           "roleの割当変更はG5 Causalityのauthorized transition(再合意・契約変更)を経由することを前提にする"
         ],

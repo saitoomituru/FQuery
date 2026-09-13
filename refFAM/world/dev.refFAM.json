@@ -8,7 +8,7 @@
       "ψ": "this.parent",
       "∇φ": {
         "question": "このcommit規約/コーディング規約/レビュー基準は、どのdev World(特定repo、特定org、個人の開発哲学)に属するか",
-        "method": [
+        "Q(this).prompt": [
           "repo固有のAGENTS.md規約(例: commit message layer分類、silent registry rewrite禁止)は、そのrepoのdev Worldのnormative stateであり、他repoへ暗黙適用しない",
           "個人のコーディング習慣とorg全体の規約は別membershipとして扱い、org規約が個人習慣を自動的に上書きしない",
           "「良いコード」という評価語彙はCoreへ固定enumとして焼き込まず、各dev Worldのdeclared_position_refが定める"

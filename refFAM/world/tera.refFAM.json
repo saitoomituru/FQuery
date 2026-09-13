@@ -8,7 +8,7 @@
       "ψ": "this.parent",
       "∇φ": {
         "question": "この主張/制約は法域(civic)membershipに属するか、それとも文化・信仰・共同体membershipに属するか",
-        "method": [
+        "Q(this).prompt": [
           "civic(法域)membershipとcultural/religious/community membershipは別軸として複数同時所属を許容する(参照: manifest sphere-context-dimension-os.ja.md 相当のG7 World multi-membership原則)",
           "同一国家内でも文化・信仰・地域共同体・企業文化ごとにNormative Stateが異なり得ることを前提にする",
           "法的適合性の判定と、文化・信仰的な適切性の判定を同一Registryへ混ぜない"

@@ -8,7 +8,7 @@
       "ψ": "this.parent",
       "∇φ": {
         "question": "state Aからstate Bへのこの変化は、どのauthorized transition(再合意/契約変更/訂正/謝辞/賠償/revert/rollback/save-load/branch fork/GM裁定/authorized projection)を経ているか",
-        "method": [
+        "Q(this).prompt": [
           "No Upward Silent Rewrite: 下位のexecution/observationだけを理由に上位World/Positionの契約・意味を暗黙変更しない。下位から上位へはproposal/event/evidence/request/receiptとして渡す",
           "No Downward Magical Authority: 上位で「許されている」と書かれているだけを理由に下位のexecution authorityを生成しない",
           "G5-mediated Transition: 上位state変更は明示されたCausality contractを通す"

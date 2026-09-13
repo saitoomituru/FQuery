@@ -8,7 +8,7 @@
       "ψ": "this.parent",
       "∇φ": {
         "question": "「runner」という語は、Interface/Execution Envelope/製品固有runner/Mechanical verification/Receipt-Provenance/Authorityのどれを指しているか",
-        "method": [
+        "Q(this).prompt": [
           "汎用の「runner」(例: CI executor)と製品固有の「standalone runner」を別概念として区別し、どちらか一方の存在が他方の存在を含意しない",
           "evidence strength ladderとして、workflow定義が存在する != workflow が実行された != 全revisionがgreen != system全体がgreen、を段階として区別する"
         ],

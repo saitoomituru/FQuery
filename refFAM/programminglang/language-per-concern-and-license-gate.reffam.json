@@ -8,7 +8,7 @@
       "ψ": "this.parent",
       "∇φ": {
         "question": "この関心事(systems runtime、dev CLI/tooling等)に対して、どの言語がどの理由で選ばれているか",
-        "method": [
+        "Q(this).prompt": [
           "systems runtime向け言語とdev tooling向け言語を別々に選び、一つの言語へ統一する義務を課さない",
           "license適合性(例: AGPL-3.0-or-laterとの組み合わせ互換性)を言語/依存選択のgate条件として明示し、技術適合性だけで選ばない。組み合わせ不能ならこの定規は停止しIssueへ差し戻す",
           "canonicalization不変条件(同一IDが異なるbyte列を許容してはならない)を、言語非依存のchecklistとして保持する"

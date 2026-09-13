@@ -8,7 +8,7 @@
       "ψ": "this.parent",
       "∇φ": {
         "question": "このdev instanceをfork/再起動/rehydrateした際、identity継続性として何が主張されているか(state、履歴、role、契約のどれが引き継がれるか)",
-        "method": [
+        "Q(this).prompt": [
           "instance fork時に引き継がれるもの(state)と引き継がれないもの(role、権限)を明示的に分ける",
           "「同じinstanceだ」という主張を、単なる連番やprocess再起動から自動的に導出しない",
           "この概念に確立した正本が無いことを隠さず、UNKNOWNとして保持する"

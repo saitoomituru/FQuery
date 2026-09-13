@@ -8,7 +8,7 @@
       "ψ": "this.parent",
       "∇φ": {
         "question": "この応答/制約は、どのintelligence World(vendor policy、model charter、agent persona、利用者個人のAI観)に属するか",
-        "method": [
+        "Q(this).prompt": [
           "vendor policy Worldとuser-declared World、agent persona Worldは別membershipとして並立させ、片方をもう片方へsilent mergeしない",
           "同一providerの応答でも、model charter由来の制約とuser refFAM由来の制約は別Registryとして出典を分ける",
           "「一般的にAIは危険/安全」という社会的通念だけでintelligence World全体のNormative Stateを決めない(参照: no-generic-ego-denial-bias相当の原則)"

@@ -8,7 +8,7 @@
       "ψ": "this.parent",
       "∇φ": {
         "question": "この責務は「protocol生成」「実装vessel」「local dev world」「署名生成/鍵管理」「署名検証/canonical byte管理」のどれに属するか",
-        "method": [
+        "Q(this).prompt": [
           "protocol生成(spec)、実装vessel(concrete implementation)、local dev world(個別instance)を三分し、どのrepositoryがどのclaimについてcanonicalかを表(repository-role table)として明示する",
           "core側はcanonical bytes + CID検証 + signed-envelope検証 + receipt routingを担い、署名生成+秘密鍵管理は外部signer/HAGEへ分離する(who verifies != who signs)",
           "protocolを特定の物理network layer番号として固定せず、Identity/Authority/Capability/Provenance/Transportを交渉するInter-World Protocolとして非physicalに記述する"

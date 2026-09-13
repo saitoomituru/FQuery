@@ -8,7 +8,7 @@
       "ψ": "this.parent",
       "∇φ": {
         "question": "このIDE機能は、既存の実行可能surface(CLI/PLI/Manifest)を自動化しているだけか、それともその契約自体を新規に定義し直しているか",
-        "method": [
+        "Q(this).prompt": [
           "IDE surfaceは既存operable surfaceの上に自動化(manifest discovery、Context/Flavor/Role injection、audit観測等)を足す層であり、下位契約を所有し直さない",
           "「Dev grade(未安定)」と「Stable/LTS」というmaturity状態を明示し、未完成をstableと偽装しない"
         ],

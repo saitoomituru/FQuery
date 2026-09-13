@@ -34,6 +34,25 @@ Q(scope).method(args)
 }
 ```
 
+## 1.1 実行引数の関係性(AND/sequence/OR)
+
+`ψ/∇φ/λ`の中で`prompt`のような実行primitiveへ複数の指示を渡す場合、指示同士の関係性によって形を変える。
+
+```text
+[]配列          = バラさず並列AND。順序もOR分岐もない独立した制約の並び
+                  "Q(this).prompt": ["制約A", "制約B", "制約C"]
+
+{sequence:[...]} = 順序依存。ステップの並びが結果を左右する
+                  "Q(this).prompt.sequence": { "steps": ["まずX", "次にY", "それも無ければZ"], "order": "strict" }
+
+{or:[...]}       = 分岐。どちらが適用されるかはcontextに依存し、両方が同時に唯一の答えにはならない
+                  "Q(this).prompt.or": { "branches": ["解釈A", "解釈B"], "condition": "..." }
+
+バラして独立∇φ   = 各項目が独立にfold/処理できるなら、配列ではなく別々の∇φ nodeへ分離する
+```
+
+reference実装候補: `refFAM/git/mission-receipt-or-reality-artifact.reffam.json`(OR)、`refFAM/os/manifest-first-resolution.reffam.json`(sequence)、他多数(AND配列)。
+
 ## 2. `Q(scope)`のtree-scoped解決
 
 `scope`は`self / this / this.parent / this.fold`のいずれかを取る。

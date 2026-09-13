@@ -8,11 +8,16 @@
       "ψ": "this.parent",
       "∇φ": {
         "question": "このgit commit/branchは、どの軸から見ているか(G2 MissionのAIM synchronization・handoff・receiptとしてか、G1 Realityの実体/substrateとしてか)によって扱いが変わり得る",
-        "method": [
-          "同じgit commitでも、Mission完了のreceiptとして見る軸と、substrate上の実体として見る軸を同一視せず、どちらの軸からの問いかを明示する",
-          "commit message layer分類(eng/phil/theory/docs/meta等)、small verified commits、silent Registry rewrite禁止といった規約はG2 Mission軸(作業単位の正当性)の話として扱う",
-          "commit object自体のbyte整合性・CID・署名検証はG1 Reality軸(実体としての正当性)の話として扱う"
+        "Q(this).prompt": [
+          "同じgit commitでも、Mission完了のreceiptとして見る軸と、substrate上の実体として見る軸を同一視せず、どちらの軸からの問いかを明示する"
         ],
+        "Q(this).prompt.or": {
+          "branches": [
+            "commit message layer分類(eng/phil/theory/docs/meta等)、small verified commits、silent Registry rewrite禁止といった規約はG2 Mission軸(作業単位の正当性)の話として扱う",
+            "commit object自体のbyte整合性・CID・署名検証はG1 Reality軸(実体としての正当性)の話として扱う"
+          ],
+          "condition": "どちらの軸から問うかに依存し、両方が同時に唯一の答えとして確定するわけではない。選ばれなかった軸を削除せず、非ゼロサムで保持する"
+        },
         "non_claims": [
           "gitがG2とG1のどちらか一方に確定的に属すると、この定規は判定しない(意図的にopenのまま残す)"
         ]

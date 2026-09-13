@@ -8,7 +8,7 @@
       "ψ": "this.parent",
       "∇φ": {
         "question": "この反実仮想/restore候補は、WorldとInstance Ghostを両方分岐させているか、それとも片方だけを分岐させているか",
-        "method": [
+        "Q(this).prompt": [
           "反実仮想はSource WorldとSource Instance Ghostを変更せず、7D Foldの別World/別Instance Ghostへ隔離する",
           "TargetはSourceから分岐(split)しなければならず、World単独/Instance Ghost単独の分岐(lone-split)は失敗modeとして検出する",
           "この不変条件はG2 Missionの寿命内で局所的に成立するものであり、G4 Objective以上の合意を自動的に含意しない"

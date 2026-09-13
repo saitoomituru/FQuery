@@ -8,7 +8,7 @@
       "ψ": "this.parent",
       "∇φ": {
         "question": "この目的はMission単発の話か、それともdurable collaboration scope(Objective)の話か",
-        "method": [
+        "Q(this).prompt": [
           "objective.purpose_ref / party[].actor_ref・role_ref / durable_tasks / merge_policy_refという候補field形状で、目的と役割分担を分けて記述する",
           "Mission完了後のreceipt/artifact/OAEをIssue/branch/guild houseへ戻す境界はObjective側の責務候補とする",
           "Missionの寿命とObjectiveの寿命を混同せず、Mission1回の失敗をObjective全体の失敗へ自動昇格させない"
