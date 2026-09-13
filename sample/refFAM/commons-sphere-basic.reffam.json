@@ -6,6 +6,7 @@
   "∇φ": {
     "g_boundary_method": {
       "ψ": "this.parent",
+      "drift_notice": "2026-09-13: このG(=Fold文書間参照の交差回数を数えるnesting depth軸)へG>=5のような閾値で存在論的境界(mundane/metaphysical)を直接貼り付ける方法は、Issue #41がlocal decomposition depth != Fold G slotとして禁じる anti-patternの実例と判明した。意味的スコープレジストリ(G7 World〜G1 Reality等)を書きたい場合はrefFAM/AtlantisCommons.refFAM.jsonの別軸を参照し、本fileのg_boundary_methodをそのテンプレートとして複製しないこと",
       "∇φ": {
         "question": "現在のFold-on-Fold nesting depth Gはいくつか。そのFoldはどのfact_scope候補に属するか",
         "method": [

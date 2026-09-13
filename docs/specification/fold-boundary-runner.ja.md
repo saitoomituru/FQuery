@@ -161,6 +161,8 @@ CをAから開いたview
 
 同じFAMへ複数pathが存在する場合、`max / median / min`を返せる。cycleは正常な深度として数えず、reference topology error / unresolvedとして分離する。
 
+**軸の混同禁止**: このGはFAM文書間参照(`fam_ref`によるFold-on-Fold)の交差回数を数えるscalarである。`refFAM/AtlantisCommons.refFAM.json`が宣言する`G7 World`〜`G1 RealitySubstrate`のようなFold7G意味的スコープレジストリ(ordinal registry、World/Position/Causality等の階層ラベル)とは別軸であり、同じ記号Gを使うが自動変換・同一視しない。前者は「何回FAM文書を跨いだか」、後者は「意味的にどの層にいるか」であり、local decomposition depthをFold G slotへ昇格させない(Issue #41)。
+
 ### D
 
 Dは対象FAM内の一意な`context_dimension_ref`数。直下node数をDへ混ぜず、必要なら`direct_child_count`へ分離する。

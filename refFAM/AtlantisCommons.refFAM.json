@@ -3,6 +3,7 @@
   "∇φ": {
     "G7 World": {
       "label": "開発環境やマシンの資産境界やネットワークや法律やイデオロギーなどのガバナンスなどの基本制約条件をスプリットする。この時点で個人の自我の話なのかどのレイヤーの話なのかが切り分けられる。主観世界なのか技術の話なのか？",
+      "note": "このG7〜G1のFold7GレジストリはSphereOS Atlantis/無印スフィアOS 3x4x由来のreferential draftであり、FQuery Coreの永久固定仕様ではない。別の階層構造が必要ならCoreへ焼き込まず、別registryへforkして良い(fork=別SphereOS distributionの話であり、このIssueの範囲外)",
       "Ψ": "this.parent",
       "∇φ": {
         "Q.file.fit": [
@@ -18,6 +19,7 @@
     },
     "G6 Position": {
       "label": "社会的立場や役割ポジションなどを定義する。法人格立場やAI人格立場やユーザーや開発者やエンドユーザーとは？サードパーティとは？などの形而上学ポジショントーク",
+      "note": "MAGIスキル/アーキエンジェル系の意味カーネルが刺さる場所。ランタイム化した時点でインストール先マシンのシステム管理者が触るインストールサブセット・systemd相当のカーネル機能になる。ユーザーランド(G5以下)からはsudoingでここへ昇格できるがreject可能でOAEへ記録される。L軸の(決定論的・literalな)sudoとは別概念であり混同しない",
       "Ψ": "this.parent",
       "∇φ": {
         "Q.file.fit": [
@@ -33,10 +35,11 @@
     },
     "G5 Causality": {
       "label": "決裁権やセキュリティ境界や取り決めや契約やルールやプロジェクトビジョンなど",
+      "note": "App開発者が触るSDK境界。これより下(G4以下)がユーザーランド。userlandからG5/G6へはsudoingで明示的に越境し、POSIXと同様rejectがあり得、OAEへbashログ的に記録される",
       "Ψ": "this.parent",
       "∇φ": {
         "Q.file.fit": [
-          "Position/*.reffam.json"
+          "Causality/*.reffam.json"
         ]
       },
       "λ": "this.after.G4ObjectiveParty",
@@ -90,7 +93,7 @@
           "git/*.reffam.json"
         ]
       },
-      "λ": "this.after.G1RealitySubstrat",
+      "λ": "this.after.G1RealitySubstrate",
       "Q": {
         "plugin": [
           "@fam/stndio"
@@ -116,5 +119,7 @@
     }
   },
   "λ": "FAM",
-  "Q": {}
+  "Q": {
+    "axis_disambiguation": "この'G7〜G1'はFold7Gの意味的スコープレジストリ(ordinal registry)であり、docs/specification/fold-boundary-runner.ja.mdが定義する'G(Gravity)= FAM reference pathの深度'やIBD docs/architecture/context-dimension-os-and-ibdsdk.ja.mdの'Fold nesting G'(いずれもFAM/Fold参照の交差回数を数えるscalar)とは別軸。同じ記号Gを使うが自動変換・同一視しない(local decomposition depth != Fold G slot)"
+  }
 }

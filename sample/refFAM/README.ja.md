@@ -1,6 +1,8 @@
 # refFAM 最小サンプル
 
-状態: `[SAMPLE]` `[NON-CANONICAL]`
+状態: `[SAMPLE]` `[NON-CANONICAL]` `[DRIFT-EXAMPLE / ANTI-PATTERN]`
+
+**2026-09-13追記**: `commons-sphere-basic.reffam.json`の`g_boundary_method`は、G軸(`fold-boundary-runner.ja.md`が定義する、FAM文書間参照の交差回数=Fold-on-Fold nesting depth)へ直接「G>=5はmetaphysical」という存在論的境界を貼り付けている。これはIssue #41が明示的に禁じる`local decomposition depth != Fold G slot`の実例(nesting depthを意味的スコープ判定へ横流ししている)であり、実装ドリフトの原因の一つとして特定された。G7〜G1という意味的スコープレジストリを書きたい場合は、このnesting depth軸ではなく`refFAM/AtlantisCommons.refFAM.json`(Fold7Gレジストリの正しい参照実装候補)を参照する。本fileは反面教師として残し、G境界の問い方自体(fact-freeな方法論)を示す目的では引き続き有効だが、G軸の値そのものを存在論境界の閾値として使う設計は複製しないこと。
 
 このdirectoryは、`sample/`直下のFAM Topology sample（sample1〜3、selector/traversal正規化の例）とは別目的で、**refFAM（fact-freeな定規・問い方・分類法）の最小形状を示す例**を置く。
 
