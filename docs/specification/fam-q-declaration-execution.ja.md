@@ -14,6 +14,10 @@
 
 FAM base structure(`ψ/∇φ/λ/Q`)のうち`Q`だけが宣言(declaration)専用であることを固定し、実行(execution)は`Q(scope).method(args)`という統一呼び出しへ集約する。CoreはWorld観・backend製品名・特定protocolをこのcontractへ焼き込まない。
 
+### 記号としてのψ/∇φ/λ/Q/⊥(2026-09-13追記)
+
+これらが単語(`psi`/`lambda`/`bottom`等)ではなく単一unicode記号である理由: LLM tokenizerにとって、希少な単一記号は最小・安定したtoken単位になりやすく、既存語彙(英単語)が持つsubword分割の揺れや意味的connotationを引きずらない。これは表記の趣味ではなく、token境界を制御するための設計判断である。
+
 ## 1. `Q`(裸)は宣言専用、`ψ/∇φ/λ`は実行要素
 
 ```text
@@ -131,6 +135,37 @@ Q(FAMスコープ参照 or refFAM).prompt("自然言語input")
 ```
 
 FQueryの外部API(呼び出し側から見た入口)とFAM文書内部のnode間呼び出しは、同一記法`Q(scope).method(args)`へ統一される。
+
+## 7. `⊥`(Last Order)とOAE記録(2026-09-13追記、Issue #50由来)
+
+### 背景
+
+ψ/∇φ/λの3軸だけでFoldを再帰的に辿ると、無限/循環参照は構造的に必然発生する(奇数次元的な特異点、詳細はZeroRoomLab-manifest `docs/theory/infoton-engineering.ja.md` 6.1節参照)。これを「防ぐ」のではなく、**どこで・なぜ探索を打ち切ったかを記録して非破壊的に停止する**、というのが`⊥`の役割。`⊥`はmanifest `docs/theory/infoton-engineering.ja.md` 第4節が既に定義している概念(「⊥を返せることが工学であるための否定射程になる」)であり、Core `ControlStatus`の`"bottom"`とも対応する。今回はこれをrefFAMの`Q`語彙自体、およびOAE記録側へ正式に橋渡しする。
+
+### `Q.⊥`の形状
+
+Core既存の`LastOrder`(`{code, reason, requestedNext, resumeWhen}`、`packages/core/src/types.ts`)をそのまま再利用する。新しい打ち切り語彙を独自発明しない。
+
+```json
+"Q": {
+  "⊥": {
+    "code": "FQUERY-FOLD-CYCLE-DETECTED",
+    "reason": "スプリッターが無関係なdomainへ流れたため他の枝をlast-orderした",
+    "requestedNext": "select-another-branch-or-widen-scope",
+    "resumeWhen": "explicit-scope-widening"
+  }
+}
+```
+
+### 発火条件
+
+- fold-chain解決(`this.fold`等)で循環参照を検出した場合
+- スプリッターが分解結果を無関係に見えるdomainへ流し込んだ場合、その時点で他の兄弟枝へ`⊥`を発行する(枝を削除せず、非ゼロサムで保持したまま「これ以上進めない」と明示する)
+- `QueryPolicy.limits`(maxDepth/maxNodes/timeoutMs)超過時(Core既存`checkLimits()`と同型)
+
+### OAE記録
+
+`⊥`が発火した事実は、`packages/plugin-sdk`の`OaeConstraintEvaluationReceipt`と同じ設計思想(Coreはdomain固有の成立条件を裁定せず、参照束縛と確定可能性だけを保持する)に沿った、fold last-order専用のOAE receipt型として記録する。Core本体(`packages/core/src/types.ts`)への型追加は不要で、plugin-sdk層のadapter実装で足りる(`IMPLEMENTATION-PENDING`)。
 
 ## Non-goals
 
