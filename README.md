@@ -1,5 +1,12 @@
 # FQuery
 
+## ZeroRoomLab Portable Civilizationとの接続
+
+FQueryは、ZeroRoomLabのPortable Civilization Programにおいて、異なるWorld / Meaningを特定runtimeへ固定せず問い合わせ・写像するためのquery surfaceを担う。Game / Real / Villageのいずれか一つ専用ではなく、並行workstreamから返る意味境界を扱うcomponentとして位置づける。
+
+この節は上位ナラティブとの接続を示すものであり、本repositoryの実装済み範囲を拡張してclaimするものではない。上位Program: [Fork the Lab. Deploy a World. #47](https://github.com/saitoomituru/ZeroRoomLab-manifest/issues/47)
+
+
 ![FQueryのキービジュアル。空中都市を背景に、Q/FAMのnode graphと二人の案内役が再帰Queryの世界を示す](docs/img/hero.png)
 
 FQuery（短縮名 `Q`）は、FAMを問い合わせ、結び、検証し、別のFAMまたは観測可能な停止結果へ写像するための再帰的Query Driverです。
