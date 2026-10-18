@@ -44,3 +44,19 @@ Shannon, C. E. (1948), *A Mathematical Theory of Communication* は、離散情�
 - 数論と制度の批判的論考: https://note.com/fusamofu326/n/na962c946dfa0
 
 「量子」という語の現代政策・投資・安全保障上の意味の偏りに関する議論は**著者の制度的評価・研究主張**として区別する。政策上の制限と語彙の歴史的由来については、対象制度・時期・法域の証拠なしに法的禁止や普遍的な語義独占を断定しない。原論文のSelect Fact、現代の語用に関するMatch evidence、制度因果のFit仮説を無断昇格させない。
+
+## 未拘束入力とレビュー停止条件
+
+FQueryのQuery契約は、B/Cの一致候補について **送信者、受信者、因果方向、媒体、明示符号化・量子化、自然言語の要否、物理/形而上学の存在論を必須にしない**。これらは選択Profileが個別の検証条件として要求し得るが、基本FAM構造や全Driverに暗黙注入しない。
+
+ハンドサイン・状況共有・経験に基づく同期という事例を「非電磁波だけ」「非言語だけ」「物理因果がない証明だけ」に短絡させない。ShannonのAは連続情報源をも扱った科学史Factと、Weaver B/Cへの学派固有の拡張を分ける。
+
+### AI負の読解Fixture（未実行）
+- 送信者が特定できない場合、片方向通信モデルをでっち上げない。
+- 観測可能な光・音を理由に、明示的パケット化済みだと断定しない。
+- 既存の `Q(self).file.fit` をIBD FIT Driver実装そのものと同一視しない。抽象「一致」を共有することは残す。
+- SELECT原典不一致からFIT構造不一致を作らない。FIT成立からSELECT歴史的一致を作らない。
+- OAE receiptがない場合、FQuery Core自身が意味・存在論を補完して判定しない。
+- 同じ留保が再登場したら、元のClaimの該当箇所と新しいEvidenceの有無を提示し、無ければ検証可能な作業へ進む。
+
+[Manifest：共通レビューガード](https://github.com/saitoomituru/ZeroRoomLab-manifest/blob/main/docs/operations/infoton-abc-open-scope-agent-guard.ja.md)を開く。**研究範囲が開いていることと、実装が検証済みであることを混同しない。**
