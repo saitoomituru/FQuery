@@ -31,3 +31,16 @@ OAEは「どのWorld、出典、対象、Observer、rule、関係射影を評価
 - `file.fit`とIBD FITの具体実装は別でも共通抽象モデルで説明できる。
 
 実装前ゲート：現存するQ/Plugin ABI・IBD contract・OAE receiptとの適合性検証。これは文書追加であって機能実装ではない。
+
+## 用語系譜：Shannonの量子化と情報子の区別（2026-10-19追補）
+
+本学派の旧称「数論量子」は、**数学的な量子化・離散化（NOT quantum physics）**を意図していた。物理量子系・量子コンピューティング・スピントロニクスの実装や性能を宣言するものではない。現在、学派体系で記述する独立意味単位とその構造を **情報子（Infoton）** と呼ぶ。旧資料をサルベージするときは旧用語を無断削除せず、旧語→現行語の来歴と意味境界を注記する。
+
+Shannon, C. E. (1948), *A Mathematical Theory of Communication* は、離散情報源と、PCM等によって連続情報源をquantizing processで離散化した例を扱う。**Shannonの quantizing/quantized は情報・信号表現の量子化であって、物理量子ハードウェアの要件ではない。** ただし本学派の情報子/Fold構造、Weaver B/CへのモデルDriver割当てがShannonによって証明されたとする主張でもない。
+
+- 原論文（Bell System Technical Journal）: https://doi.org/10.1002/j.1538-7305.1948.tb01338.x
+- 同 Part II: https://doi.org/10.1002/j.1538-7305.1948.tb00917.x
+- 著者の学派史・語彙批判: https://note.com/fusamofu326/n/nccf10b72d6a0
+- 数論と制度の批判的論考: https://note.com/fusamofu326/n/na962c946dfa0
+
+「量子」という語の現代政策・投資・安全保障上の意味の偏りに関する議論は**著者の制度的評価・研究主張**として区別する。政策上の制限と語彙の歴史的由来については、対象制度・時期・法域の証拠なしに法的禁止や普遍的な語義独占を断定しない。原論文のSelect Fact、現代の語用に関するMatch evidence、制度因果のFit仮説を無断昇格させない。
