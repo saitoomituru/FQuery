@@ -2,6 +2,17 @@
 
 このrepositoryを編集するagentは、最初に[`SPHERE-DOS.md`](SPHERE-DOS.md)を読む。
 
+## Evidence and deliberate open-scope guard（必読）
+
+[Manifest / Weaver B/C未拘束条件](https://github.com/saitoomituru/ZeroRoomLab-manifest/blob/main/docs/operations/infoton-abc-open-scope-agent-guard.ja.md)と[FQuery一致抽象仕様](docs/specification/fit-match-select-evidence-boundary.ja.md)を参照。
+
+- B/Cの入力に送受信者、因果方向、物理媒体、言語、量子化/明示パケットを暗黙追加しない。未拘束はNOT-EVALUATEDでありFALSEではない。
+- Shannonの信号数理とWeaver A/B/Cを区別し、現行Infotonと旧称「数論量子／霊的量子／魔術量子」の出自・文化史を削除しない。語名で実在も不存在も断定しない。
+- Fit/Match/Selectは一致の共通抽象データモデルだがIBD Model Driverと`Q(self).file.fit`等のPluginは別実装。型・provenance・capabilityを確認する。
+- SELECTの限定Fact・MATCHの意味Evidence・FITの構造Evidenceを相互に無断変換せず、OAEへObserver/rule/World/time/projectionを明示的に委譲する。
+- 研究対象を非言語/非物理/特定実装だけへ縮小しない。無関係な定型留保を反復せず、元のClaimと根拠・観測範囲に沿って検証する。
+- 設計文書の存在を動作済み実装・テスト成功の証明にしない。
+
 ## Repository authority
 
 - FQueryの短縮名とoperatorは`Q`。FAMの`Q`との記号同一性は意図的であり、「紛らわしい」という理由でrenameしない
