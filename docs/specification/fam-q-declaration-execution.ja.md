@@ -10,7 +10,9 @@
 - [`fquery-selector-traversal-normalization.ja.md`](fquery-selector-traversal-normalization.ja.md)
 - Issue #41(2026-09-13ブレスト)、reference実装候補: `refFAM/AtlantisCommons.refFAM.json`
 
-補足：[Fit/Match/Select Evidence型とOAEの射程](fit-match-select-evidence-boundary.ja.md)。`Q(self).file.fit`は同じ一致操作の抽象データモデル上にあり得るが、IBD FIT Model Driverとは異なる具体的なFile Plugin実装。概念の一致を根拠にPlugin・Driverの相互実装を捏造しない。\n\n## 目的
+補足：[Fit/Match/Select Evidence型とOAEの射程](fit-match-select-evidence-boundary.ja.md)。`Q(self).file.fit`は同じ一致操作の抽象データモデル上にあり得るが、IBD FIT Model Driverとは異なる具体的なFile Plugin実装。概念の一致を根拠にPlugin・Driverの相互実装を捏造しない。
+
+## 目的
 
 FAM base structure(`ψ/∇φ/λ/Q`)のうち`Q`だけが宣言(declaration)専用であることを固定し、実行(execution)は`Q(scope).method(args)`という統一呼び出しへ集約する。CoreはWorld観・backend製品名・特定protocolをこのcontractへ焼き込まない。
 
